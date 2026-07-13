@@ -1,0 +1,220 @@
+/* ============================================================
+   Global Aksiyon Merkezi + Denetim izi
+   ============================================================ */
+
+#actions-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 40px;
+}
+
+.actions-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.actions-kpi-grid small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  margin-top: 7px;
+}
+
+.actions-filter-bar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.actions-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  overflow-x: auto;
+}
+
+.action-tab {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.action-tab:hover {
+  background: var(--surface-soft);
+  color: var(--ink);
+}
+
+.action-tab.active {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.actions-tab-content {
+  display: none;
+}
+
+.actions-tab-content.active {
+  display: block;
+}
+
+.global-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.global-action-card {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.global-action-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--success);
+}
+
+.global-action-card.high::before {
+  background: var(--danger);
+}
+
+.global-action-card.medium::before {
+  background: var(--warning);
+}
+
+.global-action-top,
+.global-action-meta,
+.global-action-footer,
+.audit-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.global-action-top > span:last-child {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.global-action-card h4 {
+  margin: 12px 0 7px;
+  font-size: 0.98rem;
+}
+
+.global-action-card p {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.global-action-meta {
+  flex-wrap: wrap;
+  margin: 14px 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.global-action-footer {
+  border-top: 1px solid var(--line-soft);
+  padding-top: 12px;
+}
+
+/* ---------- Denetim izi ---------- */
+
+.audit-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.audit-item {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 12px;
+  position: relative;
+  padding-bottom: 16px;
+}
+
+.audit-item:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 18px;
+  bottom: 0;
+  width: 2px;
+  background: var(--line);
+}
+
+.audit-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--primary);
+  margin-top: 4px;
+  box-shadow: 0 0 0 4px var(--primary-soft);
+}
+
+.audit-body {
+  padding: 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-lg);
+  background: var(--surface-soft);
+}
+
+.audit-body p {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 6px 0;
+}
+
+.audit-body small,
+.audit-head span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 500;
+  font-family: var(--font-data);
+}
+
+@media (max-width: 1180px) {
+  .global-actions-grid,
+  .actions-filter-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .actions-kpi-grid,
+  .global-actions-grid,
+  .actions-filter-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .global-action-footer,
+  .audit-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

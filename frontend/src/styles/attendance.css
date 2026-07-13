@@ -1,0 +1,156 @@
+/* ============================================================
+   Mesai & Puantaj
+   ============================================================ */
+
+.date-picker-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.att-content {
+  padding: 16px;
+}
+
+.att-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 5px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line-soft);
+  background: var(--surface-soft);
+  margin-bottom: 16px;
+}
+
+.att-tab {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  border-radius: var(--radius-md);
+  min-height: 38px;
+  padding: 0 14px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.att-tab:hover {
+  color: var(--ink);
+}
+
+.att-tab.active {
+  background: var(--surface);
+  color: var(--primary);
+  border-color: var(--line);
+  box-shadow: var(--shadow-sm);
+}
+
+.live-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.live-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  padding: 14px;
+}
+
+.live-card.ontime {
+  border-left: 3px solid var(--success);
+}
+
+.live-card.late {
+  border-left: 3px solid var(--warning);
+}
+
+.live-card.absent {
+  border-left: 3px solid var(--danger);
+}
+
+.live-card.early {
+  border-left: 3px solid var(--info);
+}
+
+.lc-header,
+.lc-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lc-body {
+  justify-content: flex-start;
+  margin-top: 16px;
+}
+
+.lc-avatar {
+  width: 46px;
+  height: 46px;
+}
+
+.lc-body p,
+.lc-time {
+  color: var(--muted);
+  font-size: 0.83rem;
+}
+
+.lc-time {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+.live-card.ghost {
+  min-height: 122px;
+  align-items: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-style: dashed;
+  color: var(--muted);
+  background: var(--surface-soft);
+}
+
+.ts-filter {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.user-select {
+  max-width: 300px;
+}
+
+.legend {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.leg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@media (max-width: 760px) {
+  .att-tabs,
+  .ts-filter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .user-select {
+    max-width: none;
+  }
+}
