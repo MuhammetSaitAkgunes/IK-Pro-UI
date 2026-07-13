@@ -1,0 +1,29 @@
+## .NET build output
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Rider / VS
+.idea/
+.vs/
+*.DotSettings.user
+
+## Test / coverage
+[Tt]est[Rr]esult*/
+coverage*.json
+coverage*.xml
+*.coverage
+
+## Local secrets / env
+appsettings.*.Local.json
+*.env
+secrets.json
+
+## Uploaded files (IFileStorage local disk)
+src/IKPro.API/wwwroot/uploads/

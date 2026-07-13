@@ -1,0 +1,97 @@
+using IKPro.Application.Common.Interfaces;
+using IKPro.Infrastructure.Identity;
+using IKPro.Infrastructure.Persistence;
+using IKPro.Infrastructure.Persistence.Interceptors;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+
+namespace IKPro.Infrastructure;
+
+/// <summary>
+/// Infrastructure katmanı servis kayıtları: DbContext + audit interceptor,
+/// Identity + JWT Bearer kimlik doğrulama, token servisleri.
+/// </summary>
+public static class DependencyInjection
+{
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    {
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection tanımlı değil.");
+
+        services.AddScoped<AuditableEntityInterceptor>();
+
+        services.AddDbContext<AppDbContext>((sp, options) =>
+        {
+            options.UseSqlServer(connectionString, sql =>
+                sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName));
+            options.AddInterceptors(sp.GetRequiredService<AuditableEntityInterceptor>());
+        });
+
+        // Identity çekirdeği + roller + SignInManager (lockout kontrolü için).
+        // Parola politikası demo hesaplarla (demo123) uyumlu tutulur.
+        services
+            .AddIdentityCore<ApplicationUser>(options =>
+            {
+                options.User.RequireUniqueEmail = true;
+                options.Password.RequiredLength = 6;
+                options.Password.RequireUppercase = false;
+                options.Password.RequireNonAlphanumeric = false;
+                options.Password.RequireDigit = true;
+
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+                options.Lockout.AllowedForNewUsers = true;
+            })
+            .AddRoles<IdentityRole>()
+            .AddSignInManager()
+            .AddEntityFrameworkStores<AppDbContext>();
+
+        // JWT ayarları + Bearer kimlik doğrulama.
+        var jwtSection = configuration.GetSection(JwtOptions.SectionName);
+        services.Configure<JwtOptions>(jwtSection);
+
+        var jwtOptions = jwtSection.Get<JwtOptions>()
+            ?? throw new InvalidOperationException("Jwt ayar bölümü eksik.");
+        if (jwtOptions.Secret.Length < 32)
+        {
+            throw new InvalidOperationException("Jwt:Secret en az 32 karakter olmalı.");
+        }
+
+        services
+            .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
+            {
+                // Token'lar kısa claim adlarıyla üretilir; eski SOAP claim eşlemesi kapalı.
+                options.MapInboundClaims = false;
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidIssuer = jwtOptions.Issuer,
+                    ValidateAudience = true,
+                    ValidAudience = jwtOptions.Audience,
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.FromSeconds(30),
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Secret)),
+                    NameClaimType = "name",
+                    RoleClaimType = "role",
+                };
+            });
+
+        services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<AppDbContext>());
+        services.AddScoped<IWorkingDayCalculator, SqlWorkingDayCalculator>();
+        services.AddSingleton<Domain.Services.IPayrollEngine, Domain.Services.PayrollEngine>();
+        services.AddSingleton<Application.Features.Payroll.Payslips.IPayslipGenerator, Pdf.QuestPdfPayslipGenerator>();
+        services.AddScoped<JwtTokenService>();
+        services.AddScoped<IIdentityService, IdentityService>();
+        services.AddSingleton<IFileStorage, Storage.LocalFileStorage>();
+        services.AddScoped<AppDbContextInitializer>();
+
+        return services;
+    }
+}

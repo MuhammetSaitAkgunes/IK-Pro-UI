@@ -1,0 +1,125 @@
+using IKPro.Application.Common.Interfaces;
+using IKPro.Domain.Entities.Actions;
+using IKPro.Domain.Entities.Analytics;
+using IKPro.Domain.Entities.Attendance;
+using IKPro.Domain.Entities.Compliance;
+using IKPro.Domain.Entities.Leaves;
+using IKPro.Domain.Entities.Organization;
+using IKPro.Domain.Entities.Payroll;
+using IKPro.Domain.Entities.Recruitment;
+using IKPro.Domain.Entities.Settings;
+using IKPro.Infrastructure.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using System.Reflection;
+
+namespace IKPro.Infrastructure.Persistence;
+
+/// <summary>
+/// Uygulamanın EF Core DbContext'i. Identity tablolarını da barındırır (IdentityDbContext).
+/// Entity konfigürasyonları assembly'den otomatik yüklenir; tüm enum'lar string olarak saklanır.
+/// </summary>
+public class AppDbContext(DbContextOptions<AppDbContext> options)
+    : IdentityDbContext<ApplicationUser>(options), IApplicationDbContext
+{
+    // Organization
+    public DbSet<Department> Departments => Set<Department>();
+    public DbSet<Employee> Employees => Set<Employee>();
+    public DbSet<EmployeeProfile> EmployeeProfiles => Set<EmployeeProfile>();
+    public DbSet<EmployeeDocument> EmployeeDocuments => Set<EmployeeDocument>();
+
+    // Leaves
+    public DbSet<LeaveType> LeaveTypes => Set<LeaveType>();
+    public DbSet<Holiday> Holidays => Set<Holiday>();
+    public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
+    public DbSet<LeaveBalance> LeaveBalances => Set<LeaveBalance>();
+
+    // Attendance
+    public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
+
+    // Payroll
+    public DbSet<PayrollPeriod> PayrollPeriods => Set<PayrollPeriod>();
+    public DbSet<PayrollSettings> PayrollSettings => Set<PayrollSettings>();
+    public DbSet<IncomeTaxBracket> IncomeTaxBrackets => Set<IncomeTaxBracket>();
+    public DbSet<PayrollEmployee> PayrollEmployees => Set<PayrollEmployee>();
+    public DbSet<PayrollResult> PayrollResults => Set<PayrollResult>();
+
+    // Recruitment
+    public DbSet<Position> Positions => Set<Position>();
+    public DbSet<Candidate> Candidates => Set<Candidate>();
+    public DbSet<CandidateSkill> CandidateSkills => Set<CandidateSkill>();
+    public DbSet<CandidateExperience> CandidateExperiences => Set<CandidateExperience>();
+    public DbSet<InterviewNote> InterviewNotes => Set<InterviewNote>();
+    public DbSet<CandidateEvaluation> CandidateEvaluations => Set<CandidateEvaluation>();
+    public DbSet<CandidateHistory> CandidateHistory => Set<CandidateHistory>();
+
+    // Analytics
+    public DbSet<EmployeeMetricSnapshot> EmployeeMetricSnapshots => Set<EmployeeMetricSnapshot>();
+    public DbSet<EngagementMetric> EngagementMetrics => Set<EngagementMetric>();
+
+    // Compliance
+    public DbSet<ComplianceDocument> ComplianceDocuments => Set<ComplianceDocument>();
+
+    // Actions & Audit
+    public DbSet<GlobalAction> GlobalActions => Set<GlobalAction>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+
+    // Settings
+    public DbSet<CompanyProfile> CompanyProfiles => Set<CompanyProfile>();
+    public DbSet<NotificationSettings> NotificationSettings => Set<NotificationSettings>();
+    public DbSet<Subscription> Subscriptions => Set<Subscription>();
+
+    // Identity extras
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
+    // Okuma modelleri (SQL view)
+    public DbSet<Domain.ReadModels.LeaveBalanceSummary> LeaveBalanceSummaries
+        => Set<Domain.ReadModels.LeaveBalanceSummary>();
+    public DbSet<Domain.ReadModels.MonthlyAttendanceSummary> MonthlyAttendanceSummaries
+        => Set<Domain.ReadModels.MonthlyAttendanceSummary>();
+    public DbSet<Domain.ReadModels.PayrollPeriodSummary> PayrollPeriodSummaries
+        => Set<Domain.ReadModels.PayrollPeriodSummary>();
+    public DbSet<Domain.ReadModels.EmployeeRiskMetric> EmployeeRiskMetrics
+        => Set<Domain.ReadModels.EmployeeRiskMetric>();
+    public DbSet<Domain.ReadModels.DepartmentRiskSummary> DepartmentRiskSummaries
+        => Set<Domain.ReadModels.DepartmentRiskSummary>();
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        // Para ve oran alanları: 0.759 gibi binde oranları da kaybolmasın diye 4 ondalık.
+        configurationBuilder.Properties<decimal>().HavePrecision(18, 4);
+    }
+
+    protected override void OnModelCreating(ModelBuilder builder)
+    {
+        base.OnModelCreating(builder);
+
+        builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+
+        // Tüm enum property'lerini okunabilirlik için string olarak sakla.
+        foreach (var entityType in builder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                var type = Nullable.GetUnderlyingType(property.ClrType) ?? property.ClrType;
+                if (type.IsEnum)
+                {
+                    var converterType = typeof(EnumToStringConverter<>).MakeGenericType(type);
+                    var converter = (ValueConverter)Activator.CreateInstance(converterType)!;
+                    property.SetValueConverter(converter);
+                    property.SetMaxLength(64);
+                }
+            }
+        }
+
+        // Kısa Identity tablo adları.
+        builder.Entity<ApplicationUser>().ToTable("Users");
+        builder.Entity<Microsoft.AspNetCore.Identity.IdentityRole>().ToTable("Roles");
+        builder.Entity<Microsoft.AspNetCore.Identity.IdentityUserRole<string>>().ToTable("UserRoles");
+        builder.Entity<Microsoft.AspNetCore.Identity.IdentityUserClaim<string>>().ToTable("UserClaims");
+        builder.Entity<Microsoft.AspNetCore.Identity.IdentityUserLogin<string>>().ToTable("UserLogins");
+        builder.Entity<Microsoft.AspNetCore.Identity.IdentityUserToken<string>>().ToTable("UserTokens");
+        builder.Entity<Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>>().ToTable("RoleClaims");
+    }
+}

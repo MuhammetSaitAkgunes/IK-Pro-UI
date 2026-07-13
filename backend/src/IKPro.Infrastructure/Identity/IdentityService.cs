@@ -1,0 +1,179 @@
+using FluentValidation;
+using FluentValidation.Results;
+using IKPro.Application.Common.Exceptions;
+using IKPro.Application.Common.Interfaces;
+using IKPro.Application.Features.Auth;
+using IKPro.Domain.Constants;
+using IKPro.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+
+namespace IKPro.Infrastructure.Identity;
+
+/// <summary>
+/// <see cref="IIdentityService"/> implementasyonu: ASP.NET Core Identity + JWT.
+/// Lockout SignInManager üzerinden işler; refresh token'lar rotasyonla yenilenir
+/// ve DB'de hash'lenmiş saklanır.
+/// </summary>
+public sealed class IdentityService(
+    UserManager<ApplicationUser> userManager,
+    SignInManager<ApplicationUser> signInManager,
+    JwtTokenService tokenService,
+    AppDbContext context) : IIdentityService
+{
+    private const string InvalidCredentialsMessage = "E-posta veya şifre hatalı.";
+
+    public async Task<AuthResponse> LoginAsync(string email, string password, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByEmailAsync(email)
+            ?? throw new UnauthorizedException(InvalidCredentialsMessage);
+
+        if (!user.IsActive)
+        {
+            throw new UnauthorizedException("Hesap pasif durumda. Yöneticinizle iletişime geçin.");
+        }
+
+        var result = await signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
+        if (result.IsLockedOut)
+        {
+            throw new UnauthorizedException("Çok sayıda hatalı deneme; hesap geçici olarak kilitlendi.");
+        }
+
+        if (!result.Succeeded)
+        {
+            throw new UnauthorizedException(InvalidCredentialsMessage);
+        }
+
+        return await IssueTokensAsync(user, cancellationToken);
+    }
+
+    public async Task<AuthResponse> RegisterAsync(
+        string name, string email, string password, string role, CancellationToken cancellationToken)
+    {
+        if (await userManager.FindByEmailAsync(email) is not null)
+        {
+            throw new ConflictException("Bu e-posta adresiyle kayıtlı bir hesap zaten var.");
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true,
+            DisplayName = name,
+            Initials = DeriveInitials(name),
+        };
+
+        var createResult = await userManager.CreateAsync(user, password);
+        if (!createResult.Succeeded)
+        {
+            // Identity parola/kullanıcı politikası ihlalleri 400 doğrulama hatası olarak döner.
+            throw new ValidationException(createResult.Errors
+                .Select(e => new ValidationFailure("password", e.Description)));
+        }
+
+        await userManager.AddToRoleAsync(user, role);
+
+        return await IssueTokensAsync(user, cancellationToken);
+    }
+
+    public async Task<AuthResponse> RefreshAsync(string refreshToken, CancellationToken cancellationToken)
+    {
+        var hash = JwtTokenService.Hash(refreshToken);
+        var stored = await context.RefreshTokens
+            .Include(t => t.User)
+            .FirstOrDefaultAsync(t => t.Token == hash, cancellationToken);
+
+        if (stored is null || !stored.IsActive || stored.User is null || !stored.User.IsActive)
+        {
+            throw new UnauthorizedException("Geçersiz veya süresi dolmuş yenileme token'ı.");
+        }
+
+        // Rotasyon: eski token tek kullanımlıktır.
+        stored.RevokedAtUtc = DateTime.UtcNow;
+
+        return await IssueTokensAsync(stored.User, cancellationToken);
+    }
+
+    public async Task LogoutAsync(string refreshToken, CancellationToken cancellationToken)
+    {
+        var hash = JwtTokenService.Hash(refreshToken);
+        var stored = await context.RefreshTokens
+            .FirstOrDefaultAsync(t => t.Token == hash, cancellationToken);
+
+        // Idempotent: token bulunamazsa sessizce başarı (zaten çıkış yapılmış).
+        if (stored is not null && stored.RevokedAtUtc is null)
+        {
+            stored.RevokedAtUtc = DateTime.UtcNow;
+            await context.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    public async Task ChangePasswordAsync(
+        string userId, string currentPassword, string newPassword, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(userId)
+            ?? throw new UnauthorizedException("Kullanıcı kaydı bulunamadı.");
+
+        var result = await userManager.ChangePasswordAsync(user, currentPassword, newPassword);
+        if (result.Succeeded)
+        {
+            return;
+        }
+
+        if (result.Errors.Any(e => e.Code == nameof(IdentityErrorDescriber.PasswordMismatch)))
+        {
+            throw new UnauthorizedException("Mevcut şifre hatalı.");
+        }
+
+        throw new ValidationException(result.Errors
+            .Select(e => new ValidationFailure("newPassword", e.Description)));
+    }
+
+    public async Task<UserDto?> GetUserAsync(string userId, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(userId);
+        return user is null ? null : await BuildUserDtoAsync(user);
+    }
+
+    private async Task<AuthResponse> IssueTokensAsync(ApplicationUser user, CancellationToken cancellationToken)
+    {
+        var roles = await userManager.GetRolesAsync(user);
+        var (accessToken, expiresAtUtc) = tokenService.CreateAccessToken(user, roles);
+        var (rawRefreshToken, refreshEntity) = tokenService.CreateRefreshToken(user.Id);
+
+        context.RefreshTokens.Add(refreshEntity);
+        await context.SaveChangesAsync(cancellationToken);
+
+        return new AuthResponse(accessToken, rawRefreshToken, expiresAtUtc, ToUserDto(user, roles));
+    }
+
+    private async Task<UserDto> BuildUserDtoAsync(ApplicationUser user)
+        => ToUserDto(user, await userManager.GetRolesAsync(user));
+
+    private static UserDto ToUserDto(ApplicationUser user, IEnumerable<string> roles)
+    {
+        var role = roles.FirstOrDefault() ?? Roles.Employee;
+
+        return new UserDto(
+            user.Id,
+            user.DisplayName,
+            user.Email ?? string.Empty,
+            role,
+            Roles.LabelOf(role),
+            user.Initials ?? DeriveInitials(user.DisplayName),
+            user.EmployeeId);
+    }
+
+    /// <summary>Ad soyaddan baş harfler, ör. "Ahmet Yılmaz" → "AY" (frontend initials paritesi).</summary>
+    private static string DeriveInitials(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return parts.Length switch
+        {
+            0 => "?",
+            1 => parts[0][..1].ToUpper(new System.Globalization.CultureInfo("tr-TR")),
+            _ => string.Concat(parts[0][..1], parts[^1][..1]).ToUpper(new System.Globalization.CultureInfo("tr-TR")),
+        };
+    }
+}
