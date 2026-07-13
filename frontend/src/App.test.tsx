@@ -1,7 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import App from "./App";
 
-test("uygulama başlığı render edilir", () => {
+test("oturum yokken giriş ekranı açılır", () => {
+  localStorage.clear();
   render(<App />);
-  expect(screen.getByText("İK Pro")).toBeInTheDocument();
+  expect(screen.getAllByText("Giriş yap").length).toBeGreaterThan(0);
 });

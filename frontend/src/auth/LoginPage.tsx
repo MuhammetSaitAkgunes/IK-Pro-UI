@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { useAuth } from "./AuthContext";
+import { roleHomeFor } from "../routes";
 
 export function LoginPage({ mode = "login" }: { mode?: "login" | "signup" }) {
   const { login, register } = useAuth();
@@ -17,8 +18,8 @@ export function LoginPage({ mode = "login" }: { mode?: "login" | "signup" }) {
     event.preventDefault();
     setError(null);
     try {
-      await action();
-      navigate("/dashboard");
+      const user = (await action()) as { role?: string };
+      navigate(roleHomeFor(user?.role));
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Beklenmeyen bir hata oluştu.");
     }
