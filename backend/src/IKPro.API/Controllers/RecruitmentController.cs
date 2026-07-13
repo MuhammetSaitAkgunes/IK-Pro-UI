@@ -44,13 +44,13 @@ public sealed class RecruitmentController(ISender sender) : ControllerBase
     [ProducesResponseType<CandidateDetailDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<CandidateDetailDto>> SetStatus(
-        int id, StatusBody body, CancellationToken cancellationToken)
+        int id, CandidateStatusBody body, CancellationToken cancellationToken)
         => Ok(await sender.Send(new SetCandidateStatusCommand(id, body.Status), cancellationToken));
 
     [HttpPost("candidates/{id:int}/notes")]
     [ProducesResponseType<InterviewNoteDto>(StatusCodes.Status201Created)]
     public async Task<ActionResult<InterviewNoteDto>> AddNote(
-        int id, NoteBody body, CancellationToken cancellationToken)
+        int id, CandidateNoteBody body, CancellationToken cancellationToken)
     {
         var note = await sender.Send(new AddInterviewNoteCommand(id, body.NoteType, body.Text), cancellationToken);
         return CreatedAtAction(nameof(GetCandidate), new { id }, note);
@@ -59,7 +59,7 @@ public sealed class RecruitmentController(ISender sender) : ControllerBase
     [HttpPost("candidates/{id:int}/evaluations")]
     [ProducesResponseType<CandidateEvaluationDto>(StatusCodes.Status201Created)]
     public async Task<ActionResult<CandidateEvaluationDto>> AddEvaluation(
-        int id, EvaluationBody body, CancellationToken cancellationToken)
+        int id, CandidateEvaluationBody body, CancellationToken cancellationToken)
     {
         var evaluation = await sender.Send(
             new AddCandidateEvaluationCommand(id, body.Criterion, body.Score, body.MaxScore), cancellationToken);
@@ -70,7 +70,7 @@ public sealed class RecruitmentController(ISender sender) : ControllerBase
     [ProducesResponseType<HireResultDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<HireResultDto>> Hire(
-        int id, HireBody body, CancellationToken cancellationToken)
+        int id, CandidateHireBody body, CancellationToken cancellationToken)
         => Ok(await sender.Send(
             new HireCandidateCommand(id, body.DepartmentId, body.Title, body.HireDate), cancellationToken));
 
@@ -95,8 +95,8 @@ public sealed class RecruitmentController(ISender sender) : ControllerBase
     public async Task<ActionResult<RecruitmentFunnelDto>> GetFunnel(CancellationToken cancellationToken)
         => Ok(await sender.Send(new GetRecruitmentFunnelQuery(), cancellationToken));
 
-    public sealed record StatusBody(string Status);
-    public sealed record NoteBody(string NoteType, string Text);
-    public sealed record EvaluationBody(string Criterion, int Score, int MaxScore = 5);
-    public sealed record HireBody(int DepartmentId, string? Title = null, DateOnly? HireDate = null);
+    public sealed record CandidateStatusBody(string Status);
+    public sealed record CandidateNoteBody(string NoteType, string Text);
+    public sealed record CandidateEvaluationBody(string Criterion, int Score, int MaxScore = 5);
+    public sealed record CandidateHireBody(int DepartmentId, string? Title = null, DateOnly? HireDate = null);
 }

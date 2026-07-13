@@ -45,7 +45,7 @@ public sealed class ComplianceController(ISender sender) : ControllerBase
     [ProducesResponseType<ComplianceDocumentDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ComplianceDocumentDto>> Update(
-        int id, UpdateBody body, CancellationToken cancellationToken)
+        int id, ComplianceUpdateBody body, CancellationToken cancellationToken)
         => Ok(await sender.Send(
             new UpdateComplianceDocumentCommand(id, body.DocumentName, body.DueDate, body.Level),
             cancellationToken));
@@ -55,7 +55,7 @@ public sealed class ComplianceController(ISender sender) : ControllerBase
     [ProducesResponseType<ComplianceDocumentDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<ComplianceDocumentDto>> SetStatus(
-        int id, StatusBody body, CancellationToken cancellationToken)
+        int id, ComplianceStatusBody body, CancellationToken cancellationToken)
         => Ok(await sender.Send(new SetComplianceStatusCommand(id, body.Status), cancellationToken));
 
     [HttpPatch("documents/{id:int}/owner")]
@@ -63,10 +63,10 @@ public sealed class ComplianceController(ISender sender) : ControllerBase
     [ProducesResponseType<ComplianceDocumentDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ComplianceDocumentDto>> AssignOwner(
-        int id, OwnerBody body, CancellationToken cancellationToken)
+        int id, ComplianceOwnerBody body, CancellationToken cancellationToken)
         => Ok(await sender.Send(new AssignComplianceOwnerCommand(id, body.OwnerName), cancellationToken));
 
-    public sealed record UpdateBody(string DocumentName, DateOnly? DueDate, string Level);
-    public sealed record StatusBody(string Status);
-    public sealed record OwnerBody(string OwnerName);
+    public sealed record ComplianceUpdateBody(string DocumentName, DateOnly? DueDate, string Level);
+    public sealed record ComplianceStatusBody(string Status);
+    public sealed record ComplianceOwnerBody(string OwnerName);
 }

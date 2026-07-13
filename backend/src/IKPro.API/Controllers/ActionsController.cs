@@ -48,7 +48,7 @@ public sealed class ActionsController(ISender sender) : ControllerBase
     [ProducesResponseType<GlobalActionDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<GlobalActionDto>> Update(
-        int id, UpdateBody body, CancellationToken cancellationToken)
+        int id, ActionUpdateBody body, CancellationToken cancellationToken)
         => Ok(await sender.Send(
             new UpdateGlobalActionCommand(
                 id, body.Title, body.Source, body.Owner, body.SourceRoute,
@@ -61,7 +61,7 @@ public sealed class ActionsController(ISender sender) : ControllerBase
     [ProducesResponseType<GlobalActionDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<GlobalActionDto>> SetStatus(
-        int id, StatusBody body, CancellationToken cancellationToken)
+        int id, ActionStatusBody body, CancellationToken cancellationToken)
         => Ok(await sender.Send(new SetGlobalActionStatusCommand(id, body.Status), cancellationToken));
 
     [HttpDelete("actions/{id:int}")]
@@ -90,8 +90,8 @@ public sealed class ActionsController(ISender sender) : ControllerBase
         [FromQuery] string q, CancellationToken cancellationToken)
         => Ok(await sender.Send(new GlobalSearchQuery(q ?? string.Empty), cancellationToken));
 
-    public sealed record UpdateBody(
+    public sealed record ActionUpdateBody(
         string Title, string Source, string Owner, string? SourceRoute,
         string? Due, string Priority, string? RecommendedAction);
-    public sealed record StatusBody(string Status);
+    public sealed record ActionStatusBody(string Status);
 }
