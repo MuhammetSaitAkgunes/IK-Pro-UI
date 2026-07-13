@@ -55,8 +55,18 @@ try
         {
             Title = "İK Pro API",
             Version = "v1",
-            Description = "İK Pro insan kaynakları platformu backend API'si."
+            Description =
+                "İK Pro insan kaynakları platformu backend API'si. " +
+                "Roller: hr-admin / manager / employee (policy'ler routes.js matrisiyle birebir). " +
+                "Demo giriş: ik@hrmaster.local / demo123.",
         });
+
+        // Controller XML yorumları uç açıklaması olarak gösterilir (Faz 12 cilası).
+        var xmlPath = Path.Combine(AppContext.BaseDirectory, "IKPro.API.xml");
+        if (File.Exists(xmlPath))
+        {
+            options.IncludeXmlComments(xmlPath);
+        }
 
         var jwtScheme = new OpenApiSecurityScheme
         {
