@@ -60,6 +60,16 @@ export const navGroups = [
 // Sayfa component eşlemesi: sonraki dilimler PlaceholderPage'i gerçek sayfayla değiştirir.
 const pageFor: Record<string, () => JSX.Element> = {};
 
+// Component JSX olarak render edilir (düz fonksiyon çağrısı hook kurallarını bozar).
+function GatedPage({ route }: { route: AppRoute }) {
+  const Page = pageFor[route.key] ?? PlaceholderPage;
+  return (
+    <RouteGate route={route}>
+      <Page />
+    </RouteGate>
+  );
+}
+
 export function buildRouteObjects(): RouteObject[] {
   return [
     { path: "/login", element: <PublicOnly><LoginPage mode="login" /></PublicOnly> },
@@ -68,11 +78,7 @@ export function buildRouteObjects(): RouteObject[] {
       element: <RequireAuth />, // AppShell Task 6'da bu elemente sarılacak
       children: appRoutes.map((route) => ({
         path: route.path,
-        element: (
-          <RouteGate route={route}>
-            {(pageFor[route.key] ?? PlaceholderPage)()}
-          </RouteGate>
-        ),
+        element: <GatedPage route={route} />,
       })),
     },
     { path: "*", element: <PublicOnly><LoginPage mode="login" /></PublicOnly> },
