@@ -1,0 +1,60 @@
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { ApiError, apiFetch } from "./client";
+import { SESSION_KEY, getSession, setSession } from "./session";
+
+const user = { id: "u1", name: "İK Yöneticisi", email: "ik@hrmaster.local", role: "hr-admin", roleLabel: "İK Admin", initials: "İK", employeeId: null } as never;
+const json = (status: number, body: unknown) =>
+  new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+
+beforeEach(() => {
+  localStorage.clear();
+  vi.stubGlobal("fetch", vi.fn());
+});
+afterEach(() => vi.unstubAllGlobals());
+
+test("başarılı istek Bearer başlığı taşır ve JSON döner", async () => {
+  setSession({ token: "T1", refreshToken: "R1", user });
+  vi.mocked(fetch).mockResolvedValueOnce(json(200, { ok: true }));
+
+  const result = await apiFetch<{ ok: boolean }>("/me");
+
+  expect(result.ok).toBe(true);
+  const [url, init] = vi.mocked(fetch).mock.calls[0];
+  expect(url).toBe("/api/me");
+  expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer T1");
+});
+
+test("ProblemDetails hatası ApiError olarak fırlar", async () => {
+  vi.mocked(fetch).mockResolvedValueOnce(json(409, { title: "Çakışan kayıt.", status: 409 }));
+
+  const error = await apiFetch("/leaves", { method: "POST" }).catch((e) => e);
+
+  expect(error).toBeInstanceOf(ApiError);
+  expect(error).toMatchObject({ status: 409, message: "Çakışan kayıt." });
+});
+
+test("401'de refresh denenir ve istek yeni token'la tekrarlanır", async () => {
+  setSession({ token: "ESKI", refreshToken: "R1", user });
+  vi.mocked(fetch)
+    .mockResolvedValueOnce(json(401, { title: "Yetkisiz" }))
+    .mockResolvedValueOnce(json(200, { token: "YENI", refreshToken: "R2", expiresAtUtc: "2026-07-13T12:00:00Z", user }))
+    .mockResolvedValueOnce(json(200, { ok: true }));
+
+  const result = await apiFetch<{ ok: boolean }>("/me");
+
+  expect(result.ok).toBe(true);
+  expect(getSession()?.token).toBe("YENI");
+  expect(vi.mocked(fetch).mock.calls[1][0]).toBe("/api/auth/refresh");
+  expect(new Headers(vi.mocked(fetch).mock.calls[2][1]?.headers).get("Authorization")).toBe("Bearer YENI");
+});
+
+test("refresh de düşerse oturum silinir ve login'e yönlenir", async () => {
+  setSession({ token: "ESKI", refreshToken: "R1", user });
+  vi.mocked(fetch)
+    .mockResolvedValueOnce(json(401, { title: "Yetkisiz" }))
+    .mockResolvedValueOnce(json(401, { title: "Refresh geçersiz" }));
+
+  await expect(apiFetch("/me")).rejects.toMatchObject({ status: 401 });
+  expect(localStorage.getItem(SESSION_KEY)).toBeNull();
+  expect(window.location.hash).toBe("#/login");
+});
