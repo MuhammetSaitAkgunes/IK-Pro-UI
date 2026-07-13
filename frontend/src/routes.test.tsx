@@ -1,8 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import { RouterProvider, createMemoryRouter } from "react-router-dom";
-import { beforeEach, expect, test } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { beforeEach, expect, test, vi } from "vitest";
 import { buildRouteObjects } from "./routes";
 import { AuthProvider } from "./auth/AuthContext";
+import { ToastProvider } from "./layout/ToastProvider";
 import { SESSION_KEY } from "./api/session";
 
 const sessionFor = (role: string, name: string) =>
@@ -17,6 +19,22 @@ const renderAt = (path: string) => {
   );
 };
 
+const renderShellAt = (path: string) => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(
+    new Response(JSON.stringify({ openCount: 5 }), { status: 200, headers: { "Content-Type": "application/json" } }),
+  ));
+  const router = createMemoryRouter(buildRouteObjects(), { initialEntries: [path] });
+  return render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <AuthProvider>
+        <ToastProvider>
+          <RouterProvider router={router} />
+        </ToastProvider>
+      </AuthProvider>
+    </QueryClientProvider>,
+  );
+};
+
 beforeEach(() => localStorage.clear());
 
 test("oturum yokken korumalı rota login'e yönlenir", () => {
@@ -28,12 +46,12 @@ test("oturum yokken korumalı rota login'e yönlenir", () => {
 
 test("employee, dashboard'da 'Yetki Gerekli' ekranı görür (redirect yok)", () => {
   localStorage.setItem(SESSION_KEY, sessionFor("employee", "Ahmet Yılmaz"));
-  renderAt("/dashboard");
+  renderShellAt("/dashboard");
   expect(screen.getByText("Bu alan için yetki gerekli")).toBeInTheDocument();
 });
 
 test("hr-admin, settings placeholder'ını görür", () => {
   localStorage.setItem(SESSION_KEY, sessionFor("hr-admin", "İK Yöneticisi"));
-  renderAt("/settings");
+  renderShellAt("/settings");
   expect(screen.getByText("Bu alan hazırlanıyor")).toBeInTheDocument();
 });

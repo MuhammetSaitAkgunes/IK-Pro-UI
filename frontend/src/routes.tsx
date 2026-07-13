@@ -2,6 +2,7 @@ import type { RouteObject } from "react-router-dom";
 import { LoginPage } from "./auth/LoginPage";
 import { PublicOnly, RequireAuth, RouteGate } from "./auth/guards";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
+import { AppShell } from "./layout/AppShell";
 
 export type Role = "hr-admin" | "manager" | "employee";
 
@@ -75,11 +76,16 @@ export function buildRouteObjects(): RouteObject[] {
     { path: "/login", element: <PublicOnly><LoginPage mode="login" /></PublicOnly> },
     { path: "/signup", element: <PublicOnly><LoginPage mode="signup" /></PublicOnly> },
     {
-      element: <RequireAuth />, // AppShell Task 6'da bu elemente sarılacak
-      children: appRoutes.map((route) => ({
-        path: route.path,
-        element: <GatedPage route={route} />,
-      })),
+      element: <RequireAuth />,
+      children: [
+        {
+          element: <AppShell />,
+          children: appRoutes.map((route) => ({
+            path: route.path,
+            element: <GatedPage route={route} />,
+          })),
+        },
+      ],
     },
     { path: "*", element: <PublicOnly><LoginPage mode="login" /></PublicOnly> },
   ];
