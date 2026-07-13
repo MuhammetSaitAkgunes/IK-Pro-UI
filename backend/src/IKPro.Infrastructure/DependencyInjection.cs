@@ -90,6 +90,7 @@ public static class DependencyInjection
         services.AddScoped<JwtTokenService>();
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddSingleton<IFileStorage, Storage.LocalFileStorage>();
+        services.AddSingleton<IEmailSender, Email.FileOutboxEmailSender>();
         services.AddScoped<AppDbContextInitializer>();
 
         return services;

@@ -5,6 +5,7 @@ using IKPro.Domain.Entities.Compliance;
 using IKPro.Domain.Entities.Leaves;
 using IKPro.Domain.Entities.Organization;
 using IKPro.Domain.Entities.Payroll;
+using IKPro.Domain.Entities.Settings;
 using IKPro.Domain.Enums;
 using IKPro.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
@@ -54,6 +55,7 @@ public class AppDbContextInitializer(
             await SeedAnalyticsAsync();
             await SeedComplianceAsync();
             await SeedActionsAsync();
+            await SeedSettingsAsync();
         }
         catch (Exception ex)
         {
@@ -505,6 +507,48 @@ public class AppDbContextInitializer(
                 Status = ActionStatus.Week,
                 RecommendedAction = "Teklif paketi ve aday deneyimi gözden geçirilsin.",
             });
+
+        await context.SaveChangesAsync();
+    }
+
+    private async Task SeedSettingsAsync()
+    {
+        // settings.js form değerleri + plan banner'ı ile birebir (tekil kayıtlar).
+        if (!await context.CompanyProfiles.AnyAsync())
+        {
+            context.CompanyProfiles.Add(new CompanyProfile
+            {
+                Name = "HR Master Teknoloji A.Ş.",
+                Website = "www.hrmaster.com",
+                SystemEmail = "info@hrmaster.com",
+                Phone = "+90 212 555 00 00",
+                HeadquartersAddress = "Maslak Mah. Büyükdere Cad. No:123 Sarıyer/İstanbul",
+            });
+        }
+
+        if (!await context.NotificationSettings.AnyAsync())
+        {
+            context.NotificationSettings.Add(new NotificationSettings
+            {
+                NewPersonnelEmail = true,
+                LeaveRequestEmail = true,
+                WeeklyReportEmail = false,
+                TwoFactorSmsEnabled = false,
+            });
+        }
+
+        if (!await context.Subscriptions.AnyAsync())
+        {
+            context.Subscriptions.Add(new Subscription
+            {
+                Plan = "PRO",
+                PlanName = "HR Master Kurumsal",
+                BillingCycle = "Yıllık",
+                Price = 12000m,
+                RenewalDate = new DateOnly(2026, 10, 12),
+                PaymentMethodMasked = "•••• •••• •••• 4582",
+            });
+        }
 
         await context.SaveChangesAsync();
     }

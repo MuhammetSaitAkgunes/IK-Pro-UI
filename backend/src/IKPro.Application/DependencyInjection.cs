@@ -1,5 +1,6 @@
 using FluentValidation;
 using IKPro.Application.Common.Behaviors;
+using IKPro.Application.Common.Notifications;
 using Mapster;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
@@ -26,6 +27,9 @@ public static class DependencyInjection
 
         // IRegister implementasyonları (modül DTO eşlemeleri) assembly'den taranır.
         TypeAdapterConfig.GlobalSettings.Scan(assembly);
+
+        // Bildirim tetikleyicileri (Faz 11): ayar toggle'larına uyar, IEmailSender'a yazar.
+        services.AddScoped<INotificationTrigger, NotificationTrigger>();
 
         return services;
     }

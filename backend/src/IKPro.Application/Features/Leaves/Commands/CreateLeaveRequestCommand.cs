@@ -1,6 +1,7 @@
 using FluentValidation;
 using IKPro.Application.Common.Exceptions;
 using IKPro.Application.Common.Interfaces;
+using IKPro.Application.Common.Notifications;
 using IKPro.Domain.Entities.Leaves;
 using IKPro.Domain.Enums;
 using MediatR;
@@ -35,7 +36,8 @@ public sealed class CreateLeaveRequestCommandValidator : AbstractValidator<Creat
 public sealed class CreateLeaveRequestCommandHandler(
     IApplicationDbContext context,
     ICurrentUser currentUser,
-    IWorkingDayCalculator workingDayCalculator)
+    IWorkingDayCalculator workingDayCalculator,
+    INotificationTrigger notificationTrigger)
     : IRequestHandler<CreateLeaveRequestCommand, LeaveRequestDto>
 {
     public async Task<LeaveRequestDto> Handle(
@@ -96,6 +98,9 @@ public sealed class CreateLeaveRequestCommandHandler(
 
         context.LeaveRequests.Add(leaveRequest);
         await context.SaveChangesAsync(cancellationToken);
+
+        // Faz 11: "İzin Talepleri" bildirimi (ayar toggle'ına uyar).
+        await notificationTrigger.LeaveRequestCreatedAsync(leaveRequest, cancellationToken);
 
         return await context.LeaveRequests
             .AsNoTracking()

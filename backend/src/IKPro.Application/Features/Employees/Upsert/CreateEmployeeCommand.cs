@@ -1,6 +1,7 @@
 using FluentValidation;
 using IKPro.Application.Common.Exceptions;
 using IKPro.Application.Common.Interfaces;
+using IKPro.Application.Common.Notifications;
 using IKPro.Application.Features.Employees.GetEmployee;
 using IKPro.Domain.Entities.Organization;
 using MediatR;
@@ -18,7 +19,8 @@ public sealed class CreateEmployeeCommandValidator : AbstractValidator<CreateEmp
     }
 }
 
-public sealed class CreateEmployeeCommandHandler(IApplicationDbContext context, ISender sender)
+public sealed class CreateEmployeeCommandHandler(
+    IApplicationDbContext context, ISender sender, INotificationTrigger notificationTrigger)
     : IRequestHandler<CreateEmployeeCommand, EmployeeDetailDto>
 {
     public async Task<EmployeeDetailDto> Handle(CreateEmployeeCommand request, CancellationToken cancellationToken)
@@ -42,6 +44,9 @@ public sealed class CreateEmployeeCommandHandler(IApplicationDbContext context, 
 
         context.Employees.Add(employee);
         await context.SaveChangesAsync(cancellationToken);
+
+        // Faz 11: "Yeni Personel Kaydı" bildirimi (ayar toggle'ına uyar).
+        await notificationTrigger.NewPersonnelCreatedAsync(employee, cancellationToken);
 
         return await sender.Send(new GetEmployeeQuery(employee.Id), cancellationToken);
     }
