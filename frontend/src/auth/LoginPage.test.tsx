@@ -30,9 +30,10 @@ const renderLogin = () =>
 
 test("login formu öndolu demo bilgileriyle render edilir (parite)", () => {
   renderLogin();
-  expect(screen.getByLabelText("E-posta")).toHaveValue("ik@hrmaster.local");
-  expect(screen.getByLabelText("Şifre")).toHaveValue("demo123");
-  expect(screen.getByRole("button", { name: /Giriş yap/ })).toBeInTheDocument();
+  const loginForm = document.getElementById("auth-login")!;
+  expect(loginForm.querySelector("input#login-email")).toHaveValue("ik@hrmaster.local");
+  expect(loginForm.querySelector("input#login-password")).toHaveValue("demo123");
+  expect(loginForm.querySelector("button[type='submit']")).toHaveTextContent("Giriş yap");
 });
 
 test("başarılı girişte oturum saklanır", async () => {
@@ -40,7 +41,8 @@ test("başarılı girişte oturum saklanır", async () => {
     new Response(JSON.stringify(authBody), { status: 200, headers: { "Content-Type": "application/json" } }),
   );
   renderLogin();
-  await userEvent.click(screen.getByRole("button", { name: /Giriş yap/ }));
+  const submitButton = document.querySelector("form#auth-login button[type='submit']")!;
+  await userEvent.click(submitButton);
   expect(getSession()?.token).toBe("T1");
   expect(vi.mocked(fetch).mock.calls[0][0]).toBe("/api/auth/login");
 });
@@ -50,7 +52,17 @@ test("başarısız girişte hata mesajı görünür, oturum yazılmaz", async ()
     new Response(JSON.stringify({ title: "E-posta veya şifre hatalı.", status: 401 }), { status: 401 }),
   );
   renderLogin();
-  await userEvent.click(screen.getByRole("button", { name: /Giriş yap/ }));
+  const submitButton = document.querySelector("form#auth-login button[type='submit']")!;
+  await userEvent.click(submitButton);
   expect(await screen.findByText("E-posta veya şifre hatalı.")).toBeInTheDocument();
   expect(getSession()).toBeNull();
+});
+
+test("sekmeler ve iki form da DOM'da (parite)", () => {
+  renderLogin();
+  const signupTabButton = document.querySelector("div.auth-tabs button:nth-child(2)")!;
+  expect(signupTabButton).toHaveClass("auth-tab");
+  expect(document.getElementById("auth-login")).toHaveClass("auth-form", "active");
+  expect(document.getElementById("auth-signup")).toHaveClass("auth-form");
+  expect(document.getElementById("auth-signup")).not.toHaveClass("active");
 });

@@ -47,48 +47,48 @@ export function LoginPage({ mode = "login" }: { mode?: "login" | "signup" }) {
       </section>
 
       <section className="auth-panel">
+        <div className="auth-tabs">
+          <button className={`auth-tab ${mode === "login" ? "active" : ""}`} onClick={() => navigate("/login")}>Giriş yap</button>
+          <button className={`auth-tab ${mode === "signup" ? "active" : ""}`} onClick={() => navigate("/signup")}>Hesap oluştur</button>
+        </div>
 
-        {mode === "login" && (
-          <form id="auth-login" className="auth-form active" onSubmit={(e) => run(e, () => login(email, password))}>
-            <h2>Hoş geldiniz</h2>
-            <p>Demo hesaba giriş yaparak uygulamayı inceleyebilirsiniz.</p>
-            <div className="input-group">
-              <label htmlFor="login-email">E-posta</label>
-              <input id="login-email" className="input-control" value={email} onChange={(e) => setEmail(e.target.value)} />
-            </div>
-            <div className="input-group">
-              <label htmlFor="login-password">Şifre</label>
-              <input id="login-password" className="input-control" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-            </div>
-            {error && <p className="form-error" role="alert">{error}</p>}
-            <button type="submit" className="btn btn-primary auth-submit">
-              <i aria-hidden="true" className="fa-solid fa-arrow-right-to-bracket" /> Giriş yap
-            </button>
-          </form>
-        )}
+        <form id="auth-login" className={`auth-form ${mode === "login" ? "active" : ""}`} onSubmit={(e) => run(e, () => login(email, password))}>
+          <h2>Hoş geldiniz</h2>
+          <p>Demo hesaba giriş yaparak uygulamayı inceleyebilirsiniz.</p>
+          <div className="input-group">
+            <label htmlFor="login-email">E-posta</label>
+            <input id="login-email" className="input-control" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div className="input-group">
+            <label htmlFor="login-password">Şifre</label>
+            <input id="login-password" className="input-control" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          </div>
+          {mode === "login" && error && <p className="form-error" role="alert">{error}</p>}
+          <button type="submit" className="btn btn-primary auth-submit">
+            <i aria-hidden="true" className="fa-solid fa-arrow-right-to-bracket" /> Giriş yap
+          </button>
+        </form>
 
-        {mode === "signup" && (
-          <form id="auth-signup" className="auth-form active" onSubmit={(e) => run(e, () => register(name, signupEmail, signupPassword))}>
-            <h2>Demo hesap oluştur</h2>
-            <p>Bilgiler gerçek backend'de kullanıcı kaydı oluşturur.</p>
-            <div className="input-group">
-              <label htmlFor="signup-name">Ad soyad</label>
-              <input id="signup-name" className="input-control" value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-            <div className="input-group">
-              <label htmlFor="signup-email">İş e-postası</label>
-              <input id="signup-email" className="input-control" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} />
-            </div>
-            <div className="input-group">
-              <label htmlFor="signup-password">Şifre</label>
-              <input id="signup-password" className="input-control" type="password" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} />
-            </div>
-            {error && <p className="form-error" role="alert">{error}</p>}
-            <button type="submit" className="btn btn-primary auth-submit">
-              <i aria-hidden="true" className="fa-solid fa-user-plus" /> Hesap oluştur
-            </button>
-          </form>
-        )}
+        <form id="auth-signup" className={`auth-form ${mode === "signup" ? "active" : ""}`} onSubmit={(e) => run(e, () => register(name, signupEmail, signupPassword))}>
+          <h2>Demo hesap oluştur</h2>
+          <p>Bilgiler gerçek backend'de kullanıcı kaydı oluşturur.</p>
+          <div className="input-group">
+            <label htmlFor="signup-name">Ad soyad</label>
+            <input id="signup-name" className="input-control" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="input-group">
+            <label htmlFor="signup-email">İş e-postası</label>
+            <input id="signup-email" className="input-control" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} />
+          </div>
+          <div className="input-group">
+            <label htmlFor="signup-password">Şifre</label>
+            <input id="signup-password" className="input-control" type="password" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} />
+          </div>
+          {mode === "signup" && error && <p className="form-error" role="alert">{error}</p>}
+          <button type="submit" className="btn btn-primary auth-submit">
+            <i aria-hidden="true" className="fa-solid fa-user-plus" /> Hesap oluştur
+          </button>
+        </form>
       </section>
     </main>
   );
