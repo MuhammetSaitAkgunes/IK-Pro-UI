@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "../api/client";
@@ -65,8 +65,8 @@ export function AppShell() {
               .filter((r): r is AppRoute => Boolean(r));
             if (!routes.length) return null;
             return (
-              <li key={group.label} style={{ display: "contents" }}>
-                <span className="nav-group-label">{group.label}</span>
+              <Fragment key={group.label}>
+                <li className="nav-group-label">{group.label}</li>
                 {routes.map((route) => (
                   <NavLink
                     key={route.key}
@@ -77,7 +77,7 @@ export function AppShell() {
                     <i aria-hidden="true" className={`fa-solid ${navIcons[route.key]}`} /> <span>{route.title}</span>
                   </NavLink>
                 ))}
-              </li>
+              </Fragment>
             );
           })}
         </ul>

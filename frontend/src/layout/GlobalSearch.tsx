@@ -14,7 +14,7 @@ export function GlobalSearch() {
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  const items: Item[] = !query.trim()
+  const items: Item[] = !query.trim() || query.trim().length < 2
     ? []
     : appRoutes
         .filter((r) => r.navKey === r.key && r.roles.includes((user?.role ?? "employee") as Role))
