@@ -289,9 +289,18 @@ const getRiskLabel = (score) => {
 const getLevelText = (level) =>
   ({ high: "Yüksek", medium: "Orta", low: "Düşük" }[level] || "İzlemede");
 
+// Tek aksiyon kaynağı ilkesi: dashboard yalnızca en acil N aksiyonu özetler,
+// tam liste Global Aksiyon Merkezi'nde (/actions) yaşar.
+const getTopPriorityActions = (actions, count = 3) => {
+  const order = { high: 0, medium: 1, low: 2 };
+  return [...actions]
+    .sort((a, b) => (order[a.level] ?? 3) - (order[b.level] ?? 3))
+    .slice(0, count);
+};
+
 const renderBackToRisk = () => `
   <button class="btn btn-secondary btn-sm" onclick="navigateTo('dashboard', event)">
-    <i class="fa-solid fa-arrow-left"></i> Risk Merkezi
+    <i aria-hidden="true" class="fa-solid fa-arrow-left"></i> Risk Merkezi
   </button>
 `;
 
@@ -307,7 +316,7 @@ const Dashboard = () => {
           <p class="text-muted">Bugünün odak sorusu: hangi risk büyüyor, neden büyüyor ve hangi aksiyon alınmalı?</p>
         </div>
         <div class="date-widget">
-          <i class="fa-regular fa-calendar"></i>
+          <i aria-hidden="true" class="fa-regular fa-calendar"></i>
           <span>${new Date().toLocaleDateString("tr-TR", {
             weekday: "long",
             year: "numeric",
@@ -318,8 +327,8 @@ const Dashboard = () => {
       </div>
 
       <div class="kpi-grid intelligence-kpis">
-        <button class="kpi-card risk-kpi ${getRiskLevel(metrics.riskScore)} metric-card-button" onclick="navigateTo('action-center', event)">
-          <div class="kpi-icon bg-red-light"><i class="fa-solid fa-shield-heart"></i></div>
+        <button class="kpi-card risk-kpi ${getRiskLevel(metrics.riskScore)} metric-card-button" onclick="navigateTo('actions', event)">
+          <div class="kpi-icon bg-red-light"><i aria-hidden="true" class="fa-solid fa-shield-heart"></i></div>
           <div class="kpi-content">
             <span class="kpi-label">İK Risk Skoru</span>
             <h3 class="kpi-value">${metrics.riskScore}<small>/100</small></h3>
@@ -327,7 +336,7 @@ const Dashboard = () => {
           </div>
         </button>
         <button class="kpi-card risk-kpi medium metric-card-button" onclick="navigateTo('manager-load', event)">
-          <div class="kpi-icon bg-orange-light"><i class="fa-solid fa-user-group"></i></div>
+          <div class="kpi-icon bg-orange-light"><i aria-hidden="true" class="fa-solid fa-user-group"></i></div>
           <div class="kpi-content">
             <span class="kpi-label">Yönetici Yük Endeksi</span>
             <h3 class="kpi-value">${metrics.managerLoadIndex}<small>/100</small></h3>
@@ -335,15 +344,15 @@ const Dashboard = () => {
           </div>
         </button>
         <button class="kpi-card risk-kpi high metric-card-button" onclick="navigateTo('attrition-risk', event)">
-          <div class="kpi-icon bg-purple-light"><i class="fa-solid fa-person-walking-arrow-right"></i></div>
+          <div class="kpi-icon bg-purple-light"><i aria-hidden="true" class="fa-solid fa-person-walking-arrow-right"></i></div>
           <div class="kpi-content">
             <span class="kpi-label">Ayrılma Riski Radarı</span>
             <h3 class="kpi-value">${metrics.attritionHigh}</h3>
             <span class="kpi-sub">Yüksek riskli çalışan segmenti</span>
           </div>
         </button>
-        <button class="kpi-card risk-kpi medium metric-card-button" onclick="navigateTo('action-center', event)">
-          <div class="kpi-icon bg-blue-light"><i class="fa-solid fa-bolt"></i></div>
+        <button class="kpi-card risk-kpi medium metric-card-button" onclick="navigateTo('actions', event)">
+          <div class="kpi-icon bg-blue-light"><i aria-hidden="true" class="fa-solid fa-bolt"></i></div>
           <div class="kpi-content">
             <span class="kpi-label">Bugünkü Kritik Aksiyon</span>
             <h3 class="kpi-value">${metrics.criticalActions}</h3>
@@ -401,7 +410,7 @@ const Dashboard = () => {
                 <p class="text-muted">İşe alım, beceri, kritik rol ve kültür sinyalleri.</p>
               </div>
               <button class="btn btn-secondary btn-sm" onclick="navigateTo('recruitment', event)">
-                <i class="fa-solid fa-arrow-up-right-from-square"></i> İşe alıma git
+                <i aria-hidden="true" class="fa-solid fa-arrow-up-right-from-square"></i> İşe alıma git
               </button>
             </div>
             <div class="capacity-grid">
@@ -430,16 +439,16 @@ const Dashboard = () => {
               </div>
               <div class="toolbar-actions">
                 <button class="btn btn-secondary btn-sm" onclick="navigateTo('employee-voice', event)">
-                  <i class="fa-solid fa-wave-square"></i> Nabız detayı
+                  <i aria-hidden="true" class="fa-solid fa-wave-square"></i> Nabız detayı
                 </button>
                 <button class="btn btn-secondary btn-sm" onclick="navigateTo('compliance-risk', event)">
-                  <i class="fa-solid fa-file-shield"></i> Uyum detayı
+                  <i aria-hidden="true" class="fa-solid fa-file-shield"></i> Uyum detayı
                 </button>
               </div>
             </div>
             <div class="signal-grid">
               <button class="signal-item high metric-card-button" onclick="navigateTo('employee-voice', event)">
-                <div class="signal-icon"><i class="fa-solid fa-heart-pulse"></i></div>
+                <div class="signal-icon"><i aria-hidden="true" class="fa-solid fa-heart-pulse"></i></div>
                 <div>
                   <span>Çalışan Nabız Skoru</span>
                   <strong>${metrics.employeeVoiceMetrics.pulseScore}<small>/100</small></strong>
@@ -447,7 +456,7 @@ const Dashboard = () => {
                 </div>
               </button>
               <button class="signal-item medium metric-card-button" onclick="navigateTo('employee-voice', event)">
-                <div class="signal-icon"><i class="fa-solid fa-comments"></i></div>
+                <div class="signal-icon"><i aria-hidden="true" class="fa-solid fa-comments"></i></div>
                 <div>
                   <span>eNPS / Bağlılık</span>
                   <strong>+${metrics.employeeVoiceMetrics.eNps}</strong>
@@ -455,7 +464,7 @@ const Dashboard = () => {
                 </div>
               </button>
               <button class="signal-item medium metric-card-button" onclick="navigateTo('compliance-risk', event)">
-                <div class="signal-icon"><i class="fa-solid fa-folder-check"></i></div>
+                <div class="signal-icon"><i aria-hidden="true" class="fa-solid fa-folder-check"></i></div>
                 <div>
                   <span>Evrak Uyum Skoru</span>
                   <strong>${metrics.complianceMetrics.documentComplianceScore}<small>/100</small></strong>
@@ -463,7 +472,7 @@ const Dashboard = () => {
                 </div>
               </button>
               <button class="signal-item medium metric-card-button" onclick="navigateTo('compliance-risk', event)">
-                <div class="signal-icon"><i class="fa-solid fa-clipboard-check"></i></div>
+                <div class="signal-icon"><i aria-hidden="true" class="fa-solid fa-clipboard-check"></i></div>
                 <div>
                   <span>Denetime Hazırlık</span>
                   <strong>${metrics.complianceMetrics.auditReadinessRisk}</strong>
@@ -477,13 +486,15 @@ const Dashboard = () => {
         <aside class="card action-center">
           <div class="card-header-clean">
             <div>
-              <h4>Aksiyon Merkezi</h4>
-              <p class="text-muted">Risk nedeni ve önerilen müdahale.</p>
+              <h4>En Acil Aksiyonlar</h4>
+              <p class="text-muted">Önceliği en yüksek 3 müdahale.</p>
             </div>
-            <button class="btn btn-secondary btn-sm" onclick="navigateTo('action-center', event)">Tümünü aç</button>
+            <button class="btn btn-secondary btn-sm" onclick="navigateTo('actions', event)">
+              Tümünü aç (${metrics.actions.length})
+            </button>
           </div>
           <div class="action-list">
-            ${metrics.actions
+            ${getTopPriorityActions(metrics.actions, 3)
               .map(
                 (action) => `
                   <button class="risk-action ${action.level}" onclick="navigateTo('${action.route}', event)">
@@ -491,7 +502,7 @@ const Dashboard = () => {
                     <strong>${action.title}</strong>
                     <p>${action.reason}</p>
                     <div class="recommended-action">
-                      <i class="fa-solid fa-lightbulb"></i>
+                      <i aria-hidden="true" class="fa-solid fa-lightbulb"></i>
                       <span>${action.action}</span>
                     </div>
                   </button>
@@ -516,7 +527,7 @@ const OverviewDashboard = () => {
           <p class="text-muted">Şirkette bugün ne oluyor? Operasyonel İK görünümünü hızlıca tarayın.</p>
         </div>
         <div class="date-widget">
-          <i class="fa-regular fa-calendar"></i>
+          <i aria-hidden="true" class="fa-regular fa-calendar"></i>
           <span>${new Date().toLocaleDateString("tr-TR", {
             weekday: "long",
             year: "numeric",
@@ -528,15 +539,15 @@ const OverviewDashboard = () => {
 
       <div class="kpi-grid">
         <div class="kpi-card">
-          <div class="kpi-icon bg-blue-light"><i class="fa-solid fa-users"></i></div>
+          <div class="kpi-icon bg-blue-light"><i aria-hidden="true" class="fa-solid fa-users"></i></div>
           <div class="kpi-content">
             <span class="kpi-label">Aktif Personel</span>
             <h3 class="kpi-value">142</h3>
-            <span class="kpi-trend"><i class="fa-solid fa-arrow-trend-up"></i> Bu çeyrek %12 artış</span>
+            <span class="kpi-trend"><i aria-hidden="true" class="fa-solid fa-arrow-trend-up"></i> Bu çeyrek %12 artış</span>
           </div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-icon bg-orange-light"><i class="fa-solid fa-file-signature"></i></div>
+          <div class="kpi-icon bg-orange-light"><i aria-hidden="true" class="fa-solid fa-file-signature"></i></div>
           <div class="kpi-content">
             <span class="kpi-label">Onay Bekleyen</span>
             <h3 class="kpi-value">5</h3>
@@ -544,7 +555,7 @@ const OverviewDashboard = () => {
           </div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-icon bg-purple-light"><i class="fa-solid fa-briefcase"></i></div>
+          <div class="kpi-icon bg-purple-light"><i aria-hidden="true" class="fa-solid fa-briefcase"></i></div>
           <div class="kpi-content">
             <span class="kpi-label">Açık Pozisyon</span>
             <h3 class="kpi-value">8</h3>
@@ -552,7 +563,7 @@ const OverviewDashboard = () => {
           </div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-icon bg-red-light"><i class="fa-solid fa-clock-rotate-left"></i></div>
+          <div class="kpi-icon bg-red-light"><i aria-hidden="true" class="fa-solid fa-clock-rotate-left"></i></div>
           <div class="kpi-content">
             <span class="kpi-label">Kritik Hatırlatma</span>
             <h3 class="kpi-value">2</h3>
@@ -624,25 +635,25 @@ const OverviewDashboard = () => {
           </div>
           <div class="task-stack">
             <div class="task-item">
-              <div class="task-icon warning"><i class="fa-solid fa-plane-departure"></i></div>
+              <div class="task-icon warning"><i aria-hidden="true" class="fa-solid fa-plane-departure"></i></div>
               <div class="task-desc">
                 <strong>Ahmet Yılmaz - Yıllık izin</strong>
                 <small>12 - 18 Ağustos, 6 gün</small>
               </div>
               <div class="toolbar-actions">
-                <button class="btn-icon-sm"><i class="fa-solid fa-check"></i></button>
-                <button class="btn-icon-sm"><i class="fa-solid fa-xmark"></i></button>
+                <button class="btn-icon-sm" aria-label="Ahmet Yılmaz izin talebini onayla" title="Onayla" onclick="resolvePendingTask(this, true)"><i aria-hidden="true" class="fa-solid fa-check"></i></button>
+                <button class="btn-icon-sm" aria-label="Ahmet Yılmaz izin talebini reddet" title="Reddet" onclick="resolvePendingTask(this, false)"><i aria-hidden="true" class="fa-solid fa-xmark"></i></button>
               </div>
             </div>
             <div class="task-item">
-              <div class="task-icon info"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+              <div class="task-icon info"><i aria-hidden="true" class="fa-solid fa-file-invoice-dollar"></i></div>
               <div class="task-desc">
                 <strong>Ayşe Demir - Masraf fişi</strong>
                 <small>Taksi ve yemek, 450 TL</small>
               </div>
               <div class="toolbar-actions">
-                <button class="btn-icon-sm"><i class="fa-solid fa-check"></i></button>
-                <button class="btn-icon-sm"><i class="fa-solid fa-xmark"></i></button>
+                <button class="btn-icon-sm" aria-label="Ayşe Demir masraf talebini onayla" title="Onayla" onclick="resolvePendingTask(this, true)"><i aria-hidden="true" class="fa-solid fa-check"></i></button>
+                <button class="btn-icon-sm" aria-label="Ayşe Demir masraf talebini reddet" title="Reddet" onclick="resolvePendingTask(this, false)"><i aria-hidden="true" class="fa-solid fa-xmark"></i></button>
               </div>
             </div>
           </div>
@@ -656,7 +667,7 @@ const OverviewDashboard = () => {
             <div class="person-circle" title="Mehmet Can">MC</div>
             <div class="person-circle bg-pink" title="Selin Koç">SK</div>
             <div class="person-circle bg-yellow" title="Ali Veli">AV</div>
-            <button class="add-wish-btn"><i class="fa-solid fa-paper-plane"></i></button>
+            <button class="add-wish-btn" aria-label="Kutlama mesajı gönder" title="Kutlama mesajı gönder" onclick="showToast('Kutlama mesajı gönderildi.', 'success')"><i aria-hidden="true" class="fa-solid fa-paper-plane"></i></button>
           </div>
         </div>
       </div>
@@ -804,51 +815,23 @@ const ManagerLoadDetail = () => {
   `;
 };
 
-const ActionCenterDetail = () => {
-  const metrics = getDashboardMetrics();
-  const groups = ["Bugün müdahale et", "Bu hafta takip et", "İzlemede kalsın"];
+// Not: Eski ActionCenterDetail görünümü kaldırıldı; /risk/action-center rotası
+// artık tek aksiyon kaynağı olan Global Aksiyon Merkezi'ne (ActionsCenter) yönlenir.
 
-  return `
-    <div class="detail-page">
-      <div class="page-header">
-        <div>
-          <h2>Aksiyon Merkezi Detayı</h2>
-          <p>Tüm risk aksiyonlarını öncelik, sahip ve önerilen müdahale ile takip edin.</p>
-        </div>
-        ${renderBackToRisk()}
-      </div>
-      <div class="action-detail-grid">
-        ${groups
-          .map(
-            (group) => `
-              <section class="card action-lane">
-                <div class="card-header-clean">
-                  <h4>${group}</h4>
-                  <span class="badge-count">${metrics.actions.filter((action) => action.priority === group).length}</span>
-                </div>
-                <div class="action-list">
-                  ${metrics.actions
-                    .filter((action) => action.priority === group)
-                    .map(
-                      (action) => `
-                        <button class="risk-action ${action.level}" onclick="navigateTo('${action.route}', event)">
-                          <div class="action-priority">${action.owner}</div>
-                          <strong>${action.title}</strong>
-                          <p>${action.reason}</p>
-                          <div class="recommended-action"><i class="fa-solid fa-lightbulb"></i><span>${action.action}</span></div>
-                        </button>
-                      `
-                    )
-                    .join("") || '<div class="empty-lane">Bu öncelikte aksiyon yok.</div>'}
-                </div>
-              </section>
-            `
-          )
-          .join("")}
-      </div>
-    </div>
-  `;
+const resolvePendingTask = (button, approved) => {
+  const item = button.closest(".task-item");
+  const label = item?.querySelector("strong")?.textContent || "Talep";
+  item?.remove();
+  showToast(
+    approved ? `${label} onaylandı.` : `${label} reddedildi.`,
+    approved ? "success" : "info"
+  );
+
+  const badge = document.querySelector(".task-list .badge-count");
+  const remaining = document.querySelectorAll(".task-list .task-item").length;
+  if (badge) badge.textContent = remaining;
 };
+window.resolvePendingTask = resolvePendingTask;
 
 const EmployeeVoiceDetail = () => {
   const metrics = getDashboardMetrics();
@@ -913,7 +896,7 @@ const EmployeeVoiceDetail = () => {
                     <strong>${team.team}</strong>
                     <p>${team.reason}</p>
                     <small>${team.owner}</small>
-                    <div class="recommended-action"><i class="fa-solid fa-lightbulb"></i><span>${team.action}</span></div>
+                    <div class="recommended-action"><i aria-hidden="true" class="fa-solid fa-lightbulb"></i><span>${team.action}</span></div>
                   </div>
                 `
               )
@@ -926,13 +909,13 @@ const EmployeeVoiceDetail = () => {
         <section class="card">
           <div class="card-header-clean"><h4>Son Nabız Sinyalleri</h4></div>
           <div class="signal-list">
-            ${voice.signals.map((signal) => `<div class="signal-note"><i class="fa-solid fa-circle-info"></i><span>${signal}</span></div>`).join("")}
+            ${voice.signals.map((signal) => `<div class="signal-note"><i aria-hidden="true" class="fa-solid fa-circle-info"></i><span>${signal}</span></div>`).join("")}
           </div>
         </section>
         <section class="card">
           <div class="card-header-clean"><h4>Önerilen Aksiyonlar</h4></div>
           <div class="signal-list">
-            ${voice.recommendedActions.map((action) => `<div class="signal-note action"><i class="fa-solid fa-check"></i><span>${action}</span></div>`).join("")}
+            ${voice.recommendedActions.map((action) => `<div class="signal-note action"><i aria-hidden="true" class="fa-solid fa-check"></i><span>${action}</span></div>`).join("")}
           </div>
         </section>
       </div>
@@ -1031,13 +1014,16 @@ const ComplianceRiskDetail = () => {
         <section class="card">
           <div class="card-header-clean"><h4>Önerilen Aksiyonlar</h4></div>
           <div class="signal-list">
-            ${compliance.recommendedActions.map((action) => `<div class="signal-note action"><i class="fa-solid fa-check"></i><span>${action}</span></div>`).join("")}
+            ${compliance.recommendedActions.map((action) => `<div class="signal-note action"><i aria-hidden="true" class="fa-solid fa-check"></i><span>${action}</span></div>`).join("")}
           </div>
         </section>
       </div>
     </div>
   `;
 };
+
+const chartToken = (name, fallback) =>
+  getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 
 window.initDashboardCharts = (metrics = getDashboardMetrics()) => {
   const riskTrend = document.getElementById("riskTrendChart");
@@ -1049,7 +1035,7 @@ window.initDashboardCharts = (metrics = getDashboardMetrics()) => {
       .querySelectorAll("#riskTrendChart, #overviewDeptChart, #overviewRecruitmentChart")
       .forEach((canvas) => {
         canvas.outerHTML =
-          '<div class="chart-fallback"><i class="fa-solid fa-chart-line"></i><span>Grafik önizlemesi yüklenemedi</span></div>';
+          '<div class="chart-fallback"><i aria-hidden="true" class="fa-solid fa-chart-line"></i><span>Grafik önizlemesi yüklenemedi</span></div>';
       });
     return;
   }
@@ -1064,14 +1050,14 @@ window.initDashboardCharts = (metrics = getDashboardMetrics()) => {
           {
             label: "İK Risk Skoru",
             data: metrics.riskTrend,
-            borderColor: "#4f46e5",
-            backgroundColor: "rgba(79, 70, 229, 0.14)",
+            borderColor: chartToken("--primary", "#0f766e"),
+            backgroundColor: "rgba(15, 118, 110, 0.12)",
             fill: true,
-            borderWidth: 3,
+            borderWidth: 2.5,
             tension: 0.35,
             pointRadius: 3,
-            pointBackgroundColor: "#fff",
-            pointBorderColor: "#4f46e5",
+            pointBackgroundColor: chartToken("--surface", "#ffffff"),
+            pointBorderColor: chartToken("--primary", "#0f766e"),
           },
         ],
       },
@@ -1080,7 +1066,7 @@ window.initDashboardCharts = (metrics = getDashboardMetrics()) => {
         maintainAspectRatio: false,
         plugins: { legend: { display: false }, tooltip: { mode: "index", intersect: false } },
         scales: {
-          y: { min: 0, max: 100, grid: { color: "#eef2f7" }, ticks: { stepSize: 20 } },
+          y: { min: 0, max: 100, grid: { color: chartToken("--line-soft", "#e9efef") }, ticks: { stepSize: 20 } },
           x: { grid: { display: false } },
         },
       },
@@ -1096,7 +1082,7 @@ window.initDashboardCharts = (metrics = getDashboardMetrics()) => {
         datasets: [
           {
             data: [35, 25, 10, 15, 15],
-            backgroundColor: ["#4f46e5", "#059669", "#d97706", "#2563eb", "#7c3aed"],
+            backgroundColor: ["#0f766e", "#0e7490", "#b98a2f", "#157f3d", "#5b7c99"],
             borderWidth: 0,
           },
         ],
@@ -1115,12 +1101,12 @@ window.initDashboardCharts = (metrics = getDashboardMetrics()) => {
       type: "bar",
       data: {
         labels: ["Başvuru", "Ön Görüşme", "Mülakat", "Teklif", "İşe Giriş"],
-        datasets: [{ label: "Aday", data: [120, 64, 45, 12, 5], backgroundColor: "#4f46e5", borderRadius: 6 }],
+        datasets: [{ label: "Aday", data: [120, 64, 45, 12, 5], backgroundColor: chartToken("--primary", "#0f766e"), borderRadius: 5 }],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        scales: { y: { beginAtZero: true, grid: { color: "#eef2f7" } }, x: { grid: { display: false } } },
+        scales: { y: { beginAtZero: true, grid: { color: chartToken("--line-soft", "#e9efef") } }, x: { grid: { display: false } } },
         plugins: { legend: { display: false } },
       },
     });

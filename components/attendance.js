@@ -30,7 +30,7 @@ const Attendance = () => {
           <div class="live-card ${move.status}">
             <div class="lc-header">
               <span class="lc-badge ${move.status}">${getStatusLabel(move.status)}</span>
-              <span class="lc-time"><i class="fa-regular fa-clock"></i> ${move.time}</span>
+              <span class="lc-time"><i aria-hidden="true" class="fa-regular fa-clock"></i> ${move.time}</span>
             </div>
             <div class="lc-body">
               <div class="lc-avatar">${move.avatar}</div>
@@ -66,15 +66,15 @@ const Attendance = () => {
             <td>
               ${
                 row.status === "late"
-                  ? '<span class="warn-text"><i class="fa-solid fa-triangle-exclamation"></i> Geç</span>'
+                  ? '<span class="warn-text"><i aria-hidden="true" class="fa-solid fa-triangle-exclamation"></i> Geç</span>'
                   : row.status === "overtime"
-                  ? '<span class="success-text"><i class="fa-solid fa-star"></i> +2s mesai</span>'
+                  ? '<span class="success-text"><i aria-hidden="true" class="fa-solid fa-star"></i> +2s mesai</span>'
                   : row.status === "absent"
                   ? '<span class="danger-text">Gelmedi</span>'
-                  : '<span class="ok-text"><i class="fa-solid fa-check"></i> Uygun</span>'
+                  : '<span class="ok-text"><i aria-hidden="true" class="fa-solid fa-check"></i> Uygun</span>'
               }
             </td>
-            <td class="text-right"><button class="btn-icon-sm"><i class="fa-solid fa-pen"></i></button></td>
+            <td class="text-right csv-skip"><button class="btn-icon-sm" title="Kaydı düzenle" aria-label="${row.date} puantaj kaydını düzenle" onclick="showToast('${row.date} kaydı düzenleme için açıldı.', 'info')"><i aria-hidden="true" class="fa-solid fa-pen"></i></button></td>
           </tr>
         `
       )
@@ -89,11 +89,13 @@ const Attendance = () => {
         </div>
         <div class="header-actions">
           <div class="date-picker-wrapper">
-            <button class="btn-icon"><i class="fa-solid fa-chevron-left"></i></button>
-            <span class="current-month"><i class="fa-solid fa-calendar-days"></i> Ekim 2025</span>
-            <button class="btn-icon"><i class="fa-solid fa-chevron-right"></i></button>
+            <button class="btn-icon" aria-label="Önceki ay" title="Önceki ay" onclick="changeAttendanceMonth(-1)"><i aria-hidden="true" class="fa-solid fa-chevron-left"></i></button>
+            <span class="current-month"><i aria-hidden="true" class="fa-solid fa-calendar-days"></i> <span id="attendance-month">Ekim 2025</span></span>
+            <button class="btn-icon" aria-label="Sonraki ay" title="Sonraki ay" onclick="changeAttendanceMonth(1)"><i aria-hidden="true" class="fa-solid fa-chevron-right"></i></button>
           </div>
-          <button class="btn btn-primary"><i class="fa-solid fa-file-export"></i> Rapor Al</button>
+          <button class="btn btn-primary" onclick="exportTableToCSV('.att-table', 'puantaj-raporu')">
+            <i aria-hidden="true" class="fa-solid fa-file-export"></i> Rapor Al
+          </button>
         </div>
       </div>
 
@@ -107,10 +109,10 @@ const Attendance = () => {
       <div class="att-content surface">
         <div class="att-tabs">
           <button class="att-tab active" onclick="switchAttTab('live-view', event)">
-            <i class="fa-solid fa-video"></i> Canlı İzleme
+            <i aria-hidden="true" class="fa-solid fa-video"></i> Canlı İzleme
           </button>
           <button class="att-tab" onclick="switchAttTab('timesheet-view', event)">
-            <i class="fa-solid fa-table"></i> Aylık Puantaj
+            <i aria-hidden="true" class="fa-solid fa-table"></i> Aylık Puantaj
           </button>
         </div>
 
@@ -118,7 +120,7 @@ const Attendance = () => {
           <div class="live-grid">
             ${renderLiveCards()}
             <div class="live-card ghost">
-              <i class="fa-solid fa-plus"></i>
+              <i aria-hidden="true" class="fa-solid fa-plus"></i>
               <span>Manuel giriş ekle</span>
             </div>
           </div>
@@ -158,6 +160,18 @@ const Attendance = () => {
       </div>
     </div>
   `;
+};
+
+const attendanceMonths = ["Ağustos 2025", "Eylül 2025", "Ekim 2025", "Kasım 2025", "Aralık 2025"];
+let attendanceMonthIndex = 2;
+
+window.changeAttendanceMonth = (step) => {
+  attendanceMonthIndex = Math.min(
+    Math.max(attendanceMonthIndex + step, 0),
+    attendanceMonths.length - 1
+  );
+  const label = document.getElementById("attendance-month");
+  if (label) label.textContent = attendanceMonths[attendanceMonthIndex];
 };
 
 window.switchAttTab = (tabId, evt) => {

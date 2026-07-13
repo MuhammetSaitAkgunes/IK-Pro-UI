@@ -2,7 +2,8 @@ const actionLevelText = (level) => ({ high: "Yüksek", medium: "Orta", low: "Dü
 const actionStatusText = (status) => ({ open: "Açık", week: "Bu Hafta", done: "Tamamlandı" }[status] || "Açık");
 
 const renderActionCard = (action) => `
-  <article class="global-action-card ${action.priority}">
+  <article class="global-action-card ${action.priority}"
+    data-priority="${action.priority}" data-source="${action.source}" data-owner="${action.owner}">
     <div class="global-action-top">
       <span class="status-pill ${action.priority === "high" ? "rejected" : action.priority === "medium" ? "pending" : "approved"}">${actionLevelText(action.priority)}</span>
       <span>${action.due}</span>
@@ -10,8 +11,8 @@ const renderActionCard = (action) => `
     <h4>${action.title}</h4>
     <p>${action.action}</p>
     <div class="global-action-meta">
-      <span><i class="fa-solid fa-layer-group"></i> ${action.source}</span>
-      <span><i class="fa-solid fa-user"></i> ${action.owner}</span>
+      <span><i aria-hidden="true" class="fa-solid fa-layer-group"></i> ${action.source}</span>
+      <span><i aria-hidden="true" class="fa-solid fa-user"></i> ${action.owner}</span>
     </div>
     <div class="global-action-footer">
       <span class="status-pill info">${actionStatusText(action.status)}</span>
@@ -58,10 +59,6 @@ const ActionsCenter = () => {
           <h2>Global Aksiyon Merkezi</h2>
           <p>Risk, bordro, uyum ve çalışan deneyimi aksiyonlarını tek operasyon merkezinde takip edin.</p>
         </div>
-        <div class="header-actions">
-          <button class="btn btn-secondary"><i class="fa-solid fa-filter"></i> Filtrele</button>
-          <button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Aksiyon oluştur</button>
-        </div>
       </div>
 
       <div class="actions-kpi-grid">
@@ -72,10 +69,23 @@ const ActionsCenter = () => {
       </div>
 
       <section class="card actions-filter-bar">
-        <select class="small-select"><option>Öncelik: Tümü</option><option>Yüksek</option><option>Orta</option><option>Düşük</option></select>
-        <select class="small-select"><option>Kaynak: Tümü</option><option>Risk Merkezi</option><option>Bordro</option><option>Uyum</option></select>
-        <select class="small-select"><option>Sahip: Tümü</option><option>İK Operasyon</option><option>Yönetici</option></select>
-        <select class="small-select"><option>Durum: Tümü</option><option>Açık</option><option>Bu Hafta</option><option>Tamamlandı</option></select>
+        <label class="sr-only" for="actions-priority-filter">Öncelik filtresi</label>
+        <select id="actions-priority-filter" class="small-select" onchange="filterGlobalActions()">
+          <option value="">Öncelik: Tümü</option>
+          <option value="high">Yüksek</option>
+          <option value="medium">Orta</option>
+          <option value="low">Düşük</option>
+        </select>
+        <label class="sr-only" for="actions-source-filter">Kaynak filtresi</label>
+        <select id="actions-source-filter" class="small-select" onchange="filterGlobalActions()">
+          <option value="">Kaynak: Tümü</option>
+          ${[...new Set(actions.map((item) => item.source))].map((source) => `<option value="${source}">${source}</option>`).join("")}
+        </select>
+        <label class="sr-only" for="actions-owner-filter">Sahip filtresi</label>
+        <select id="actions-owner-filter" class="small-select" onchange="filterGlobalActions()">
+          <option value="">Sahip: Tümü</option>
+          ${[...new Set(actions.map((item) => item.owner))].map((owner) => `<option value="${owner}">${owner}</option>`).join("")}
+        </select>
       </section>
 
       <div class="actions-tabs">
@@ -106,4 +116,37 @@ window.switchActionsTab = (tabId, evt) => {
   document.querySelectorAll(".actions-tab-content").forEach((content) => content.classList.remove("active"));
   evt?.currentTarget?.classList.add("active");
   document.getElementById(tabId)?.classList.add("active");
+};
+
+window.filterGlobalActions = () => {
+  const priority = document.getElementById("actions-priority-filter")?.value || "";
+  const source = document.getElementById("actions-source-filter")?.value || "";
+  const owner = document.getElementById("actions-owner-filter")?.value || "";
+
+  document.querySelectorAll(".global-action-card").forEach((card) => {
+    const matches =
+      (!priority || card.dataset.priority === priority) &&
+      (!source || card.dataset.source === source) &&
+      (!owner || card.dataset.owner === owner);
+    card.style.display = matches ? "" : "none";
+  });
+
+  // Filtre sonrası boş kalan sekmelerde bilgi notu göster.
+  document.querySelectorAll(".global-actions-grid").forEach((grid) => {
+    const anyVisible = Array.from(grid.querySelectorAll(".global-action-card")).some(
+      (card) => card.style.display !== "none"
+    );
+    let note = grid.querySelector(".empty-lane");
+    if (!anyVisible) {
+      if (!note) {
+        note = document.createElement("div");
+        note.className = "empty-lane";
+        note.textContent = "Bu filtrede aksiyon yok.";
+        grid.appendChild(note);
+      }
+      note.hidden = false;
+    } else if (note) {
+      note.hidden = true;
+    }
+  });
 };

@@ -7,7 +7,7 @@ const Settings = () => {
           <p>Şirket profili, bildirimler, güvenlik ve abonelik tercihlerini yönetin.</p>
         </div>
         <button class="btn btn-primary" onclick="saveSettings()">
-          <i class="fa-solid fa-save"></i> Değişiklikleri Kaydet
+          <i aria-hidden="true" class="fa-solid fa-save"></i> Değişiklikleri Kaydet
         </button>
       </div>
 
@@ -15,16 +15,16 @@ const Settings = () => {
         <aside class="settings-sidebar">
           <nav class="set-nav">
             <button class="set-link active" onclick="switchSetTab('set-general', event)">
-              <i class="fa-solid fa-building"></i> Şirket Bilgileri
+              <i aria-hidden="true" class="fa-solid fa-building"></i> Şirket Bilgileri
             </button>
             <button class="set-link" onclick="switchSetTab('set-notif', event)">
-              <i class="fa-solid fa-bell"></i> Bildirimler
+              <i aria-hidden="true" class="fa-solid fa-bell"></i> Bildirimler
             </button>
             <button class="set-link" onclick="switchSetTab('set-security', event)">
-              <i class="fa-solid fa-shield-halved"></i> Güvenlik & Yetki
+              <i aria-hidden="true" class="fa-solid fa-shield-halved"></i> Güvenlik & Yetki
             </button>
             <button class="set-link" onclick="switchSetTab('set-billing', event)">
-              <i class="fa-solid fa-credit-card"></i> Abonelik & Fatura
+              <i aria-hidden="true" class="fa-solid fa-credit-card"></i> Abonelik & Fatura
             </button>
           </nav>
         </aside>
@@ -38,7 +38,7 @@ const Settings = () => {
               </div>
               <div class="form-row">
                 <div class="logo-upload">
-                  <div class="current-logo"><i class="fa-solid fa-building"></i></div>
+                  <div class="current-logo"><i aria-hidden="true" class="fa-solid fa-building"></i></div>
                   <div>
                     <button class="btn-outline">Logo Yükle</button>
                     <small>PNG, JPG, maksimum 2 MB</small>
@@ -106,10 +106,10 @@ const Settings = () => {
                 </div>
               </div>
               <div class="form-grid-2 mt-3">
-                <div class="input-group"><label>Yeni Şifre</label><input type="password" class="input-control" /></div>
-                <div class="input-group"><label>Yeni Şifre (Tekrar)</label><input type="password" class="input-control" /></div>
+                <div class="input-group"><label for="new-password">Yeni Şifre</label><input id="new-password" type="password" class="input-control" /></div>
+                <div class="input-group"><label for="new-password-repeat">Yeni Şifre (Tekrar)</label><input id="new-password-repeat" type="password" class="input-control" /></div>
               </div>
-              <button class="btn btn-secondary mt-4">Şifreyi Güncelle</button>
+              <button class="btn btn-secondary mt-4" onclick="updatePassword()">Şifreyi Güncelle</button>
             </div>
 
             <div class="set-card mt-4">
@@ -134,9 +134,9 @@ const Settings = () => {
             <div class="set-card mt-4">
               <div class="card-head"><h3>Ödeme Yöntemi</h3></div>
               <div class="cc-preview">
-                <div class="cc-icon"><i class="fa-brands fa-cc-mastercard"></i></div>
+                <div class="cc-icon"><i aria-hidden="true" class="fa-brands fa-cc-mastercard"></i></div>
                 <span>•••• •••• •••• 4582</span>
-                <button class="btn-text">Değiştir</button>
+                <button class="btn-text" onclick="showToast('Ödeme yöntemi değişikliği demo kapsamı dışındadır.', 'info')">Değiştir</button>
               </div>
             </div>
           </div>
@@ -155,5 +155,23 @@ window.switchSetTab = (tabId, evt) => {
 };
 
 window.saveSettings = () => {
-  alert("Ayarlar başarıyla kaydedildi.");
+  showToast("Ayarlar başarıyla kaydedildi.", "success");
+};
+
+window.updatePassword = () => {
+  const next = document.getElementById("new-password")?.value;
+  const repeat = document.getElementById("new-password-repeat")?.value;
+
+  if (!next || !repeat) {
+    showToast("Yeni şifre alanlarını doldurun.", "warning");
+    return;
+  }
+  if (next !== repeat) {
+    showToast("Şifreler eşleşmiyor, kontrol edin.", "error");
+    return;
+  }
+
+  document.getElementById("new-password").value = "";
+  document.getElementById("new-password-repeat").value = "";
+  showToast("Şifreniz güncellendi.", "success");
 };

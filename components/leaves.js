@@ -31,14 +31,14 @@ const Leaves = () => {
           <p>Bakiye, geçmiş talepler ve ekip yokluk takibini tek alanda görüntüleyin.</p>
         </div>
         <button class="btn btn-primary" onclick="openLeaveModal()">
-          <i class="fa-solid fa-plus"></i> İzin Talebi Oluştur
+          <i aria-hidden="true" class="fa-solid fa-plus"></i> İzin Talebi Oluştur
         </button>
       </div>
 
       <div class="balance-grid">
         <div class="bal-card primary">
           <div class="bal-header">
-            <div class="bal-icon"><i class="fa-solid fa-umbrella-beach"></i></div>
+            <div class="bal-icon"><i aria-hidden="true" class="fa-solid fa-umbrella-beach"></i></div>
             <span class="status-pill info">Aktif bakiye</span>
           </div>
           <div class="bal-info">
@@ -49,7 +49,7 @@ const Leaves = () => {
           <span class="bal-sub">Hak ediş: 24 gün</span>
         </div>
         <div class="bal-card">
-          <div class="bal-header"><div class="bal-icon"><i class="fa-solid fa-clock-rotate-left"></i></div></div>
+          <div class="bal-header"><div class="bal-icon"><i aria-hidden="true" class="fa-solid fa-clock-rotate-left"></i></div></div>
           <div class="bal-info">
             <span>Kullanılan Toplam</span>
             <strong>10 <small>gün</small></strong>
@@ -60,7 +60,7 @@ const Leaves = () => {
           </div>
         </div>
         <div class="bal-card">
-          <div class="bal-header"><div class="bal-icon"><i class="fa-solid fa-hourglass-half"></i></div></div>
+          <div class="bal-header"><div class="bal-icon"><i aria-hidden="true" class="fa-solid fa-hourglass-half"></i></div></div>
           <div class="bal-info">
             <span>Onay Bekleyen</span>
             <strong>1 <small>talep</small></strong>
@@ -104,7 +104,7 @@ const Leaves = () => {
                         <td class="text-right">
                           ${
                             leave.status === "pending"
-                              ? '<button class="btn-icon-sm"><i class="fa-solid fa-trash"></i></button>'
+                              ? `<button class="btn-icon-sm" title="Talebi iptal et" aria-label="${leave.type} talebini iptal et" onclick="cancelLeaveRequest(this)"><i aria-hidden="true" class="fa-solid fa-trash"></i></button>`
                               : ""
                           }
                         </td>
@@ -146,7 +146,7 @@ const Leaves = () => {
               <h3>Yeni İzin Talebi</h3>
               <p>Talep detaylarını net ve eksiksiz doldurun.</p>
             </div>
-            <button class="btn-icon-sm" onclick="closeLeaveModal()"><i class="fa-solid fa-xmark"></i></button>
+            <button class="btn-icon-sm" onclick="closeLeaveModal()" title="Kapat" aria-label="İzin talebi penceresini kapat"><i aria-hidden="true" class="fa-solid fa-xmark"></i></button>
           </div>
 
           <div class="modal-body-scroll">
@@ -155,7 +155,7 @@ const Leaves = () => {
               <label class="type-card">
                 <input type="radio" name="leaveType" checked />
                 <div class="tc-content">
-                  <div class="tc-icon annual"><i class="fa-solid fa-sun"></i></div>
+                  <div class="tc-icon annual"><i aria-hidden="true" class="fa-solid fa-sun"></i></div>
                   <span>Yıllık İzin</span>
                   <small>Kalan: 14 gün</small>
                 </div>
@@ -163,7 +163,7 @@ const Leaves = () => {
               <label class="type-card">
                 <input type="radio" name="leaveType" />
                 <div class="tc-content">
-                  <div class="tc-icon sick"><i class="fa-solid fa-notes-medical"></i></div>
+                  <div class="tc-icon sick"><i aria-hidden="true" class="fa-solid fa-notes-medical"></i></div>
                   <span>Raporlu</span>
                   <small>Belge gerekli</small>
                 </div>
@@ -171,7 +171,7 @@ const Leaves = () => {
               <label class="type-card">
                 <input type="radio" name="leaveType" />
                 <div class="tc-content">
-                  <div class="tc-icon excuse"><i class="fa-solid fa-clock"></i></div>
+                  <div class="tc-icon excuse"><i aria-hidden="true" class="fa-solid fa-clock"></i></div>
                   <span>Mazeret</span>
                   <small>Saatlik/günlük</small>
                 </div>
@@ -179,7 +179,7 @@ const Leaves = () => {
               <label class="type-card">
                 <input type="radio" name="leaveType" />
                 <div class="tc-content">
-                  <div class="tc-icon remote"><i class="fa-solid fa-laptop-house"></i></div>
+                  <div class="tc-icon remote"><i aria-hidden="true" class="fa-solid fa-laptop-house"></i></div>
                   <span>Uzaktan</span>
                   <small>Evden çalışma</small>
                 </div>
@@ -220,7 +220,7 @@ const Leaves = () => {
           <div class="modal-footer">
             <button class="btn btn-ghost" onclick="closeLeaveModal()">Vazgeç</button>
             <button class="btn btn-primary" onclick="submitLeave()">
-              <i class="fa-solid fa-paper-plane"></i> Talebi Gönder
+              <i aria-hidden="true" class="fa-solid fa-paper-plane"></i> Talebi Gönder
             </button>
           </div>
         </div>
@@ -249,6 +249,20 @@ window.calcDays = () => {
 };
 
 window.submitLeave = () => {
-  alert("İzin talebiniz yönetici onayına gönderildi.");
+  const start = document.getElementById("start-date")?.value;
+  const end = document.getElementById("end-date")?.value;
+  if (!start || !end) {
+    showToast("Başlangıç ve bitiş tarihlerini seçin.", "warning");
+    return;
+  }
+
   closeLeaveModal();
+  showToast("İzin talebiniz yönetici onayına gönderildi.", "success");
+};
+
+window.cancelLeaveRequest = (button) => {
+  const row = button.closest("tr");
+  const type = row?.querySelector("strong")?.textContent || "İzin";
+  row?.remove();
+  showToast(`${type} talebi iptal edildi.`, "info");
 };

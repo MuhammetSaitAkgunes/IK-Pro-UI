@@ -1,13 +1,17 @@
+/* ============================================================
+   Ayarlar
+   ============================================================ */
+
 .settings-layout {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
-  gap: 16px;
+  grid-template-columns: 256px minmax(0, 1fr);
+  gap: 14px;
 }
 
 .settings-sidebar,
 .set-card,
 .plan-banner {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
@@ -21,7 +25,7 @@
 .set-nav {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .set-link {
@@ -35,13 +39,19 @@
   align-items: center;
   gap: 10px;
   text-align: left;
-  font-weight: 750;
+  font-weight: 500;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.set-link.active,
 .set-link:hover {
+  background: var(--surface-soft);
+  color: var(--ink);
+}
+
+.set-link.active {
   background: var(--primary-soft);
   color: var(--primary);
+  font-weight: 600;
 }
 
 .set-card {
@@ -77,6 +87,8 @@
   gap: 16px;
 }
 
+/* ---------- Anahtar (switch) ---------- */
+
 .switch {
   position: relative;
   display: inline-block;
@@ -95,7 +107,7 @@
   position: absolute;
   cursor: pointer;
   inset: 0;
-  background: #cbd5e1;
+  background: var(--line-strong);
   transition: 0.2s;
   border-radius: 999px;
 }
@@ -121,13 +133,20 @@
   transform: translateX(20px);
 }
 
+.switch input:focus-visible + .slider {
+  box-shadow: var(--focus-ring);
+}
+
+/* ---------- Plan banner ---------- */
+
 .plan-banner {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   padding: 22px;
-  background: #111827;
+  background: #0c2b29;
+  border-color: #0c2b29;
   color: #fff;
 }
 
@@ -138,23 +157,24 @@
 }
 
 .plan-banner p {
-  color: #cbd5e1;
+  color: #a9c2be;
   margin-top: 6px;
 }
 
 .badge-pro {
-  background: #f59e0b;
-  color: #111827;
+  background: var(--accent);
+  color: #10231f;
   margin-bottom: 10px;
 }
 
 .pb-price {
-  font-size: 1.75rem;
-  font-weight: 800;
+  font-size: 1.7rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .pb-price small {
-  color: #cbd5e1;
+  color: #a9c2be;
   font-size: 0.9rem;
   margin-left: 2px;
 }
@@ -166,12 +186,14 @@
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
+  background: var(--surface-soft);
 }
 
 .cc-preview span {
   flex: 1;
   color: var(--text);
-  font-weight: 700;
+  font-weight: 500;
+  font-family: var(--font-data);
 }
 
 @media (max-width: 900px) {

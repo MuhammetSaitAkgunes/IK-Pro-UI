@@ -1,13 +1,17 @@
+/* ============================================================
+   İşe alım / aday takip (ATS)
+   ============================================================ */
+
 #ats-container {
   display: grid;
   grid-template-columns: 360px minmax(0, 1fr);
-  gap: 16px;
+  gap: 14px;
   min-height: calc(100vh - 132px);
 }
 
 .ats-sidebar,
 .ats-detail {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
@@ -48,13 +52,18 @@
   border-radius: var(--radius-md);
   min-height: 34px;
   padding: 0 11px;
-  font-weight: 750;
+  font-weight: 600;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.ft-btn:hover,
+.tab-link:hover {
+  background: var(--surface-soft);
+  color: var(--ink);
 }
 
 .ft-btn.active,
-.ft-btn:hover,
-.tab-link.active,
-.tab-link:hover {
+.tab-link.active {
   background: var(--primary-soft);
   color: var(--primary);
 }
@@ -63,7 +72,7 @@
   padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .candidate-item {
@@ -73,12 +82,16 @@
   border: 1px solid transparent;
   border-radius: var(--radius-lg);
   cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.candidate-item:hover,
+.candidate-item:hover {
+  background: var(--surface-soft);
+}
+
 .candidate-item.active {
   background: var(--surface-soft);
-  border-color: var(--line);
+  border-color: var(--primary);
 }
 
 .ci-info {
@@ -102,7 +115,7 @@
 
 .ci-info p {
   color: var(--muted);
-  font-size: 0.86rem;
+  font-size: 0.84rem;
   margin: 2px 0 8px;
 }
 
@@ -156,8 +169,9 @@
   align-items: center;
   justify-content: center;
   background: var(--success-soft);
-  color: #166534;
-  font-weight: 800;
+  color: var(--success-strong);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .detail-tabs {
@@ -170,9 +184,9 @@
 }
 
 .tab-link.active {
-  background: #fff;
+  background: var(--surface);
   border-color: var(--line);
-  border-bottom-color: #fff;
+  border-bottom-color: var(--surface);
 }
 
 .detail-content-wrapper {
@@ -187,7 +201,7 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   padding: 16px;
-  background: #fff;
+  background: var(--surface);
   margin-bottom: 14px;
 }
 
@@ -196,6 +210,7 @@
   gap: 8px;
   align-items: center;
   margin-bottom: 8px;
+  font-size: 0.98rem;
 }
 
 .skills-wrap {
@@ -221,7 +236,7 @@
   height: 12px;
   border-radius: 999px;
   background: var(--primary);
-  border: 3px solid #fff;
+  border: 3px solid var(--surface);
 }
 
 .add-note-box textarea {

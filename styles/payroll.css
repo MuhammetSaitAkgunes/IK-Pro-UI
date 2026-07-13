@@ -1,7 +1,12 @@
+/* ============================================================
+   Bordro modülü: dönem bordrosu, tekil hesaplama, ayarlar
+   Parasal değerler mono/tabular rakamlarla gösterilir.
+   ============================================================ */
+
 #payroll-screen {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
   padding-bottom: 40px;
 }
 
@@ -19,15 +24,17 @@
   display: block;
   color: var(--muted);
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: 500;
   margin-top: 8px;
 }
+
+/* ---------- Sekmeler ---------- */
 
 .payroll-tabs {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px;
+  gap: 6px;
+  padding: 5px;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--surface);
@@ -42,30 +49,37 @@
   border-radius: var(--radius-md);
   background: transparent;
   color: var(--muted);
-  font-weight: 750;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.payroll-tab.active,
 .payroll-tab:hover {
+  background: var(--surface-soft);
+  color: var(--ink);
+}
+
+.payroll-tab.active {
   background: var(--primary-soft);
-  border-color: #c7d2fe;
+  border-color: var(--primary);
   color: var(--primary);
 }
 
 .payroll-tab-content {
   display: none;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
 .payroll-tab-content.active {
   display: flex;
 }
+
+/* ---------- Bordro akışı ---------- */
 
 .payroll-flow-card {
   padding-bottom: 18px;
@@ -95,9 +109,9 @@
   content: "";
   position: absolute;
   inset: 0 auto 0 0;
-  width: 4px;
+  width: 3px;
   border-radius: var(--radius-lg) 0 0 var(--radius-lg);
-  background: var(--line);
+  background: var(--line-strong);
 }
 
 .payroll-step.done::before {
@@ -115,13 +129,15 @@
 
 .payroll-step span {
   color: var(--muted);
-  font-size: 0.8rem;
-  font-weight: 800;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .payroll-step strong {
   color: var(--ink);
-  font-size: 1rem;
+  font-size: 0.98rem;
 }
 
 .payroll-step small {
@@ -129,10 +145,12 @@
   line-height: 1.4;
 }
 
+/* ---------- Ana yerleşim ---------- */
+
 .payroll-main-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(360px, 0.8fr);
-  gap: 16px;
+  gap: 14px;
   align-items: start;
 }
 
@@ -180,14 +198,15 @@
   display: block;
   color: var(--muted);
   font-size: 0.78rem;
-  font-weight: 750;
+  font-weight: 500;
 }
 
 .payroll-control strong {
   display: block;
   color: var(--ink);
-  font-size: 1.7rem;
+  font-size: 1.6rem;
   margin: 2px 0 6px;
+  font-variant-numeric: tabular-nums;
 }
 
 .payroll-control p {
@@ -212,6 +231,8 @@
   display: block;
   color: var(--ink);
   margin-top: 5px;
+  font-family: var(--font-data);
+  font-size: 0.9rem;
 }
 
 .payroll-note {
@@ -220,12 +241,12 @@
   gap: 9px;
   margin-top: 12px;
   padding: 11px;
-  border: 1px solid var(--info-soft);
+  border: 1px solid var(--info);
   border-radius: var(--radius-md);
   background: var(--info-soft);
   color: var(--text);
   font-size: 0.82rem;
-  font-weight: 650;
+  font-weight: 500;
 }
 
 .payroll-note i {
@@ -237,6 +258,8 @@
   font-size: 0.8rem;
   line-height: 1.45;
 }
+
+/* ---------- Bordro tablosu ---------- */
 
 .payroll-table-header {
   display: flex;
@@ -256,17 +279,23 @@
   display: block;
 }
 
+.payroll-table td strong {
+  font-variant-numeric: tabular-nums;
+}
+
 .payroll-table td small {
   color: var(--muted);
   font-size: 0.78rem;
   margin-top: 3px;
 }
 
+/* ---------- Bordro detay paneli ---------- */
+
 .payroll-detail-overlay {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: rgb(15 23 42 / 0.48);
+  background: rgb(8 24 22 / 0.55);
   display: none;
   justify-content: flex-end;
 }
@@ -296,7 +325,7 @@
 }
 
 .payroll-detail-head h3 {
-  font-size: 1.45rem;
+  font-size: 1.4rem;
   margin: 10px 0 4px;
 }
 
@@ -320,8 +349,10 @@
 .payroll-detail-summary strong {
   display: block;
   color: var(--ink);
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   margin-top: 5px;
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
 }
 
 .payroll-detail-grid {
@@ -348,8 +379,10 @@
 .payroll-line strong,
 .slip-row strong {
   color: var(--ink);
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   white-space: nowrap;
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
 }
 
 .payroll-line.deduction strong {
@@ -362,6 +395,8 @@
   gap: 8px;
   margin-top: 12px;
 }
+
+/* ---------- Bordro pusulası ---------- */
 
 .slip-paper {
   border: 1px solid var(--line);
@@ -382,25 +417,26 @@
 
 .slip-brand strong {
   color: var(--primary);
-  font-size: 1.1rem;
+  font-size: 1.05rem;
 }
 
 .slip-brand span {
   color: var(--muted);
-  font-size: 0.82rem;
-  font-weight: 750;
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: var(--font-data);
 }
 
 .slip-row.total {
   margin-top: 8px;
   border-bottom: 0;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--line-strong);
   padding-top: 14px;
 }
 
 .slip-row.total strong {
   color: var(--success);
-  font-size: 1.12rem;
+  font-size: 1.1rem;
 }
 
 .payroll-detail-footer {
@@ -413,10 +449,12 @@
   background: var(--body);
 }
 
+/* ---------- Tekil hesaplama ---------- */
+
 .payroll-calculator-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(420px, 0.95fr);
-  gap: 16px;
+  gap: 14px;
   align-items: start;
 }
 
@@ -438,7 +476,7 @@
 
 .scenario-result-head h4 {
   margin: 10px 0 4px;
-  font-size: 1.2rem;
+  font-size: 1.15rem;
 }
 
 .scenario-result-head p {
@@ -448,8 +486,10 @@
 
 .scenario-result-head > strong {
   color: var(--success);
-  font-size: 1.55rem;
+  font-size: 1.5rem;
   white-space: nowrap;
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
 }
 
 .scenario-highlight-grid {
@@ -470,15 +510,17 @@
 .scenario-highlight-grid small {
   display: block;
   color: var(--muted);
-  font-size: 0.76rem;
-  font-weight: 750;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .scenario-highlight-grid strong {
   display: block;
   color: var(--ink);
-  font-size: 1.05rem;
+  font-size: 1rem;
   margin-top: 5px;
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
 }
 
 .scenario-highlight-grid small {
@@ -497,9 +539,11 @@
 
 .scenario-breakdown-grid h5 {
   color: var(--ink);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   margin-bottom: 6px;
 }
+
+/* ---------- Bordro ayarları ---------- */
 
 .payroll-settings-grid {
   display: grid;
@@ -512,24 +556,10 @@
   margin-top: 14px;
   color: var(--success);
   font-size: 0.88rem;
-  font-weight: 750;
+  font-weight: 600;
 }
 
-:root[data-theme="dark"] .payroll-step,
-:root[data-theme="dark"] .payroll-control,
-:root[data-theme="dark"] .parameter-grid div,
-:root[data-theme="dark"] .payroll-detail-summary div,
-:root[data-theme="dark"] .slip-paper,
-:root[data-theme="dark"] .payroll-tabs,
-:root[data-theme="dark"] .scenario-highlight-grid div {
-  background: var(--surface-soft);
-  border-color: var(--line);
-}
-
-:root[data-theme="dark"] .payroll-note {
-  background: var(--info-soft);
-  border-color: var(--line);
-}
+/* ---------- Responsive ---------- */
 
 @media (max-width: 1280px) {
   .payroll-kpi-grid,

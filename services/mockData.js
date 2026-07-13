@@ -25,6 +25,15 @@ const demoUsers = {
   },
 };
 
+// Personel dizini: personel listesi ve global arama için tek kaynak.
+const personnelDirectory = [
+  { id: 1, name: "Ahmet Yılmaz", title: "Senior Developer", tc: "123*****", dept: "Yazılım", status: "active", initials: "AY", start: "12.03.2022" },
+  { id: 2, name: "Ayşe Demir", title: "İK Uzmanı", tc: "456*****", dept: "İnsan Kaynakları", status: "active", initials: "AD", start: "04.09.2021" },
+  { id: 3, name: "Selin Koç", title: "UI Designer", tc: "789*****", dept: "Tasarım", status: "passive", initials: "SK", start: "17.01.2023" },
+];
+
+const getDirectory = () => [...personnelDirectory];
+
 const globalActions = [
   {
     id: "act-001",

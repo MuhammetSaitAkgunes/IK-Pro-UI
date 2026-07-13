@@ -1,3 +1,7 @@
+/* ============================================================
+   Giriş / hesap oluşturma ekranı
+   ============================================================ */
+
 .auth-shell {
   min-height: 100vh;
   display: grid;
@@ -9,14 +13,30 @@
   min-height: 100vh;
   padding: 44px;
   background:
-    linear-gradient(rgb(17 24 39 / 0.72), rgb(17 24 39 / 0.64)),
-    url("https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1600&q=80");
-  background-size: cover;
-  background-position: center;
+    radial-gradient(1200px 600px at 85% -10%, rgb(47 191 174 / 0.16), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgb(212 168 83 / 0.1), transparent 55%),
+    linear-gradient(160deg, #0c2b29 0%, #0a2422 55%, #081d1b 100%);
   color: #fff;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-visual::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.035) 1px, transparent 1px);
+  background-size: 44px 44px;
+  pointer-events: none;
+}
+
+.auth-visual > * {
+  position: relative;
 }
 
 .auth-brand {
@@ -35,20 +55,29 @@
   font-size: 1.1rem;
 }
 
-.auth-brand span,
-.auth-copy p,
-.auth-insight-grid span {
-  color: rgb(255 255 255 / 0.78);
+.auth-brand span {
+  color: rgb(255 255 255 / 0.6);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: 3px;
 }
 
 .auth-copy {
   max-width: 680px;
 }
 
+.auth-copy p,
+.auth-insight-grid span {
+  color: rgb(255 255 255 / 0.72);
+}
+
 .auth-copy h1 {
   color: #fff;
-  font-size: clamp(2rem, 5vw, 4.2rem);
-  line-height: 1.02;
+  font-size: clamp(1.9rem, 4.2vw, 3.4rem);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
   margin: 18px 0;
 }
 
@@ -65,30 +94,33 @@
 
 .auth-insight-grid div {
   padding: 16px;
-  border: 1px solid rgb(255 255 255 / 0.22);
-  border-radius: var(--radius-lg);
-  background: rgb(255 255 255 / 0.1);
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-left: 3px solid #2fbfae;
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255 / 0.05);
 }
 
 .auth-insight-grid strong {
   display: block;
   color: #fff;
-  font-size: 1.6rem;
+  font-size: 1.55rem;
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
 }
 
 .auth-insight-grid span {
   display: block;
   margin-top: 4px;
-  font-size: 0.86rem;
+  font-size: 0.84rem;
 }
 
 .auth-panel {
   align-self: center;
   width: min(440px, calc(100% - 48px));
   margin: 0 auto;
-  padding: 26px;
+  padding: 28px;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 14px;
   background: var(--surface);
   box-shadow: var(--shadow-lg);
 }
@@ -110,7 +142,8 @@
   border-radius: var(--radius-md);
   background: transparent;
   color: var(--muted);
-  font-weight: 800;
+  font-weight: 600;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .auth-tab.active {
@@ -130,7 +163,7 @@
 }
 
 .auth-form h2 {
-  font-size: 1.45rem;
+  font-size: 1.4rem;
 }
 
 .auth-form p {
@@ -151,7 +184,7 @@
   .auth-visual {
     min-height: auto;
     padding: 28px;
-    gap: 80px;
+    gap: 60px;
   }
 
   .auth-panel {

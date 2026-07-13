@@ -18,13 +18,27 @@ const AppRoutes = [
   { key: "attrition-risk", path: "/risk/attrition", title: "Ayrılma Riski Detayı", eyebrow: "Risk Merkezi", navKey: "dashboard", roles: ["hr-admin", "manager"], render: () => AttritionRiskDetail() },
   { key: "burnout-risk", path: "/risk/burnout", title: "Tükenmişlik Sinyali", eyebrow: "Risk Merkezi", navKey: "dashboard", roles: ["hr-admin", "manager"], render: () => BurnoutRiskDetail() },
   { key: "manager-load", path: "/risk/manager-load", title: "Yönetici Yükü", eyebrow: "Risk Merkezi", navKey: "dashboard", roles: ["hr-admin", "manager"], render: () => ManagerLoadDetail() },
-  { key: "action-center", path: "/risk/action-center", title: "Aksiyon Merkezi", eyebrow: "Risk Merkezi", navKey: "dashboard", roles: ["hr-admin", "manager"], render: () => ActionCenterDetail() },
+  // Tek aksiyon kaynağı: eski /risk/action-center rotası geriye dönük uyum için
+  // korunur, ancak artık Global Aksiyon Merkezi'ne yönlenir.
+  { key: "action-center", path: "/risk/action-center", title: "Aksiyonlar", eyebrow: "İK Pro", navKey: "actions", roles: ["hr-admin", "manager"], render: () => ActionsCenter() },
   { key: "employee-voice", path: "/risk/employee-voice", title: "Çalışan Nabzı", eyebrow: "Risk Merkezi", navKey: "dashboard", roles: ["hr-admin", "manager"], render: () => EmployeeVoiceDetail() },
   { key: "compliance-risk", path: "/risk/compliance", title: "Uyum Risk Merkezi", eyebrow: "Risk Merkezi", navKey: "dashboard", roles: ["hr-admin", "manager"], render: () => ComplianceRiskDetail() },
 ];
 
 const DefaultProtectedRoute = "/dashboard";
 const DefaultPublicRoute = "/login";
+
+// Rol bazlı ana sayfa: ilk ekran her rol için uygun ağırlıkta açılır.
+const RoleHomeRoutes = {
+  "hr-admin": "/dashboard",
+  manager: "/dashboard",
+  employee: "/overview",
+};
+
+const getDefaultProtectedRoute = () => {
+  const role = typeof getCurrentUser === "function" ? getCurrentUser()?.role : null;
+  return RoleHomeRoutes[role] || DefaultProtectedRoute;
+};
 
 const getHashPath = () => {
   const hash = window.location.hash.replace(/^#/, "");

@@ -1,3 +1,7 @@
+/* ============================================================
+   İzinler + izin talebi modalı
+   ============================================================ */
+
 .balance-grid {
   grid-template-columns: 1.2fr 1fr 1fr;
 }
@@ -13,19 +17,21 @@
 .bal-sub,
 .pending-desc {
   color: var(--muted);
-  font-size: 0.88rem;
+  font-size: 0.86rem;
 }
 
 .bal-info strong {
   display: block;
   margin: 4px 0 14px;
-  font-size: 2rem;
+  font-size: 1.9rem;
   color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
 .bal-info small {
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: 0.92rem;
 }
 
 .bal-stats {
@@ -38,7 +44,7 @@
 .leaves-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 16px;
+  gap: 14px;
 }
 
 .section-header {
@@ -51,10 +57,12 @@
   gap: 8px;
 }
 
+/* ---------- Modal ---------- */
+
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgb(15 23 42 / 0.5);
+  background: rgb(8 24 22 / 0.55);
   display: none;
   align-items: center;
   justify-content: center;
@@ -67,7 +75,8 @@
   max-height: 92vh;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   overflow: hidden;
@@ -85,7 +94,7 @@
 
 .modal-head p {
   color: var(--muted);
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   margin-top: 3px;
 }
 
@@ -121,7 +130,13 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: #fff;
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.tc-content:hover {
+  border-color: var(--primary);
 }
 
 .type-card input:checked + .tc-content {
@@ -129,8 +144,12 @@
   background: var(--primary-soft);
 }
 
+.type-card input:focus-visible + .tc-content {
+  box-shadow: var(--focus-ring);
+}
+
 .tc-content span {
-  font-weight: 750;
+  font-weight: 600;
   color: var(--ink);
 }
 
@@ -147,7 +166,7 @@
 
 .cb-item {
   padding: 14px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-soft);
   border-radius: var(--radius-md);
   background: var(--surface-soft);
 }
@@ -159,12 +178,13 @@
 
 .cb-item span {
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
 }
 
 .cb-item strong {
   margin-top: 4px;
   color: var(--ink);
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 760px) {

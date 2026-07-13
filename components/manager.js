@@ -11,28 +11,30 @@ const ManagerDashboard = () => {
         <div class="mh-actions header-actions">
           <select class="filter-select"><option>Bu Ay (Ekim)</option><option>Geçen Ay</option><option>Yıllık</option></select>
           <select class="filter-select"><option>Tüm Departmanlar</option><option>Yazılım</option><option>İK</option></select>
-          <button class="btn btn-secondary"><i class="fa-solid fa-cloud-arrow-down"></i> Raporu İndir</button>
+          <button class="btn btn-secondary" onclick="exportTableToCSV('.mini-table', 'departman-kullanim-raporu')">
+            <i aria-hidden="true" class="fa-solid fa-cloud-arrow-down"></i> Raporu İndir
+          </button>
         </div>
       </div>
 
       <div class="stats-grid-pro">
         <div class="kpi-pro theme-blue">
-          <div class="kpi-top"><div class="kpi-icon-box"><i class="fa-solid fa-users-viewfinder"></i></div><span class="kpi-trend">+%12</span></div>
+          <div class="kpi-top"><div class="kpi-icon-box"><i aria-hidden="true" class="fa-solid fa-users-viewfinder"></i></div><span class="kpi-trend">+%12</span></div>
           <span class="kpi-val">8 kişi</span>
           <span class="kpi-label">Şu An İzinli</span>
         </div>
         <div class="kpi-pro theme-orange">
-          <div class="kpi-top"><div class="kpi-icon-box"><i class="fa-regular fa-folder-open"></i></div><span class="kpi-trend text-orange">Kritik</span></div>
+          <div class="kpi-top"><div class="kpi-icon-box"><i aria-hidden="true" class="fa-regular fa-folder-open"></i></div><span class="kpi-trend text-orange">Kritik</span></div>
           <span class="kpi-val">5 talep</span>
           <span class="kpi-label">Onay Bekliyor</span>
         </div>
         <div class="kpi-pro theme-purple">
-          <div class="kpi-top"><div class="kpi-icon-box"><i class="fa-solid fa-briefcase"></i></div><span class="kpi-trend">+%5</span></div>
+          <div class="kpi-top"><div class="kpi-icon-box"><i aria-hidden="true" class="fa-solid fa-briefcase"></i></div><span class="kpi-trend">+%5</span></div>
           <span class="kpi-val">142 gün</span>
           <span class="kpi-label">Planlanan İzin</span>
         </div>
         <div class="kpi-pro theme-green">
-          <div class="kpi-top"><div class="kpi-icon-box"><i class="fa-solid fa-wallet"></i></div></div>
+          <div class="kpi-top"><div class="kpi-icon-box"><i aria-hidden="true" class="fa-solid fa-wallet"></i></div></div>
           <span class="kpi-val">%42</span>
           <span class="kpi-label">İzin Kullanım Oranı</span>
         </div>
@@ -78,8 +80,8 @@ const ManagerDashboard = () => {
                 <div><span>Tarihler</span><strong>12 Ağustos - 17 Ağustos</strong></div>
               </div>
               <div class="req-actions">
-                <button class="btn btn-secondary btn-sm" onclick="this.closest('.req-item').remove()">Reddet</button>
-                <button class="btn btn-primary btn-sm" onclick="this.closest('.req-item').remove()">Onayla</button>
+                <button class="btn btn-secondary btn-sm" onclick="resolveApprovalRequest(this, false)">Reddet</button>
+                <button class="btn btn-primary btn-sm" onclick="resolveApprovalRequest(this, true)">Onayla</button>
               </div>
             </div>
             <div class="req-item">
@@ -92,8 +94,8 @@ const ManagerDashboard = () => {
                 <div><span>Süre</span><strong>2 gün</strong></div>
               </div>
               <div class="req-actions">
-                <button class="btn btn-secondary btn-sm" onclick="this.closest('.req-item').remove()">Reddet</button>
-                <button class="btn btn-primary btn-sm" onclick="this.closest('.req-item').remove()">Onayla</button>
+                <button class="btn btn-secondary btn-sm" onclick="resolveApprovalRequest(this, false)">Reddet</button>
+                <button class="btn btn-primary btn-sm" onclick="resolveApprovalRequest(this, true)">Onayla</button>
               </div>
             </div>
           </div>
@@ -116,11 +118,25 @@ const ManagerDashboard = () => {
   `;
 };
 
+window.resolveApprovalRequest = (button, approved) => {
+  const item = button.closest(".req-item");
+  const name = item?.querySelector("h4")?.textContent || "Talep";
+  item?.remove();
+  showToast(
+    approved ? `${name} talebi onaylandı.` : `${name} talebi reddedildi.`,
+    approved ? "success" : "info"
+  );
+
+  const pill = document.querySelector(".approval-panel .status-pill");
+  const remaining = document.querySelectorAll(".approval-panel .req-item").length;
+  if (pill) pill.textContent = remaining ? `${remaining} bekleyen` : "Tamamlandı";
+};
+
 window.initProCharts = () => {
   if (typeof Chart === "undefined") {
     const canvas = document.getElementById("proTrendChart");
     if (canvas) {
-      canvas.outerHTML = '<div class="chart-fallback"><i class="fa-solid fa-chart-line"></i><span>Grafik önizlemesi yüklenemedi</span></div>';
+      canvas.outerHTML = '<div class="chart-fallback"><i aria-hidden="true" class="fa-solid fa-chart-line"></i><span>Grafik önizlemesi yüklenemedi</span></div>';
     }
     return;
   }
@@ -128,9 +144,11 @@ window.initProCharts = () => {
   const ctx = document.getElementById("proTrendChart");
   if (ctx) {
     if (Chart.getChart("proTrendChart")) Chart.getChart("proTrendChart").destroy();
+    const managerChartToken = (name, fallback) =>
+      getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
     const gradient = ctx.getContext("2d").createLinearGradient(0, 0, 0, 300);
-    gradient.addColorStop(0, "rgba(79, 70, 229, 0.28)");
-    gradient.addColorStop(1, "rgba(79, 70, 229, 0)");
+    gradient.addColorStop(0, "rgba(15, 118, 110, 0.22)");
+    gradient.addColorStop(1, "rgba(15, 118, 110, 0)");
 
     new Chart(ctx, {
       type: "line",
@@ -140,13 +158,13 @@ window.initProCharts = () => {
           {
             label: "Toplam izin günü",
             data: [12, 15, 8, 10, 25, 45, 80, 120, 30, 15, 10, 20],
-            borderColor: "#4f46e5",
-            borderWidth: 3,
+            borderColor: managerChartToken("--primary", "#0f766e"),
+            borderWidth: 2.5,
             backgroundColor: gradient,
             fill: true,
             tension: 0.35,
-            pointBackgroundColor: "#fff",
-            pointBorderColor: "#4f46e5",
+            pointBackgroundColor: managerChartToken("--surface", "#ffffff"),
+            pointBorderColor: managerChartToken("--primary", "#0f766e"),
             pointRadius: 4,
           },
         ],
@@ -156,7 +174,7 @@ window.initProCharts = () => {
         maintainAspectRatio: false,
         plugins: { legend: { display: false }, tooltip: { mode: "index", intersect: false } },
         scales: {
-          y: { grid: { color: "#eef2f7" }, beginAtZero: true },
+          y: { grid: { color: managerChartToken("--line-soft", "#e9efef") }, beginAtZero: true },
           x: { grid: { display: false } },
         },
       },

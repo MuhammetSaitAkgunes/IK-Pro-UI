@@ -10,8 +10,11 @@ const Recruitment = () => {
     candidates
       .map(
         (candidate) => `
-          <div class="candidate-item ${candidate.active ? "active" : ""}" onclick="selectCandidate(this)">
-            <div class="ci-avatar">${candidate.avatar}</div>
+          <div class="candidate-item ${candidate.active ? "active" : ""}"
+            data-name="${candidate.name.toLocaleLowerCase("tr-TR")} ${candidate.role.toLocaleLowerCase("tr-TR")}"
+            data-status="${candidate.status}"
+            onclick="selectCandidate(this)">
+            <div class="ci-avatar" aria-hidden="true">${candidate.avatar}</div>
             <div class="ci-info">
               <div class="ci-header">
                 <h4>${candidate.name}</h4>
@@ -37,13 +40,14 @@ const Recruitment = () => {
             <p>Aktif pozisyonlara göre sıralandı</p>
           </div>
           <div class="search-wrap">
-            <i class="fa-solid fa-magnifying-glass"></i>
-            <input type="text" placeholder="Aday ara" />
+            <i aria-hidden="true" class="fa-solid fa-magnifying-glass"></i>
+            <label class="sr-only" for="candidate-search">Aday ara</label>
+            <input id="candidate-search" type="text" placeholder="Aday ara" oninput="filterCandidates()" />
           </div>
           <div class="filter-tabs">
-            <button class="ft-btn active">Tümü</button>
-            <button class="ft-btn">Yeni</button>
-            <button class="ft-btn">Mülakat</button>
+            <button class="ft-btn active" onclick="filterCandidatesByStatus('', this)">Tümü</button>
+            <button class="ft-btn" onclick="filterCandidatesByStatus('Yeni', this)">Yeni</button>
+            <button class="ft-btn" onclick="filterCandidatesByStatus('Mülakat', this)">Mülakat</button>
           </div>
         </div>
         <div class="candidate-list">${renderList()}</div>
@@ -57,15 +61,15 @@ const Recruitment = () => {
               <h2>Burak Yılmaz</h2>
               <p class="dh-role">Senior Frontend Developer</p>
               <div class="dh-tags">
-                <span class="tag-pill"><i class="fa-solid fa-location-dot"></i> İstanbul</span>
-                <span class="tag-pill"><i class="fa-solid fa-briefcase"></i> 5 yıl deneyim</span>
+                <span class="tag-pill"><i aria-hidden="true" class="fa-solid fa-location-dot"></i> İstanbul</span>
+                <span class="tag-pill"><i aria-hidden="true" class="fa-solid fa-briefcase"></i> 5 yıl deneyim</span>
               </div>
             </div>
           </div>
           <div class="dh-actions">
             <div class="match-score"><span class="score-circle">92</span><span class="score-label">AI puanı</span></div>
-            <button class="btn btn-primary"><i class="fa-solid fa-thumbs-up"></i> İşe Al</button>
-            <button class="btn-icon-only"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+            <button class="btn btn-primary" onclick="showToast('Burak Yılmaz için teklif süreci başlatıldı.', 'success')"><i aria-hidden="true" class="fa-solid fa-thumbs-up"></i> İşe Al</button>
+            <button class="btn-icon-only" title="Diğer işlemler" aria-label="Aday için diğer işlemler" onclick="showToast('Diğer aday işlemleri yakında eklenecek.', 'info')"><i aria-hidden="true" class="fa-solid fa-ellipsis-vertical"></i></button>
           </div>
         </div>
 
@@ -79,11 +83,11 @@ const Recruitment = () => {
         <div class="detail-content-wrapper">
           <div id="tab-cv" class="tab-content active">
             <div class="content-block">
-              <h4><i class="fa-regular fa-file-lines"></i> Başvuru Özeti</h4>
+              <h4><i aria-hidden="true" class="fa-regular fa-file-lines"></i> Başvuru Özeti</h4>
               <p class="summary-text">React ve modern JavaScript konusunda 5 yıllık deneyime sahip, ürün ekipleriyle çalışmış güçlü bir aday. Portfolyosu pozisyon beklentileriyle uyumlu.</p>
             </div>
             <div class="content-block">
-              <h4><i class="fa-solid fa-wand-magic-sparkles"></i> Yetenek Seti</h4>
+              <h4><i aria-hidden="true" class="fa-solid fa-wand-magic-sparkles"></i> Yetenek Seti</h4>
               <div class="skills-wrap">
                 <span class="skill-tag">React.js</span>
                 <span class="skill-tag">Next.js</span>
@@ -91,7 +95,7 @@ const Recruitment = () => {
               </div>
             </div>
             <div class="content-block">
-              <h4><i class="fa-solid fa-history"></i> İş Deneyimi</h4>
+              <h4><i aria-hidden="true" class="fa-solid fa-history"></i> İş Deneyimi</h4>
               <div class="timeline">
                 <div class="tl-item">
                   <div class="tl-dot"></div>
@@ -108,10 +112,12 @@ const Recruitment = () => {
           <div id="tab-notes" class="tab-content">
             <div class="notes-container">
               <div class="add-note-box">
-                <textarea placeholder="Mülakat notunuzu buraya girin"></textarea>
+                <label class="sr-only" for="interview-note">Mülakat notu</label>
+                <textarea id="interview-note" placeholder="Mülakat notunuzu buraya girin"></textarea>
                 <div class="note-actions">
-                  <select><option>Teknik Mülakat</option><option>İK Görüşmesi</option></select>
-                  <button class="btn btn-primary btn-sm">Not Ekle</button>
+                  <label class="sr-only" for="interview-note-type">Not türü</label>
+                  <select id="interview-note-type"><option>Teknik Mülakat</option><option>İK Görüşmesi</option></select>
+                  <button class="btn btn-primary btn-sm" onclick="addInterviewNote()">Not Ekle</button>
                 </div>
               </div>
               <div class="note-item">
@@ -133,7 +139,7 @@ const Recruitment = () => {
 
           <div id="tab-history" class="tab-content">
             <div class="history-list">
-              <div class="hist-item"><i class="fa-solid fa-envelope bg-blue"></i><div><strong>Teklif hazırlığı başlatıldı</strong><small>Bugün 10:00</small></div></div>
+              <div class="hist-item"><i aria-hidden="true" class="fa-solid fa-envelope bg-blue"></i><div><strong>Teklif hazırlığı başlatıldı</strong><small>Bugün 10:00</small></div></div>
             </div>
           </div>
         </div>
@@ -145,6 +151,54 @@ const Recruitment = () => {
 window.selectCandidate = (el) => {
   document.querySelectorAll(".candidate-item").forEach((candidate) => candidate.classList.remove("active"));
   el.classList.add("active");
+};
+
+let candidateStatusFilter = "";
+
+const applyCandidateFilters = () => {
+  const query = document.getElementById("candidate-search")?.value.trim().toLocaleLowerCase("tr-TR") || "";
+  document.querySelectorAll(".candidate-item").forEach((item) => {
+    const matches =
+      (!query || item.dataset.name.includes(query)) &&
+      (!candidateStatusFilter || item.dataset.status === candidateStatusFilter);
+    item.style.display = matches ? "" : "none";
+  });
+};
+
+window.filterCandidates = () => applyCandidateFilters();
+
+window.filterCandidatesByStatus = (status, button) => {
+  candidateStatusFilter = status;
+  document.querySelectorAll(".ft-btn").forEach((tab) => tab.classList.remove("active"));
+  button?.classList.add("active");
+  applyCandidateFilters();
+};
+
+window.addInterviewNote = () => {
+  const noteInput = document.getElementById("interview-note");
+  const noteType = document.getElementById("interview-note-type")?.value || "Not";
+  const text = noteInput?.value.trim();
+
+  if (!text) {
+    showToast("Önce not içeriğini yazın.", "warning");
+    return;
+  }
+
+  const container = document.querySelector(".notes-container");
+  const note = document.createElement("div");
+  note.className = "note-item";
+  note.innerHTML = `
+    <div class="note-avatar" aria-hidden="true">İK</div>
+    <div class="note-body">
+      <div class="note-header"><strong>İK Yöneticisi (${noteType})</strong> <span>Şimdi</span></div>
+      <p></p>
+    </div>
+  `;
+  note.querySelector("p").textContent = text;
+  container?.querySelector(".add-note-box")?.after(note);
+
+  noteInput.value = "";
+  showToast("Mülakat notu eklendi.", "success");
 };
 
 window.switchDetailTab = (event, tabId) => {

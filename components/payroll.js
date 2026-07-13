@@ -362,7 +362,7 @@ const renderPayrollParameters = (parameters) => `
       <div><span>Damga vergisi</span><strong>‰${formatPayrollNumber(parameters.stampTaxRate)}</strong></div>
     </div>
     <div class="payroll-note">
-      <i class="fa-solid fa-circle-info"></i>
+      <i aria-hidden="true" class="fa-solid fa-circle-info"></i>
       <span>Bu ekran bordro deneyimi ve kontrol akışı için demo hesap sunar; üretim kullanımında mevzuat ve müşavir doğrulaması gerekir.</span>
     </div>
   </div>
@@ -429,14 +429,14 @@ const renderPayrollPeriodTab = (data) => {
             <h4>Kontrol Merkezi</h4>
             <p class="text-muted">Eksik veri, matrah ve onay uyarıları.</p>
           </div>
-          <button class="btn btn-secondary btn-sm"><i class="fa-solid fa-check-double"></i> Kontrol edildi</button>
+          <button class="btn btn-secondary btn-sm" onclick="showToast('Kontrol listesi işaretlendi; uyarılar denetim izine kaydedildi.', 'success')"><i aria-hidden="true" class="fa-solid fa-check-double"></i> Kontrol edildi</button>
         </div>
         <div class="payroll-control-grid">
           ${controls
             .map(
               (control) => `
                 <div class="payroll-control ${control.level}">
-                  <div class="payroll-control-icon"><i class="fa-solid ${control.icon}"></i></div>
+                  <div class="payroll-control-icon"><i aria-hidden="true" class="fa-solid ${control.icon}"></i></div>
                   <div>
                     <span>${control.label}</span>
                     <strong>${control.value}</strong>
@@ -459,8 +459,11 @@ const renderPayrollPeriodTab = (data) => {
           <p class="text-muted">Satıra tıklayarak bordro pusulası ve hesap detayını açın.</p>
         </div>
         <div class="toolbar-actions">
-          <select class="small-select"><option>Tüm departmanlar</option><option>Yazılım</option><option>Satış</option></select>
-          <button class="btn btn-secondary btn-sm"><i class="fa-solid fa-filter"></i> Filtrele</button>
+          <label class="sr-only" for="payroll-dept-filter">Departman filtresi</label>
+          <select id="payroll-dept-filter" class="small-select" onchange="filterPayrollTable()">
+            <option value="">Tüm departmanlar</option>
+            ${[...new Set(rows.map((row) => row.dept))].map((dept) => `<option value="${dept}">${dept}</option>`).join("")}
+          </select>
         </div>
       </div>
       <table class="data-table payroll-table">
@@ -473,7 +476,7 @@ const renderPayrollPeriodTab = (data) => {
           ${rows
             .map(
               (row) => `
-                <tr>
+                <tr data-dept="${row.dept}">
                   <td><strong>${row.name}</strong><small>${row.title}</small></td>
                   <td>${row.dept}</td>
                   <td>${formatPayrollMoney(row.grossEarnings)}</td>
@@ -642,7 +645,7 @@ const renderPayrollCalculatorTab = (data) => {
           </div>
         </div>
         <div class="payroll-note">
-          <i class="fa-solid fa-circle-info"></i>
+          <i aria-hidden="true" class="fa-solid fa-circle-info"></i>
           <span>Fazla mesai tutarı, brüt ücret / ${formatPayrollNumber(data.parameters.monthlyWorkingHours)} saat üzerinden çarpanla hesaplanır.</span>
         </div>
       </section>
@@ -677,8 +680,8 @@ const renderPayrollSettingsTab = (parameters) => {
           <p class="text-muted">Şirket varsayılanlarını düzenleyin. Ayarlar bu tarayıcıda saklanır.</p>
         </div>
         <div class="toolbar-actions">
-          <button class="btn btn-secondary" onclick="resetPayrollDefaultSettings()"><i class="fa-solid fa-rotate-left"></i> Varsayılana dön</button>
-          <button class="btn btn-primary" onclick="savePayrollDefaultSettings()"><i class="fa-solid fa-floppy-disk"></i> Kaydet</button>
+          <button class="btn btn-secondary" onclick="resetPayrollDefaultSettings()"><i aria-hidden="true" class="fa-solid fa-rotate-left"></i> Varsayılana dön</button>
+          <button class="btn btn-primary" onclick="savePayrollDefaultSettings()"><i aria-hidden="true" class="fa-solid fa-floppy-disk"></i> Kaydet</button>
         </div>
       </div>
       <div class="payroll-settings-grid">
@@ -695,7 +698,7 @@ const renderPayrollSettingsTab = (parameters) => {
       </div>
       <div class="payroll-settings-feedback" aria-live="polite"></div>
       <div class="payroll-note">
-        <i class="fa-solid fa-circle-info"></i>
+        <i aria-hidden="true" class="fa-solid fa-circle-info"></i>
         <span>Bu değerler dönem bordrosu ve tekil hesaplama ön hesabında kullanılır. Üretim öncesi mevzuat ve müşavir doğrulaması gerekir.</span>
       </div>
     </section>
@@ -717,25 +720,25 @@ const Payroll = () => {
         <div class="header-actions">
           ${
             canUseCalculator
-              ? '<button class="btn btn-secondary" onclick="navigateTo(\'payroll-calculator\', event)"><i class="fa-solid fa-calculator"></i> Tekil hesapla</button>'
+              ? '<button class="btn btn-secondary" onclick="navigateTo(\'payroll-calculator\', event)"><i aria-hidden="true" class="fa-solid fa-calculator"></i> Tekil hesapla</button>'
               : ""
           }
-          <button class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Onaya gönder</button>
+          <button class="btn btn-primary" onclick="showToast('Dönem bordrosu onay akışına gönderildi.', 'success')"><i aria-hidden="true" class="fa-solid fa-paper-plane"></i> Onaya gönder</button>
         </div>
       </div>
 
       <div class="payroll-tabs">
         <button class="payroll-tab active" onclick="navigateTo('payroll', event)">
-          <i class="fa-solid fa-table-list"></i> Dönem Bordrosu
+          <i aria-hidden="true" class="fa-solid fa-table-list"></i> Dönem Bordrosu
         </button>
         ${
           canUseCalculator
-            ? '<button class="payroll-tab" onclick="navigateTo(\'payroll-calculator\', event)"><i class="fa-solid fa-calculator"></i> Tekil Hesaplama</button>'
+            ? '<button class="payroll-tab" onclick="navigateTo(\'payroll-calculator\', event)"><i aria-hidden="true" class="fa-solid fa-calculator"></i> Tekil Hesaplama</button>'
             : ""
         }
         ${
           canUseSettings
-            ? '<button class="payroll-tab" onclick="navigateTo(\'payroll-settings\', event)"><i class="fa-solid fa-sliders"></i> Bordro Ayarları</button>'
+            ? '<button class="payroll-tab" onclick="navigateTo(\'payroll-settings\', event)"><i aria-hidden="true" class="fa-solid fa-sliders"></i> Bordro Ayarları</button>'
             : ""
         }
       </div>
@@ -766,7 +769,7 @@ const renderPayrollDetail = (row, parameters) => `
         <h3>${row.name}</h3>
         <p>${row.title} · ${row.dept} · ${parameters.period}</p>
       </div>
-      <button class="btn-icon-sm" onclick="closePayrollDetail()"><i class="fa-solid fa-xmark"></i></button>
+      <button class="btn-icon-sm" onclick="closePayrollDetail()" title="Kapat" aria-label="Bordro detayını kapat"><i aria-hidden="true" class="fa-solid fa-xmark"></i></button>
     </div>
 
     <div class="payroll-detail-summary">
@@ -785,7 +788,7 @@ const renderPayrollDetail = (row, parameters) => `
         ${renderPayrollLine("Yol yardımı", row.roadAllowance)}
         ${renderPayrollLine("Yemek yardımı", row.mealAllowance)}
         ${renderPayrollLine("Yan hak / ek ödeme", row.benefitPay)}
-        <div class="payroll-note compact"><i class="fa-solid fa-circle-info"></i><span>${row.notes}</span></div>
+        <div class="payroll-note compact"><i aria-hidden="true" class="fa-solid fa-circle-info"></i><span>${row.notes}</span></div>
       </section>
 
       <section class="card payroll-detail-section">
@@ -829,8 +832,8 @@ const renderPayrollDetail = (row, parameters) => `
 
     <div class="payroll-detail-footer">
       <button class="btn btn-secondary" onclick="closePayrollDetail()">Kapat</button>
-      <button class="btn btn-secondary"><i class="fa-solid fa-check-double"></i> Kontrol edildi</button>
-      <button class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Onaya gönder</button>
+      <button class="btn btn-secondary" onclick="showToast('${row.name} bordrosu kontrol edildi olarak işaretlendi.', 'success')"><i aria-hidden="true" class="fa-solid fa-check-double"></i> Kontrol edildi</button>
+      <button class="btn btn-primary" onclick="closePayrollDetail(); showToast('${row.name} bordrosu onaya gönderildi.', 'success')"><i aria-hidden="true" class="fa-solid fa-paper-plane"></i> Onaya gönder</button>
     </div>
   </div>
 `;
@@ -893,11 +896,20 @@ window.savePayrollDefaultSettings = () => {
 
   const feedback = document.querySelector(".payroll-settings-feedback");
   if (feedback) feedback.textContent = "Ayarlar kaydedildi. Dönem bordrosu ve tekil hesaplama bu varsayılanları kullanacak.";
+  showToast("Bordro ayarları kaydedildi.", "success");
 };
 
 window.resetPayrollDefaultSettings = () => {
   localStorage.removeItem("ikpro-payroll-settings");
+  showToast("Bordro ayarları varsayılana döndürüldü.", "info");
   window.navigateTo("payroll-settings");
+};
+
+window.filterPayrollTable = () => {
+  const dept = document.getElementById("payroll-dept-filter")?.value || "";
+  document.querySelectorAll(".payroll-table tbody tr").forEach((row) => {
+    row.style.display = !dept || row.dataset.dept === dept ? "" : "none";
+  });
 };
 
 window.openPayrollDetail = (employeeId) => {

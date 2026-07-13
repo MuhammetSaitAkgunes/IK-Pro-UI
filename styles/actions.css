@@ -1,7 +1,11 @@
+/* ============================================================
+   Global Aksiyon Merkezi + Denetim izi
+   ============================================================ */
+
 #actions-screen {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
   padding-bottom: 40px;
 }
 
@@ -15,7 +19,7 @@
   display: block;
   color: var(--muted);
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: 500;
   margin-top: 7px;
 }
 
@@ -27,8 +31,8 @@
 
 .actions-tabs {
   display: flex;
-  gap: 8px;
-  padding: 6px;
+  gap: 6px;
+  padding: 5px;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--surface);
@@ -42,14 +46,19 @@
   border-radius: var(--radius-md);
   background: transparent;
   color: var(--muted);
-  font-weight: 800;
+  font-weight: 600;
   white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.action-tab.active,
 .action-tab:hover {
+  background: var(--surface-soft);
+  color: var(--ink);
+}
+
+.action-tab.active {
   background: var(--primary-soft);
-  border-color: #c7d2fe;
+  border-color: var(--primary);
   color: var(--primary);
 }
 
@@ -81,7 +90,7 @@
   content: "";
   position: absolute;
   inset: 0 auto 0 0;
-  width: 4px;
+  width: 3px;
   background: var(--success);
 }
 
@@ -105,32 +114,35 @@
 
 .global-action-top > span:last-child {
   color: var(--muted);
-  font-size: 0.8rem;
-  font-weight: 750;
+  font-size: 0.78rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
 
 .global-action-card h4 {
   margin: 12px 0 7px;
-  font-size: 1rem;
+  font-size: 0.98rem;
 }
 
 .global-action-card p {
   color: var(--muted);
-  font-size: 0.88rem;
+  font-size: 0.86rem;
 }
 
 .global-action-meta {
   flex-wrap: wrap;
   margin: 14px 0;
   color: var(--muted);
-  font-size: 0.8rem;
-  font-weight: 750;
+  font-size: 0.78rem;
+  font-weight: 500;
 }
 
 .global-action-footer {
   border-top: 1px solid var(--line-soft);
   padding-top: 12px;
 }
+
+/* ---------- Denetim izi ---------- */
 
 .audit-timeline {
   display: flex;
@@ -143,7 +155,7 @@
   grid-template-columns: 28px minmax(0, 1fr);
   gap: 12px;
   position: relative;
-  padding-bottom: 18px;
+  padding-bottom: 16px;
 }
 
 .audit-item:not(:last-child)::before {
@@ -181,8 +193,9 @@
 .audit-body small,
 .audit-head span {
   color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 750;
+  font-size: 0.76rem;
+  font-weight: 500;
+  font-family: var(--font-data);
 }
 
 @media (max-width: 1180px) {

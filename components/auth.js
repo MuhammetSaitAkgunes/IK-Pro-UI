@@ -2,7 +2,7 @@ const AuthScreen = (mode = "login") => `
   <main class="auth-shell">
     <section class="auth-visual">
       <div class="auth-brand">
-        <div class="brand-mark"><i class="fa-solid fa-users-gear"></i></div>
+        <div class="brand-mark"><i aria-hidden="true" class="fa-solid fa-users-gear"></i></div>
         <div>
           <strong>İK Pro</strong>
           <span>HR MASTER Suite</span>
@@ -30,15 +30,15 @@ const AuthScreen = (mode = "login") => `
         <h2>Hoş geldiniz</h2>
         <p>Demo hesaba giriş yaparak uygulamayı inceleyebilirsiniz.</p>
         <div class="input-group">
-          <label>E-posta</label>
+          <label for="login-email">E-posta</label>
           <input id="login-email" class="input-control" value="ik@hrmaster.local" />
         </div>
         <div class="input-group">
-          <label>Şifre</label>
+          <label for="login-password">Şifre</label>
           <input id="login-password" class="input-control" type="password" value="demo123" />
         </div>
         <button class="btn btn-primary auth-submit" onclick="submitLogin()">
-          <i class="fa-solid fa-arrow-right-to-bracket"></i> Giriş yap
+          <i aria-hidden="true" class="fa-solid fa-arrow-right-to-bracket"></i> Giriş yap
         </button>
       </div>
 
@@ -46,15 +46,15 @@ const AuthScreen = (mode = "login") => `
         <h2>Demo hesap oluştur</h2>
         <p>Bilgiler yalnızca demo session için kullanılacaktır.</p>
         <div class="input-group">
-          <label>Ad soyad</label>
+          <label for="signup-name">Ad soyad</label>
           <input id="signup-name" class="input-control" value="İK Yöneticisi" />
         </div>
         <div class="input-group">
-          <label>İş e-postası</label>
+          <label for="signup-email">İş e-postası</label>
           <input id="signup-email" class="input-control" value="ik@hrmaster.local" />
         </div>
         <button class="btn btn-primary auth-submit" onclick="submitSignup()">
-          <i class="fa-solid fa-user-plus"></i> Hesap oluştur
+          <i aria-hidden="true" class="fa-solid fa-user-plus"></i> Hesap oluştur
         </button>
       </div>
     </section>
@@ -73,7 +73,7 @@ window.submitLogin = () => {
     email: document.getElementById("login-email")?.value,
     password: document.getElementById("login-password")?.value,
   });
-  navigateTo("dashboard");
+  navigateTo(getDefaultProtectedRoute());
 };
 
 window.submitSignup = () => {
@@ -81,5 +81,5 @@ window.submitSignup = () => {
     name: document.getElementById("signup-name")?.value,
     email: document.getElementById("signup-email")?.value,
   });
-  navigateTo("dashboard");
+  navigateTo(getDefaultProtectedRoute());
 };
