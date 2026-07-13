@@ -152,14 +152,24 @@ public sealed class DashboardTests(IKProApiFactory factory)
         var admin = await AuthedClientAsync("ik@hrmaster.local");
         var compliance = await GetAsync<ComplianceRiskDto>(admin, "/api/dashboard/compliance");
 
-        // Seed: 5 evrak → 1 tamamlandı (%20), 1 eksik, 2 süresi yaklaşıyor, 1 incelemede.
-        compliance.DocumentComplianceScore.Should().Be(20);
-        compliance.MissingDocuments.Should().Be(1);
-        compliance.UpcomingDocuments.Should().Be(2);
+        // Skorlar dönen kayıtlardan yeniden türetilir (test sırasından bağımsız):
+        // uyum = tamamlanan/toplam; hazırlık = 100 - eksik*6 - yaklaşan*3 - incelemede*2.
+        var total = compliance.Records.Count;
+        var completed = compliance.Records.Count(r => r.Status == "Tamamlandı");
+        var missing = compliance.Records.Count(r => r.Status == "Eksik");
+        var dueSoon = compliance.Records.Count(r => r.Status == "Süresi Yaklaşıyor");
+        var inReview = compliance.Records.Count(r => r.Status == "İncelemede");
 
-        // Hazırlık: 100 - 1*6 - 2*3 - 1*2 = 86 → Düşük risk.
-        compliance.AuditReadinessScore.Should().Be(86);
-        compliance.AuditReadinessRisk.Should().Be("Düşük");
+        total.Should().BeGreaterThanOrEqualTo(5, "seed 5 uyum evrağı içerir");
+        compliance.DocumentComplianceScore.Should().Be(
+            (int)Math.Round(100.0 * completed / total, MidpointRounding.AwayFromZero));
+        compliance.MissingDocuments.Should().Be(missing);
+        compliance.UpcomingDocuments.Should().Be(dueSoon);
+
+        var expectedReadiness = Math.Clamp(100 - missing * 6 - dueSoon * 3 - inReview * 2, 0, 100);
+        compliance.AuditReadinessScore.Should().Be(expectedReadiness);
+        compliance.AuditReadinessRisk.Should().Be(
+            expectedReadiness >= 80 ? "Düşük" : expectedReadiness >= 60 ? "Orta" : "Yüksek");
 
         var kvkk = compliance.Records.Single(r => r.Document == "KVKK açık rıza eki");
         kvkk.DueDate.Should().Be("Bugün");

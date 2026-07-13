@@ -59,6 +59,7 @@ public interface IApplicationDbContext
 
     // Compliance
     DbSet<ComplianceDocument> ComplianceDocuments { get; }
+    DbSet<Domain.ReadModels.ComplianceReadiness> ComplianceReadiness { get; }
 
     // Actions & Audit
     DbSet<GlobalAction> GlobalActions { get; }

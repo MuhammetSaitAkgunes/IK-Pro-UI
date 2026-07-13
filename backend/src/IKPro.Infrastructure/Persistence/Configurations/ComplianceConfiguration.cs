@@ -25,3 +25,12 @@ public class ComplianceDocumentConfiguration : IEntityTypeConfiguration<Complian
         b.HasIndex(d => d.DueDate);
     }
 }
+
+public class ComplianceReadinessConfiguration
+    : IEntityTypeConfiguration<Domain.ReadModels.ComplianceReadiness>
+{
+    public void Configure(EntityTypeBuilder<Domain.ReadModels.ComplianceReadiness> b)
+    {
+        b.HasNoKey().ToView("vw_ComplianceReadiness");
+    }
+}

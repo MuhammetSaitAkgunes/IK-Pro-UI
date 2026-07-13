@@ -84,6 +84,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         => Set<Domain.ReadModels.EmployeeRiskMetric>();
     public DbSet<Domain.ReadModels.DepartmentRiskSummary> DepartmentRiskSummaries
         => Set<Domain.ReadModels.DepartmentRiskSummary>();
+    public DbSet<Domain.ReadModels.ComplianceReadiness> ComplianceReadiness
+        => Set<Domain.ReadModels.ComplianceReadiness>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
