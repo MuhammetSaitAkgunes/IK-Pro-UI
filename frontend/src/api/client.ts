@@ -1,18 +1,25 @@
 import type { components } from "./schema";
-import { clearSession, getSession, setSession } from "./session";
+import { clearSession, getSession, setSession, type Session } from "./session";
 
 type ProblemDetails = { title?: string; status?: number; errors?: Record<string, string[]> };
-type AuthResponse = components["schemas"]["AuthResponse"];
+export type AuthResponse = components["schemas"]["AuthResponse"];
 
 export class ApiError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-    public problem?: ProblemDetails,
-  ) {
+  status: number;
+  problem?: ProblemDetails;
+  constructor(status: number, message: string, problem?: ProblemDetails) {
     super(message);
+    this.status = status;
+    this.problem = problem;
   }
 }
+
+export const toSession = (auth: AuthResponse): Session => {
+  if (!auth.token || !auth.refreshToken || !auth.user) {
+    throw new ApiError(500, "Kimlik yanıtı eksik alan içeriyor.");
+  }
+  return { token: auth.token, refreshToken: auth.refreshToken, user: auth.user };
+};
 
 const API_BASE = "/api";
 let refreshInFlight: Promise<boolean> | null = null;
@@ -38,7 +45,7 @@ const tryRefresh = (): Promise<boolean> =>
       });
       if (!response.ok) return false;
       const auth = (await response.json()) as AuthResponse;
-      setSession({ token: auth.token, refreshToken: auth.refreshToken, user: auth.user });
+      setSession(toSession(auth));
       return true;
     } catch {
       return false;

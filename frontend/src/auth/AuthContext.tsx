@@ -1,9 +1,6 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
-import { apiFetch } from "../api/client";
+import { apiFetch, toSession, type AuthResponse } from "../api/client";
 import { clearSession, getSession, setSession, type UserDto } from "../api/session";
-import type { components } from "../api/schema";
-
-type AuthResponse = components["schemas"]["AuthResponse"];
 
 type AuthValue = {
   user: UserDto | null;
@@ -18,9 +15,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserDto | null>(() => getSession()?.user ?? null);
 
   const accept = useCallback((auth: AuthResponse) => {
-    setSession({ token: auth.token, refreshToken: auth.refreshToken, user: auth.user });
-    setUser(auth.user);
-    return auth.user;
+    const session = toSession(auth);
+    setSession(session);
+    setUser(session.user);
+    return session.user;
   }, []);
 
   const login = useCallback(
