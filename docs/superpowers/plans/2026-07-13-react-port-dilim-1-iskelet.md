@@ -1,4 +1,4 @@
-# React Port — Dilim 1: İskelet — Implementation Plan
+﻿# React Port — Dilim 1: İskelet — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -33,7 +33,7 @@
 **Interfaces:**
 - Produces: çalışan Vite+Vitest altyapısı; `src/styles/` altında 11 CSS; `/api` proxy'si.
 
-- [ ] **Step 1: Vite projesini oluştur ve sürümleri sabitle**
+- [x] **Step 1: Vite projesini oluştur ve sürümleri sabitle**
 
 ```bash
 cd "C:\Users\Lenovo\OneDrive\Masaüstü\İK Pro UI\İK Pro"
@@ -44,7 +44,7 @@ npm install react-router-dom@^7 @tanstack/react-query@^5
 npm install -D @types/react@^18 @types/react-dom@^18 openapi-typescript@^7 vitest jsdom @testing-library/react @testing-library/jest-dom @testing-library/user-event
 ```
 
-- [ ] **Step 2: CSS dosyalarını kopyala** (değiştirmeden)
+- [x] **Step 2: CSS dosyalarını kopyala** (değiştirmeden)
 
 ```bash
 mkdir src/styles
@@ -53,7 +53,7 @@ cp ../styles/*.css src/styles/
 
 Beklenen: 11 dosya (main, auth, layout, actions, personnel, recruitment, attendance, leaves, payroll, manager, settings).
 
-- [ ] **Step 3: `index.html`'i eski head ile hizala** — içeriği tamamen değiştir:
+- [x] **Step 3: `index.html`'i eski head ile hizala** — içeriği tamamen değiştir:
 
 ```html
 <!doctype html>
@@ -80,7 +80,7 @@ Beklenen: 11 dosya (main, auth, layout, actions, personnel, recruitment, attenda
 </html>
 ```
 
-- [ ] **Step 4: `vite.config.ts`** — proxy + Vitest:
+- [x] **Step 4: `vite.config.ts`** — proxy + Vitest:
 
 ```ts
 import { defineConfig } from "vitest/config";
@@ -102,13 +102,13 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 5: `src/test/setup.ts`**
+- [x] **Step 5: `src/test/setup.ts`**
 
 ```ts
 import "@testing-library/jest-dom/vitest";
 ```
 
-- [ ] **Step 6: Şablon artıklarını temizle, `main.tsx` ve `App.tsx` yaz**
+- [x] **Step 6: Şablon artıklarını temizle, `main.tsx` ve `App.tsx` yaz**
 
 `src/App.css`, `src/index.css`, `src/assets/react.svg`, `public/vite.svg` dosyalarını sil.
 
@@ -145,7 +145,7 @@ export default function App() {
 }
 ```
 
-- [ ] **Step 7: Smoke testi yaz** — `src/App.test.tsx`:
+- [x] **Step 7: Smoke testi yaz** — `src/App.test.tsx`:
 
 ```tsx
 import { render, screen } from "@testing-library/react";
@@ -157,12 +157,12 @@ test("uygulama başlığı render edilir", () => {
 });
 ```
 
-- [ ] **Step 8: Testi ve build'i doğrula**
+- [x] **Step 8: Testi ve build'i doğrula**
 
 Run: `npm test -- --run` → Beklenen: 1 test PASS.
 Run: `npm run build` → Beklenen: hatasız `dist/` çıktısı.
 
-- [ ] **Step 9: package.json script'ine test ekle ve commit**
+- [x] **Step 9: package.json script'ine test ekle ve commit**
 
 `package.json` `scripts` içine: `"test": "vitest"`.
 
@@ -183,24 +183,24 @@ git commit -m "feat(frontend): Vite+React+TS iskeleti, CSS taşıma, Vitest alty
 **Interfaces:**
 - Produces: `import type { components, paths } from "./schema"` — sonraki görevler `components["schemas"]["AuthResponse"]`, `components["schemas"]["UserDto"]` tiplerini kullanır.
 
-- [ ] **Step 1: Script ekle** — `package.json` `scripts`:
+- [x] **Step 1: Script ekle** — `package.json` `scripts`:
 
 ```json
 "gen:api": "openapi-typescript http://localhost:5053/swagger/v1/swagger.json -o src/api/schema.d.ts"
 ```
 
-- [ ] **Step 2: Backend'i başlat (ayrı terminal)**
+- [x] **Step 2: Backend'i başlat (ayrı terminal)**
 
 Run: `cd backend && dotnet run --project src/IKPro.API --launch-profile http`
 Beklenen: `Now listening on: http://localhost:5053`.
 
-- [ ] **Step 3: Tipleri üret ve doğrula**
+- [x] **Step 3: Tipleri üret ve doğrula**
 
 Run: `cd frontend && npm run gen:api`
 Doğrula: `src/api/schema.d.ts` içinde `"/api/auth/login"` ve `AuthResponse` geçiyor:
 `grep -c "auth/login\|AuthResponse" src/api/schema.d.ts` → ≥ 2.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add frontend/package.json frontend/src/api/schema.d.ts
@@ -221,7 +221,7 @@ git commit -m "feat(frontend): swagger'dan openapi-typescript tip üretimi (gen:
   - `session.ts`: `type Session = { token: string; refreshToken: string; user: UserDto }`, `getSession(): Session | null`, `setSession(s: Session): void`, `clearSession(): void`, `SESSION_KEY = "ikpro-session"`.
   - `client.ts`: `class ApiError extends Error { status: number; problem?: ProblemDetails }`, `apiFetch<T>(path: string, init?: RequestInit): Promise<T>` (görece yol `/api` öneki alır, Bearer ekler, 204→null, 401'de tek seferlik refresh+retry, refresh düşerse `clearSession()` + `window.location.hash = "/login"`).
 
-- [ ] **Step 1: `session.ts` yaz**
+- [x] **Step 1: `session.ts` yaz**
 
 ```ts
 import type { components } from "./schema";
@@ -245,7 +245,7 @@ export const setSession = (session: Session) =>
 export const clearSession = () => localStorage.removeItem(SESSION_KEY);
 ```
 
-- [ ] **Step 2: Başarısız testleri yaz** — `client.test.ts`:
+- [x] **Step 2: Başarısız testleri yaz** — `client.test.ts`:
 
 ```ts
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
@@ -310,12 +310,12 @@ test("refresh de düşerse oturum silinir ve login'e yönlenir", async () => {
 });
 ```
 
-- [ ] **Step 2b: Testin başarısız olduğunu doğrula**
+- [x] **Step 2b: Testin başarısız olduğunu doğrula**
 
 Run: `npm test -- --run src/api/client.test.ts`
 Beklenen: FAIL — `client.ts` yok / export bulunamadı.
 
-- [ ] **Step 3: `client.ts` yaz**
+- [x] **Step 3: `client.ts` yaz**
 
 ```ts
 import type { components } from "./schema";
@@ -395,11 +395,11 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
 }
 ```
 
-- [ ] **Step 4: Testleri doğrula**
+- [x] **Step 4: Testleri doğrula**
 
 Run: `npm test -- --run src/api/client.test.ts` → Beklenen: 4 test PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/api/
@@ -421,7 +421,7 @@ git commit -m "feat(frontend): Bearer + ProblemDetails + 401-refresh akışlı f
   - `LoginPage.tsx`: `<LoginPage mode="login" | "signup" />` — eski `AuthScreen` markup paritesi (`auth-shell`, `auth-tabs`, `auth-form active` …). Hata durumu için formun altında `<p className="form-error">{mesaj}</p>` (API zorunlu kıldığı yeni durum).
   - Signup formuna **şifre alanı eklenir** (backend `RegisterCommand(Name, Email, Password, Role?)` zorunlu kılar — eski mock'ta yoktu).
 
-- [ ] **Step 1: Başarısız testleri yaz** — `LoginPage.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `LoginPage.test.tsx`:
 
 ```tsx
 import { render, screen } from "@testing-library/react";
@@ -484,7 +484,7 @@ test("başarısız girişte hata mesajı görünür, oturum yazılmaz", async ()
 
 Run: `npm test -- --run src/auth` → Beklenen: FAIL (modüller yok).
 
-- [ ] **Step 2: `AuthContext.tsx` yaz**
+- [x] **Step 2: `AuthContext.tsx` yaz**
 
 ```tsx
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
@@ -545,7 +545,7 @@ export function useAuth(): AuthValue {
 }
 ```
 
-- [ ] **Step 3: `LoginPage.tsx` yaz** (eski `AuthScreen` DOM paritesi; `roleHome` Task 5'te gelecek — şimdilik `/dashboard`'a yönlendir, Task 5 bunu `roleHomeFor(user.role)` ile değiştirecek):
+- [x] **Step 3: `LoginPage.tsx` yaz** (eski `AuthScreen` DOM paritesi; `roleHome` Task 5'te gelecek — şimdilik `/dashboard`'a yönlendir, Task 5 bunu `roleHomeFor(user.role)` ile değiştirecek):
 
 ```tsx
 import { useState, type FormEvent } from "react";
@@ -645,11 +645,11 @@ export function LoginPage({ mode = "login" }: { mode?: "login" | "signup" }) {
 }
 ```
 
-- [ ] **Step 4: Testleri doğrula**
+- [x] **Step 4: Testleri doğrula**
 
 Run: `npm test -- --run src/auth` → Beklenen: 3 test PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/auth/
@@ -672,7 +672,7 @@ git commit -m "feat(frontend): AuthContext + gerçek API'ye bağlı login/signup
   - `guards.tsx`: `RequireAuth` (oturum yoksa `/login`'e Navigate; login sayfaları oturum varken roleHome'a Navigate — `PublicOnly`), `RouteGate` (rol yetkisi yoksa **redirect değil**, eski davranış paritesiyle shell içinde "Yetki Gerekli" ekranı).
   - `PlaceholderPage`: eski `emptyRouteState` markup'ı (`surface empty-state`, "Bu alan hazırlanıyor").
 
-- [ ] **Step 1: Başarısız testleri yaz** — `src/routes.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `src/routes.test.tsx`:
 
 ```tsx
 import { render, screen } from "@testing-library/react";
@@ -716,7 +716,7 @@ test("hr-admin, settings placeholder'ını görür", () => {
 
 Run: `npm test -- --run src/routes.test.tsx` → Beklenen: FAIL.
 
-- [ ] **Step 2: `PlaceholderPage.tsx` yaz**
+- [x] **Step 2: `PlaceholderPage.tsx` yaz**
 
 ```tsx
 export function PlaceholderPage() {
@@ -730,7 +730,7 @@ export function PlaceholderPage() {
 }
 ```
 
-- [ ] **Step 3: `routes.tsx` yaz** — rota meta tablosu + router fabrikası:
+- [x] **Step 3: `routes.tsx` yaz** — rota meta tablosu + router fabrikası:
 
 ```tsx
 import type { RouteObject } from "react-router-dom";
@@ -821,7 +821,7 @@ export function buildRouteObjects(): RouteObject[] {
 }
 ```
 
-- [ ] **Step 4: `guards.tsx` yaz**
+- [x] **Step 4: `guards.tsx` yaz**
 
 ```tsx
 import type { ReactNode } from "react";
@@ -857,7 +857,7 @@ export function RouteGate({ route, children }: { route: AppRoute; children: Reac
 }
 ```
 
-- [ ] **Step 5: `App.tsx` + `main.tsx` router'a bağla; LoginPage roleHome kullansın**
+- [x] **Step 5: `App.tsx` + `main.tsx` router'a bağla; LoginPage roleHome kullansın**
 
 `App.tsx`:
 
@@ -901,11 +901,11 @@ test("oturum yokken giriş ekranı açılır", () => {
 });
 ```
 
-- [ ] **Step 6: Testleri doğrula**
+- [x] **Step 6: Testleri doğrula**
 
 Run: `npm test -- --run` → Beklenen: tüm testler PASS (App + api + auth + routes).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add frontend/src/
@@ -928,7 +928,7 @@ git commit -m "feat(frontend): hash router, rol matrisi ve guard'lar (routes.js 
   - `ToastProvider` + `useToast(): { showToast(message, type?) }` — eski `.toast-region/.toast` markup'ı; sonraki dilimlerin tümü kullanır.
   - `GlobalSearch`: bu dilimde yalnız **sayfa** sonuçları (rol-erişilebilir rota başlıkları); `/api/search` dilim 7'de eklenecek. Ctrl+K ve `/` kısayolu, ok tuşları + Enter, Escape kapatır.
 
-- [ ] **Step 1: Başarısız testi yaz** — `AppShell.test.tsx`:
+- [x] **Step 1: Başarısız testi yaz** — `AppShell.test.tsx`:
 
 ```tsx
 import { render, screen } from "@testing-library/react";
@@ -979,7 +979,7 @@ test("employee menüsünde yalnız yetkili modüller görünür", () => {
 
 Run: `npm test -- --run src/layout` → Beklenen: FAIL.
 
-- [ ] **Step 2: `ToastProvider.tsx` yaz**
+- [x] **Step 2: `ToastProvider.tsx` yaz**
 
 ```tsx
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
@@ -1026,7 +1026,7 @@ export function useToast() {
 }
 ```
 
-- [ ] **Step 3: `GlobalSearch.tsx` yaz** (yalnız sayfa sonuçları; markup paritesi):
+- [x] **Step 3: `GlobalSearch.tsx` yaz** (yalnız sayfa sonuçları; markup paritesi):
 
 ```tsx
 import { useEffect, useRef, useState } from "react";
@@ -1125,7 +1125,7 @@ export function GlobalSearch() {
 }
 ```
 
-- [ ] **Step 4: `AppShell.tsx` yaz** (Layout() paritesi):
+- [x] **Step 4: `AppShell.tsx` yaz** (Layout() paritesi):
 
 ```tsx
 import { useEffect, useState } from "react";
@@ -1261,7 +1261,7 @@ export function AppShell() {
 }
 ```
 
-- [ ] **Step 5: Router'a bağla** — `routes.tsx` içinde `RequireAuth` elementini AppShell ile değiştir:
+- [x] **Step 5: Router'a bağla** — `routes.tsx` içinde `RequireAuth` elementini AppShell ile değiştir:
 
 ```tsx
 import { AppShell } from "./layout/AppShell";
@@ -1303,11 +1303,11 @@ export default function App() {
 
 Not: `routes.test.tsx` ve `AppShell.test.tsx` artık shell içinden geçer — `routes.test.tsx`'teki iki korumalı-rota testine QueryClientProvider + ToastProvider sarmalayıcısını ekle (AppShell.test.tsx'teki `renderShellAt` yardımcısının aynısını kullan) ve fetch stub'ı ekle (rozet isteği için).
 
-- [ ] **Step 6: Tüm testleri doğrula**
+- [x] **Step 6: Tüm testleri doğrula**
 
 Run: `npm test -- --run` → Beklenen: tümü PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add frontend/src/
@@ -1321,12 +1321,12 @@ git commit -m "feat(frontend): AppShell — sidebar/header/tema/rozet/arama/toas
 **Files:**
 - Modify: yok (doğrulama görevi); gerekirse bulunan küçük hatalar düzeltilir.
 
-- [ ] **Step 1: Backend + frontend'i başlat**
+- [x] **Step 1: Backend + frontend'i başlat**
 
 Terminal 1: `cd backend && dotnet run --project src/IKPro.API --launch-profile http`
 Terminal 2: `cd frontend && npm run dev` → `http://localhost:5173`
 
-- [ ] **Step 2: Üç rolle giriş duman testi**
+- [x] **Step 2: Üç rolle giriş duman testi**
 
 1. `ik@hrmaster.local / demo123` → `#/dashboard` açılır; sidebar'da 4 grup, 10 modül; rozet > 0.
 2. Rol değiştirici → "Çalışan" → `#/overview`; menüde yalnız Genel Durum/Aksiyonlar/İzinlerim/Bordro.
@@ -1336,11 +1336,11 @@ Terminal 2: `cd frontend && npm run dev` → `http://localhost:5173`
 6. Ctrl+K → arama; "izin" yaz → "İzinlerim" sonucu; Enter → sayfa.
 7. Çıkış → `#/login`.
 
-- [ ] **Step 3: Görsel parite kontrolü**
+- [x] **Step 3: Görsel parite kontrolü**
 
 Eski uygulamayı yan sekmede aç (kökteki `index.html` — canlı sunucu veya dosyadan). Login ekranı ve shell (sidebar/header) yan yana karşılaştır: renkler, boşluklar, ikonlar, yazı tipleri birebir olmalı. Fark bulunursa DOM/class farkı olarak düzelt (CSS'e dokunma).
 
-- [ ] **Step 4: Kapanış commit'i (varsa düzeltmelerle)**
+- [x] **Step 4: Kapanış commit'i (varsa düzeltmelerle)**
 
 ```bash
 git add frontend/
