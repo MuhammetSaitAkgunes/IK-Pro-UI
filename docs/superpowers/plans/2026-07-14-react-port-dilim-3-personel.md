@@ -1,4 +1,4 @@
-# React Port — Dilim 3: Personel + Departman — Implementation Plan
+﻿# React Port — Dilim 3: Personel + Departman — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -43,7 +43,7 @@
   - `apiFetch`: gövde `FormData` ise `Content-Type` başlığı **eklenmez** (tarayıcı boundary'yi kendisi yazar); mevcut davranış diğer gövdelerde değişmez.
   - `apiDownload(path: string): Promise<{ blob: Blob; fileName: string | null }>` — Bearer + 401-refresh akışını aynen kullanır, `Content-Disposition`'dan dosya adını çözer (`filename="..."` veya `filename*=UTF-8''...`), hata durumunda `ApiError` fırlatır.
 
-- [ ] **Step 1: Başarısız testleri ekle** — `client.test.ts` sonuna:
+- [x] **Step 1: Başarısız testleri ekle** — `client.test.ts` sonuna:
 
 ```ts
 test("FormData gövdesinde Content-Type başlığı eklenmez", async () => {
@@ -83,7 +83,7 @@ test("apiDownload hata durumunda ApiError fırlatır", async () => {
 
 Run: `npm test -- --run src/api` → Beklenen: FAIL (apiDownload yok; Content-Type testi düşer).
 
-- [ ] **Step 2: `client.ts`'i güncelle**
+- [x] **Step 2: `client.ts`'i güncelle**
 
 `rawFetch` içindeki Content-Type satırını değiştir:
 
@@ -121,9 +121,9 @@ export async function apiDownload(path: string): Promise<{ blob: Blob; fileName:
 }
 ```
 
-- [ ] **Step 3: Testleri doğrula** — Run: `npm test -- --run src/api` → 7 test PASS.
+- [x] **Step 3: Testleri doğrula** — Run: `npm test -- --run src/api` → 7 test PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add frontend/src/api/
@@ -153,7 +153,7 @@ git commit -m "feat(frontend): apiFetch FormData desteği + apiDownload (Content
     - `useUploadPhoto()` → mutation `{ id: number; file: File }`: FormData `file`
     - `useUploadDocument()` → mutation `{ id: number; file: File; documentType: string }`; başarıda `["employees", id, "documents"]` invalidation
 
-- [ ] **Step 1: Başarısız testleri yaz** — `csv.test.ts`:
+- [x] **Step 1: Başarısız testleri yaz** — `csv.test.ts`:
 
 ```ts
 import { expect, test } from "vitest";
@@ -184,7 +184,7 @@ test("rowFilter false dönen satırları atlar", () => {
 
 Run: `npm test -- --run src/features/personnel` → FAIL.
 
-- [ ] **Step 2: `csv.ts` yaz** (eski `exportTableToCSV` portu, iki parçaya bölünmüş)
+- [x] **Step 2: `csv.ts` yaz** (eski `exportTableToCSV` portu, iki parçaya bölünmüş)
 
 ```ts
 export const tableToCsvLines = (
@@ -217,7 +217,7 @@ export const downloadCsv = (lines: string[], fileName: string): void => {
 };
 ```
 
-- [ ] **Step 3: `queries.ts` yaz**
+- [x] **Step 3: `queries.ts` yaz**
 
 ```ts
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -311,9 +311,9 @@ export const useUploadDocument = () => {
 };
 ```
 
-- [ ] **Step 4: Testleri doğrula** — Run: `npm test -- --run src/features/personnel` → 2 test PASS.
+- [x] **Step 4: Testleri doğrula** — Run: `npm test -- --run src/features/personnel` → 2 test PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/features/personnel/
@@ -333,7 +333,7 @@ git commit -m "feat(frontend): personel CSV yardımcıları ve TanStack Query ho
 - Consumes: Task 2 hook'ları, `useToast`, `useAuth`, `PageLoading/PageError`.
 - Produces: `PersonnelPage()`; modal Task 4'te eklenecek — bu görevde "Yeni Personel"/"Görüntüle"/"Düzenle" butonları `onOpenCard(id | null)` iç state'ini set eder, modal placeholder olarak `null` render eder (Task 4 dolduracak).
 
-- [ ] **Step 1: Başarısız testleri yaz** — `PersonnelPage.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `PersonnelPage.test.tsx`:
 
 ```tsx
 import { screen, waitFor } from "@testing-library/react";
@@ -424,7 +424,7 @@ test("arama filtresi query paramına yansır", async () => {
 
 Run: `npm test -- --run src/features/personnel/PersonnelPage.test.tsx` → FAIL.
 
-- [ ] **Step 2: `PersonnelPage.tsx` yaz** (eski Personnel() liste yarısının DOM paritesi)
+- [x] **Step 2: `PersonnelPage.tsx` yaz** (eski Personnel() liste yarısının DOM paritesi)
 
 ```tsx
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -654,11 +654,11 @@ export function PersonnelPage() {
 }
 ```
 
-- [ ] **Step 3: `routes.tsx` `pageFor`'a ekle** (`personnel: PersonnelPage` + import)
+- [x] **Step 3: `routes.tsx` `pageFor`'a ekle** (`personnel: PersonnelPage` + import)
 
-- [ ] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
+- [x] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/
@@ -688,7 +688,7 @@ Form state tek nesnede tutulur (`FormState`), alan eşlemesi:
 | Mali | iban, bankName, salaryType (Net Maaş/Brüt Maaş), pensionStatus (Otomatik Katılım/İptal/Muaf), mealCard |
 | Özlük | tshirtSize (S/M/L/XL), pantsSize (30/32/34), coatSize (M/L), shoeSize, canWorkAtHeight, canWorkNightShift, canLiftHeavyLoads, healthNotes |
 
-- [ ] **Step 1: Başarısız testleri yaz** — `PersonnelModal.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `PersonnelModal.test.tsx`:
 
 ```tsx
 import { screen, waitFor } from "@testing-library/react";
@@ -769,7 +769,7 @@ test("salt-okur modda inputlar disabled, Kaydet yok", async () => {
 
 Run: `npm test -- --run src/features/personnel/PersonnelModal.test.tsx` → FAIL.
 
-- [ ] **Step 2: `PersonnelModal.tsx` yaz**
+- [x] **Step 2: `PersonnelModal.tsx` yaz**
 
 Eski modal markup'ı birebir (fullscreen-modal, modal-sidebar nav-btn'ler, content-section'lar, form-grid col-* sınıfları). Kontrollü inputlar; her `input-label`e `htmlFor` ve input'a `id` eklenir (`pm-` öneki) — eski DOM'da label-for yoktu, erişilebilirlik eklemesi görsel farksızdır.
 
@@ -1136,7 +1136,7 @@ export function PersonnelModal({ employeeId, readOnly, onClose }:
 }
 ```
 
-- [ ] **Step 3: `PersonnelPage.tsx`'e modalı bağla** — `{cardId !== undefined && null}` satırını değiştir:
+- [x] **Step 3: `PersonnelPage.tsx`'e modalı bağla** — `{cardId !== undefined && null}` satırını değiştir:
 
 ```tsx
       {cardId !== undefined && (
@@ -1150,9 +1150,9 @@ export function PersonnelModal({ employeeId, readOnly, onClose }:
 
 `import { PersonnelModal } from "./PersonnelModal";` ekle.
 
-- [ ] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
+- [x] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/features/personnel/
@@ -1172,7 +1172,7 @@ git commit -m "feat(frontend): personel kartı modalı — 6 sekme, gerçek CRUD
 - Consumes: `useEmployeeDocuments`, `useUploadDocument`, `apiDownload`, `useToast`.
 - Produces: `DocumentsTab({ employeeId, readOnly }: { employeeId: number | null; readOnly: boolean })`.
 
-- [ ] **Step 1: Başarısız testleri yaz** — `DocumentsTab.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `DocumentsTab.test.tsx`:
 
 ```tsx
 import { screen, waitFor } from "@testing-library/react";
@@ -1225,7 +1225,7 @@ test("yeni kayıtta bilgi notu görünür", () => {
 
 Run: `npm test -- --run src/features/personnel/DocumentsTab.test.tsx` → FAIL.
 
-- [ ] **Step 2: `DocumentsTab.tsx` yaz**
+- [x] **Step 2: `DocumentsTab.tsx` yaz**
 
 ```tsx
 import { useRef, useState } from "react";
@@ -1342,7 +1342,7 @@ export function DocumentsTab({ employeeId, readOnly }: { employeeId: number | nu
 }
 ```
 
-- [ ] **Step 3: `PersonnelModal.tsx` tab-evrak içeriğini değiştir**
+- [x] **Step 3: `PersonnelModal.tsx` tab-evrak içeriğini değiştir**
 
 ```tsx
           <div id="tab-evrak" className={`content-section ${activeTab === "tab-evrak" ? "active" : ""}`}>
@@ -1352,9 +1352,9 @@ export function DocumentsTab({ employeeId, readOnly }: { employeeId: number | nu
 
 `import { DocumentsTab } from "./DocumentsTab";` ekle; eski dropzone bloğunu kaldır.
 
-- [ ] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS. `npm run build` → hatasız.
+- [x] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS. `npm run build` → hatasız.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/features/personnel/
@@ -1368,9 +1368,9 @@ git commit -m "feat(frontend): özlük evrakları — liste, yükleme (FormData)
 **Files:**
 - Modify: `docs/gelistirme-gunlugu.md`; gerekirse küçük düzeltmeler.
 
-- [ ] **Step 1: Backend + frontend'i başlat** (dilim 1–2 ile aynı komutlar)
+- [x] **Step 1: Backend + frontend'i başlat** (dilim 1–2 ile aynı komutlar)
 
-- [ ] **Step 2: Duman testi (hr-admin)**
+- [x] **Step 2: Duman testi (hr-admin)**
 
 1. `#/personnel` → liste gerçek seed'le dolar (maskeli TC, rozetler).
 2. Arama kutusuna bir personel adı yaz → liste daralır; departman/durum filtreleri çalışır; eşleşme yoksa boş durum bloğu.
@@ -1382,9 +1382,9 @@ git commit -m "feat(frontend): özlük evrakları — liste, yükleme (FormData)
 8. Foto yükle → toast "Fotoğraf yüklendi."
 9. Rol değiştirici → Yönetici → `#/personnel`: "Yeni Personel"/"Düzenle"/"Pasife al" görünmez; kart salt-okur açılır.
 
-- [ ] **Step 3: Görsel parite** — eski `#/personnel` (4173) ile yeni (5173) yan yana: filter bar, tablo, bulk bar, modal sekmeleri. Bilinçli farklar: maskeli TC, evrak sekmesindeki gerçek liste/tür alanı, foto butonunun buton olması. Başka fark → DOM/class düzeltmesi.
+- [x] **Step 3: Görsel parite** — eski `#/personnel` (4173) ile yeni (5173) yan yana: filter bar, tablo, bulk bar, modal sekmeleri. Bilinçli farklar: maskeli TC, evrak sekmesindeki gerçek liste/tür alanı, foto butonunun buton olması. Başka fark → DOM/class düzeltmesi.
 
-- [ ] **Step 4: Günlük + kapanış commit**
+- [x] **Step 4: Günlük + kapanış commit**
 
 `docs/gelistirme-gunlugu.md`: "Şu an neredeyiz" → Dilim 4 (İzin & Onay + Puantaj); Dilim 3 kaydı eklenir. Dilim 3 plan kutuları işaretlenir.
 

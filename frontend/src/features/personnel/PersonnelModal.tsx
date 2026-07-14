@@ -194,17 +194,21 @@ export function PersonnelModal({ employeeId, readOnly, onClose }:
               <div className="photo-upload col-12">
                 <div className="photo-preview"><i aria-hidden="true" className="fa-solid fa-user" /></div>
                 <div>
-                  <button
-                    type="button"
+                  <span
                     className="upload-btn"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => {
                       if (readOnly) return;
                       if (employeeId === null) { showToast("Fotoğraf için önce kaydı oluşturun.", "info"); return; }
                       photoInputRef.current?.click();
                     }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") e.currentTarget.click();
+                    }}
                   >
                     Fotoğraf Yükle
-                  </button>
+                  </span>
                   <small>JPG/PNG, maksimum 2 MB</small>
                   <input ref={photoInputRef} type="file" accept="image/jpeg,image/png" hidden onChange={(e) => handlePhoto(e.target.files?.[0])} />
                 </div>

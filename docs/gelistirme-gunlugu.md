@@ -6,16 +6,17 @@
 
 ## Şu an neredeyiz
 
-- **Aktif iş:** React portu — **Dilim 2 tamamlandı**; dal `feature/react-port-dilim-2`
+- **Aktif iş:** React portu — **Dilim 3 tamamlandı**; dal `feature/react-port-dilim-3`
   main'e merge kararı bekliyor.
-- **Son tamamlanan:** Dilim 2 (Overview + Risk Merkezi + 5 risk detayı) — 7 görev,
-  33 birim test, duman testi ve parite kontrolü geçti.
-- **Sıradaki adım:** Dilim 2'yi main'e merge et; sonra Dilim 3 (Personel + Departman)
+- **Son tamamlanan:** Dilim 3 (Personel + Departman) — 6 görev, 49 birim test,
+  15 kontrollük duman testi (gerçek CRUD/evrak/foto dahil) ve parite kontrolü geçti.
+- **Sıradaki adım:** Dilim 3'ü main'e merge et; sonra Dilim 4 (İzin & Onay + Puantaj)
   planını yeni dalda yaz (`docs/superpowers/plans/`).
 - **Referanslar:**
   - Tasarım dokümanı: `docs/superpowers/specs/2026-07-13-react-frontend-port-design.md`
   - Dilim 1 planı (tamamlandı): `docs/superpowers/plans/2026-07-13-react-port-dilim-1-iskelet.md`
   - Dilim 2 planı (tamamlandı): `docs/superpowers/plans/2026-07-14-react-port-dilim-2-overview-dashboard.md`
+  - Dilim 3 planı (tamamlandı): `docs/superpowers/plans/2026-07-14-react-port-dilim-3-personel.md`
   - Backend faz planı: `raporlar/backend-development-plan.md`
 - **Çalıştırma komutları:**
   - Backend: `cd backend && dotnet run --project src/IKPro.API --launch-profile http` → `http://localhost:5053`
@@ -26,6 +27,27 @@
 ---
 
 ## Kayıtlar (yeni → eski)
+
+### 2026-07-14 — Dilim 3: Personel + Departman
+
+- 6 görev TDD ile tamamlandı; 49 birim test + build yeşil.
+- Altyapı: `apiFetch`'e FormData desteği (Content-Type basılmıyor) + `apiDownload`
+  (Bearer + 401-refresh + Content-Disposition dosya adı çözümü) — sonraki dilimlerde
+  bordro pusulası vb. indirmeler de bunu kullanacak.
+- `src/features/personnel/`: `PersonnelPage` (server-side arama 300ms debounce +
+  departman/durum filtreleri, toplu seçim + `bulk-deactivate`, CSV dışa aktarma),
+  `PersonnelModal` (6 sekme, gerçek POST/PUT, ProblemDetails → form-error, foto
+  yükleme), `DocumentsTab` (evrak listesi + yükleme + indirme), `csv.ts`, `queries.ts`.
+- **Kararlar:** TC listede maskeli (`nationalIdMasked`); mutasyon eylemleri yalnız
+  hr-admin, manager kartı salt-okur; "Yakınlık / Telefon" tek input →
+  `emergencyContactPhone`; foto önizleme ikonu kalır (backend foto servis ucu yok);
+  sayfalama UI'sı yok (`pageSize=50`, seed küçük); departman CRUD ekranı yok
+  (eskide de yoktu).
+- Duman: 15 kontrol geçti — CRUD, 409 çakışma mesajı, evrak yükle/indir (backend
+  yalnız pdf/jpg/png/doc kabul ediyor), foto, toplu pasife alma, CSV, rol kısıtları.
+- Parite düzeltmeleri: "Fotoğraf Yükle" span'e çevrildi (buton çerçevesi
+  görünüyordu). Eski uygulamanın bulk-bar/boş-durum görünürlük davranışı birebir
+  korunuyor.
 
 ### 2026-07-14 — Dilim 2: Overview + Risk Merkezi + 5 risk detayı
 
