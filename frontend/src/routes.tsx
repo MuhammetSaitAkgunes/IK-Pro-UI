@@ -3,6 +3,7 @@ import { LoginPage } from "./auth/LoginPage";
 import { PublicOnly, RequireAuth, RouteGate } from "./auth/guards";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { AppShell } from "./layout/AppShell";
+import { OverviewPage } from "./features/overview/OverviewPage";
 
 export type Role = "hr-admin" | "manager" | "employee";
 
@@ -59,7 +60,9 @@ export const navGroups = [
 ];
 
 // Sayfa component eşlemesi: sonraki dilimler PlaceholderPage'i gerçek sayfayla değiştirir.
-const pageFor: Record<string, () => JSX.Element> = {};
+const pageFor: Record<string, () => JSX.Element> = {
+  overview: OverviewPage,
+};
 
 // Component JSX olarak render edilir (düz fonksiyon çağrısı hook kurallarını bozar).
 function GatedPage({ route }: { route: AppRoute }) {
