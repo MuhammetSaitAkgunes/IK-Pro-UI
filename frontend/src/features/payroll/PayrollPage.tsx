@@ -5,6 +5,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { useToast } from "../../layout/ToastProvider";
 import { PageError, PageLoading } from "../shared/PageState";
 import { MyPayslipsView } from "./MyPayslipsView";
+import { PeriodTab } from "./PeriodTab";
 import { useCreatePayrollPeriod, usePayrollPeriods, useSubmitPayrollPeriod } from "./queries";
 
 const TABS = [
@@ -104,9 +105,10 @@ function PayrollAdminShell({ tab }: { tab: "period" | "calculator" | "settings" 
         ))}
       </div>
 
-      {/* Sekme içerikleri: Task 3 (dönem), Task 5 (tekil), Task 6 (ayarlar) */}
       {tab === "period" && (
-        <section id="payroll-period" className="payroll-tab-content active">{null}</section>
+        <section id="payroll-period" className="payroll-tab-content active">
+          <PeriodTab periodId={periodId} />
+        </section>
       )}
       {tab === "calculator" && (
         <section id="payroll-calculator" className="payroll-tab-content active">{null}</section>
