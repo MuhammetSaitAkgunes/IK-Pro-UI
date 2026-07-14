@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ApiError } from "../../api/client";
 import { useToast } from "../../layout/ToastProvider";
 import { PageError, PageLoading } from "../shared/PageState";
+import { DocumentsTab } from "./DocumentsTab";
 import { useDepartments, useEmployee, useSaveEmployee, useUploadPhoto, type EmployeeDetailDto, type EmployeeUpsertModel } from "./queries";
 
 type TabId = "tab-kimlik" | "tab-iletisim" | "tab-is" | "tab-mali" | "tab-ozluk" | "tab-evrak";
@@ -346,12 +347,7 @@ export function PersonnelModal({ employeeId, readOnly, onClose }:
           </div>
 
           <div id="tab-evrak" className={`content-section ${activeTab === "tab-evrak" ? "active" : ""}`}>
-            {/* Task 5: gerçek evrak listesi + yükleme/indirme */}
-            <div className="upload-drop">
-              <i aria-hidden="true" className="fa-solid fa-cloud-arrow-up" />
-              <h4>Dosyaları sürükleyip bırakın</h4>
-              <p>Nüfus cüzdanı, ikametgah, adli sicil ve diğer özlük evrakları.</p>
-            </div>
+            <DocumentsTab employeeId={employeeId} readOnly={readOnly} />
           </div>
         </main>
       </div>
