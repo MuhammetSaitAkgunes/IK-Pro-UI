@@ -13,6 +13,7 @@ import { ComplianceRiskPage } from "./features/dashboard/ComplianceRiskPage";
 import { PersonnelPage } from "./features/personnel/PersonnelPage";
 import { LeavesPage } from "./features/leaves/LeavesPage";
 import { AttendancePage } from "./features/attendance/AttendancePage";
+import { PayrollPeriodPage, PayrollCalculatorPage, PayrollSettingsPage } from "./features/payroll/PayrollPage";
 
 export type Role = "hr-admin" | "manager" | "employee";
 
@@ -80,6 +81,9 @@ const pageFor: Record<string, () => JSX.Element> = {
   personnel: PersonnelPage,
   leaves: LeavesPage,
   attendance: AttendancePage,
+  payroll: PayrollPeriodPage,
+  "payroll-calculator": PayrollCalculatorPage,
+  "payroll-settings": PayrollSettingsPage,
 };
 
 // Component JSX olarak render edilir (düz fonksiyon çağrısı hook kurallarını bozar).
