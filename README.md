@@ -1,76 +1,250 @@
 # İK Pro UI
 
-İK Pro UI, kurumsal İK operasyonları için tasarlanmış premium SaaS arayüz prototipidir. Proje; risk odaklı İK dashboard'u, genel durum görünümü, personel, işe alım, mesai, izin, bordro, global aksiyon merkezi, denetim izi, login/signup ve rol bazlı demo görünüm katmanlarını içerir.
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&height=190&color=0:0F172A,45:2563EB,100:06B6D4&text=%C4%B0K%20Pro%20UI&fontColor=FFFFFF&fontSize=46&fontAlignY=38&desc=HR%20SaaS%20Product%20Interface%20Demo%20%7C%20Frontend%20Prototype&descAlignY=60&descSize=16" alt="İK Pro UI" />
+</p>
 
-Bu sürüm backend içermez. Frontend, mock veri ve localStorage ile çalışır; ancak ileride C# .NET 9 Clean Architecture / MVC / Onion Architecture backend'ine bağlanabilecek şekilde service adapter mantığıyla hazırlanmıştır.
+<p align="center">
+  <img src="https://img.shields.io/badge/Status-UI%20Demo%20%2F%20Work%20in%20Progress-F59E0B?style=for-the-badge" alt="Project Status" />
+  <img src="https://img.shields.io/badge/Type-HR%20SaaS%20Prototype-2563EB?style=for-the-badge" alt="Project Type" />
+  <img src="https://img.shields.io/badge/Backend-Not%20Included-DC2626?style=for-the-badge" alt="Backend Not Included" />
+  <img src="https://img.shields.io/badge/Data-Mock%20Data%20%2B%20localStorage-06B6D4?style=for-the-badge" alt="Mock Data" />
+</p>
+
+---
 
 ## İçindekiler
 
+- [Proje Durumu](#proje-durumu)
+- [Nedir?](#nedir)
+- [Ne Amaçla Yazıldı?](#ne-amaçla-yazıldı)
+- [Kapsam](#kapsam)
+- [Kapsam Dışı](#kapsam-dışı)
+- [Ürün Vizyonu](#ürün-vizyonu)
 - [Öne Çıkan Özellikler](#öne-çıkan-özellikler)
-- [Teknoloji ve Mimari](#teknoloji-ve-mimari)
+- [Teknoloji Yığını](#teknoloji-yığını)
+- [Mimari Yaklaşım](#mimari-yaklaşım)
 - [Proje Yapısı](#proje-yapısı)
-- [Çalıştırma](#çalıştırma)
-- [Demo Login ve Roller](#demo-login-ve-roller)
-- [Routing Yapısı](#routing-yapısı)
+- [Kurulum ve Çalıştırma](#kurulum-ve-çalıştırma)
+- [Demo Kullanım Kılavuzu](#demo-kullanım-kılavuzu)
 - [Modüller](#modüller)
-- [Bordro Modülü](#bordro-modülü)
-- [Service Adapter ve Backend Hazırlığı](#service-adapter-ve-backend-hazırlığı)
+- [Routing Yapısı](#routing-yapısı)
 - [State ve Veri Yönetimi](#state-ve-veri-yönetimi)
 - [UI/UX Tasarım Prensipleri](#uiux-tasarım-prensipleri)
-- [Test Checklist](#test-checklist)
+- [Backend Entegrasyon Planı](#backend-entegrasyon-planı)
+- [Test Kontrol Listesi](#test-kontrol-listesi)
 - [Bilinen Sınırlar](#bilinen-sınırlar)
-- [Önerilen Sonraki Fazlar](#önerilen-sonraki-fazlar)
+- [Geliştirme Yol Haritası](#geliştirme-yol-haritası)
+- [Kısa Teknik Özet](#kısa-teknik-özet)
+
+---
+
+## Proje Durumu
+
+> **Bu proje tamamlanmış bir HR SaaS ürünü değildir.**  
+> Bu repo, İK Pro ürün fikrinin arayüz deneyimini, modül kurgusunu, ekran akışlarını ve SaaS dashboard yaklaşımını göstermek için hazırlanmış bir **frontend ürün arayüz demosudur**.
+
+Mevcut sürüm:
+
+```text
+Durum        : Work in Progress
+Kapsam       : Frontend UI Demo / Product Interface Prototype
+Backend      : Yok
+Database     : Yok
+Gerçek Auth  : Yok
+Veri Kaynağı : Mock data + localStorage
+Amaç         : Ürün vizyonunu ve arayüz deneyimini göstermek
+```
+
+Bu ayrım bilinçlidir. Projenin bu fazdaki hedefi backend geliştirmek değil, **ürünün nasıl hissedileceğini, hangi ekranlardan oluşacağını ve kullanıcıya nasıl değer sunacağını** göstermektir.
+
+---
+
+## Nedir?
+
+**İK Pro UI**, kurumsal insan kaynakları operasyonları için tasarlanmış bir **HR SaaS arayüz demo/prototipidir**.
+
+Bu arayüz; İK ekiplerinin personel, işe alım, izin, mesai, bordro, risk takibi, aksiyon yönetimi ve operasyonel dashboard ihtiyaçlarını tek bir ürün çatısı altında nasıl yönetebileceğini göstermeyi hedefler.
+
+Proje, şu soruya cevap arar:
+
+> Bir KOBİ veya orta ölçekli şirket, İK süreçlerini daha modern, görsel, aksiyon odaklı ve SaaS kalitesinde bir panel üzerinden nasıl takip edebilir?
+
+---
+
+## Ne Amaçla Yazıldı?
+
+Bu proje üç ana amaçla hazırlanmıştır:
+
+### 1. Ürün Fikrini Görselleştirmek
+
+İK Pro’nun sadece fikir seviyesinde kalmaması, somut ekranlar, akışlar ve modüller üzerinden anlaşılabilmesi hedeflenmiştir.
+
+### 2. SaaS UI/UX Yetkinliğini Göstermek
+
+Dashboard, rol bazlı görünüm, risk merkezi, global aksiyon merkezi, bordro ekranları, personel yönetimi ve işe alım modülleri üzerinden modern kurumsal arayüz yaklaşımı gösterilir.
+
+### 3. Backend Öncesi Ürün Deneyimini Netleştirmek
+
+Backend geliştirmeye geçmeden önce:
+
+- Hangi modüller olacak?
+- Kullanıcı hangi ekrandan neyi yönetecek?
+- Dashboard hangi kararları destekleyecek?
+- Hangi ekranlar API’ye ihtiyaç duyacak?
+- Hangi roller hangi alanları görecek?
+
+gibi soruların cevapları arayüz prototipiyle netleştirilir.
+
+---
+
+## Kapsam
+
+Bu repo şu anda aşağıdaki kapsamı içerir:
+
+| Alan | Durum |
+|---|---|
+| Login / Signup ekranları | Demo seviyesinde var |
+| Rol bazlı frontend görünüm | Simülasyon olarak var |
+| Hash routing | Var |
+| Dashboard ekranları | Var |
+| Risk merkezi | Var |
+| Genel durum ekranı | Var |
+| Global aksiyon merkezi | Var |
+| Denetim izi görünümü | Var |
+| Personel yönetimi | Demo seviyesinde var |
+| İzin yönetimi | Demo seviyesinde var |
+| Mesai / puantaj | Demo seviyesinde var |
+| İşe alım modülü | Demo seviyesinde var |
+| Bordro ekranları | Demo / ön hesap seviyesinde var |
+| Light / dark mode | Var |
+| Responsive UI | Temel düzeyde var |
+| Mock data | Var |
+| localStorage state | Var |
+| Backend adapter hazırlığı | Taslak olarak var |
+
+---
+
+## Kapsam Dışı
+
+Bu proje şu anda aşağıdakileri **içermez**:
+
+| Alan | Açıklama |
+|---|---|
+| Gerçek backend | API, servis, database ve authentication server yok |
+| Gerçek database | Veriler mock data ve localStorage üzerinden çalışır |
+| Gerçek güvenlik | Login ve rol yapısı sadece frontend simülasyonudur |
+| Gerçek bordro hesap motoru | Bordro ekranları demo/ön hesap niteliğindedir |
+| Gerçek dosya yükleme | Evrak, CV veya bordro dosyası upload altyapısı yok |
+| Gerçek notification sistemi | Bildirimler mock/demo seviyesindedir |
+| Production deployment | Henüz production dağıtım hedeflenmemiştir |
+| Tam test otomasyonu | Şu an manuel test checklist yaklaşımı kullanılır |
+
+---
+
+## Ürün Vizyonu
+
+İK Pro’nun uzun vadeli vizyonu:
+
+```text
+Operasyonel İK + Risk/Aksiyon Intelligence + Bordro/Uyum Kontrolü
+```
+
+Ürün, klasik personel takip ekranlarından daha fazlasını hedefler.
+
+Amaç sadece veri göstermek değil; İK yöneticisine şu soruların cevabını hızlı vermektir:
+
+- Hangi departmanda risk yükseliyor?
+- Hangi aksiyonlar gecikti?
+- Hangi çalışanlar veya ekipler dikkat istiyor?
+- Hangi belgeler, izinler veya bordro kontrolleri bekliyor?
+- İşe alım süreci hangi aşamada tıkanıyor?
+- Yönetici yükü nerede artıyor?
+- Bugün hangi operasyonel kararlar alınmalı?
+
+---
 
 ## Öne Çıkan Özellikler
 
-- Login/signup ekranı ve demo session akışı
-- Rol bazlı frontend görünüm simülasyonu
-- Hash tabanlı client-side routing
-- Browser refresh ve back/forward desteği
-- Risk & Aksiyon Merkezi
-- Önceki operasyonel dashboard'un `Genel Durum` olarak korunması
-- Risk detay sayfaları:
-  - Ayrılma riski
-  - Tükenmişlik sinyali
-  - Yönetici yükü
-  - Aksiyon merkezi detayı
-  - Çalışan nabzı
-  - Uyum / evrak / denetim riski
-- Global Aksiyon Merkezi
+### Ürün ve UX Özellikleri
+
+- Risk odaklı İK dashboard’u
+- Genel operasyon görünümü
+- Global aksiyon merkezi
 - Denetim izi / aktivite geçmişi
-- Personel yönetimi
-- İzinler
-- Mesai & Puantaj
-- İşe alım
-- Yönetici konsolu
-- Bordro modülü
-- Tekil bordro hesaplama ekranı
-- Bordro default ayarları
-- Light/dark mode
-- Açılır/kapanır sidebar
-- .NET backend'e bağlanmaya hazır API client şablonu
+- Rol bazlı demo görünüm
+- İşe alım pipeline ekranları
+- Personel yönetimi ekranları
+- İzin, mesai ve puantaj ekranları
+- Bordro ön hesap ve ayar ekranları
+- Light / dark tema desteği
+- Açılır / kapanır sidebar
+- Kurumsal SaaS tasarım dili
+- Dashboard kartları, tablolar, badge’ler ve grafik alanları
 
-## Teknoloji ve Mimari
+### Teknik Özellikler
 
-Bu proje şu anda framework kullanmayan vanilla frontend yapısındadır:
+- Backend’siz statik frontend yapı
+- Hash tabanlı client-side routing
+- `localStorage` tabanlı demo session yönetimi
+- Mock data servis yaklaşımı
+- Backend’e bağlanmaya hazırlanmış API client taslağı
+- Route config üzerinden merkezi sayfa yönetimi
+- Rol kontrolünün frontend simülasyonu
+- Modül bazlı component dosyaları
+- Modül bazlı CSS dosyaları
 
-- HTML
-- CSS
-- Vanilla JavaScript
-- Chart.js
-- Font Awesome
-- localStorage
-- Hash routing
+---
 
-Frontend tarafı basit ama bilinçli şekilde katmanlara ayrılmıştır:
+## Teknoloji Yığını
 
-- `components/`: Ekran ve UI bileşenleri
-- `services/`: Auth, API client ve mock veri servisleri
-- `styles/`: Ortak ve modül bazlı stiller
-- `routes.js`: Merkezi route config
-- `main.js`: App bootstrap, routing, auth guard, shell yönetimi
+Bu sürüm framework kullanmayan sade bir frontend prototipi olarak hazırlanmıştır.
 
-Bu ayrım, ileride backend geldiğinde component'lerin mümkün olduğunca az etkilenmesini hedefler.
+| Teknoloji | Kullanım |
+|---|---|
+| HTML | Sayfa iskeleti |
+| CSS | Tasarım sistemi, layout, responsive yapı |
+| Vanilla JavaScript | Routing, state, event yönetimi |
+| Chart.js | Grafik ve dashboard görselleştirmeleri |
+| Font Awesome | İkonlar |
+| localStorage | Demo session, tema, sidebar ve ayar saklama |
+| Hash Routing | Statik dosya olarak çalışabilen route sistemi |
+| Mock Data | Backend öncesi demo veri akışı |
+
+> Not: Bu sürüm React, TypeScript veya backend içermez. İlerleyen fazda React + TypeScript frontend ve .NET backend entegrasyonu planlanabilir.
+
+---
+
+## Mimari Yaklaşım
+
+Bu repo, küçük bir statik demo gibi görünse de bilinçli şekilde katmanlandırılmıştır.
+
+```mermaid
+flowchart TD
+    Browser[Browser] --> Index[index.html]
+    Index --> Main[main.js]
+    Main --> Routes[routes.js]
+    Routes --> Components[components/]
+    Components --> Services[services/]
+    Components --> Styles[styles/]
+
+    Services --> MockData[mockData.js]
+    Services --> LocalStorage[(localStorage)]
+    Services --> ApiClient[apiClient.js - future backend adapter]
+```
+
+Temel prensip:
+
+```text
+Ekranlar component katmanında,
+demo veri servis katmanında,
+route yönetimi merkezi route config içinde,
+kalıcı demo state localStorage içinde tutulur.
+```
+
+Bu ayrım, ileride backend veya modern frontend framework geçişi yapılırken ekranların tamamen dağılmasını engellemeyi hedefler.
+
+---
 
 ## Proje Yapısı
 
@@ -80,6 +254,7 @@ Bu ayrım, ileride backend geldiğinde component'lerin mümkün olduğunca az et
 ├── main.js
 ├── routes.js
 ├── README.md
+│
 ├── components/
 │   ├── actions.js
 │   ├── attendance.js
@@ -92,10 +267,12 @@ Bu ayrım, ileride backend geldiğinde component'lerin mümkün olduğunca az et
 │   ├── personnel.js
 │   ├── recruitment.js
 │   └── settings.js
+│
 ├── services/
 │   ├── apiClient.js
 │   ├── authService.js
 │   └── mockData.js
+│
 └── styles/
     ├── actions.css
     ├── attendance.css
@@ -110,65 +287,249 @@ Bu ayrım, ileride backend geldiğinde component'lerin mümkün olduğunca az et
     └── settings.css
 ```
 
-## Çalıştırma
+---
 
-Proje statik dosya olarak çalışır.
+## Kurulum ve Çalıştırma
 
-1. `index.html` dosyasını tarayıcıda açın.
-2. Login ekranında `Giriş yap` butonuna basın.
-3. Uygulama `Risk Merkezi` ekranı ile açılır.
+Bu proje build adımı gerektirmez. Statik frontend olarak çalışır.
 
-Alternatif olarak herhangi bir statik sunucu ile de çalıştırılabilir:
+### 1. Repoyu Klonla
+
+```bash
+git clone https://github.com/MuhammetSaitAkgunes/-K-Pro.git
+cd -K-Pro
+```
+
+### 2. Statik Sunucu ile Çalıştır
+
+Önerilen yöntem:
 
 ```bash
 npx serve .
 ```
 
-veya:
+Alternatif Python sunucusu:
 
 ```bash
 python -m http.server 3000
 ```
 
-Ardından:
+Ardından tarayıcıda aç:
 
 ```text
 http://localhost:3000
 ```
 
-## Demo Login ve Roller
+### 3. Doğrudan HTML Olarak Açma
 
-Login/signup gerçek kimlik doğrulama yapmaz. Demo session localStorage'a yazılır.
+Proje hash routing kullandığı için temel demo akışı doğrudan `index.html` dosyası tarayıcıda açılarak da incelenebilir.
 
-Varsayılan kullanıcı:
+Ancak daha stabil davranış için lokal statik sunucu önerilir.
+
+---
+
+## Demo Kullanım Kılavuzu
+
+### Login
+
+Proje gerçek authentication yapmaz. Login ekranı demo session oluşturur.
+
+Genel akış:
 
 ```text
-Ad: İK Yöneticisi
-Rol: hr-admin
-Görünen rol: İK Admin
+#/login
+Giriş yap
+→ demo session localStorage'a yazılır
+→ dashboard açılır
 ```
 
-Header alanında demo rol değiştirici bulunur:
+### Demo Roller
 
-- `hr-admin`
-- `manager`
-- `employee`
-
-Rol bazlı görünüm simülasyonu:
+Arayüzde rol bazlı görünüm simülasyonu bulunur.
 
 | Rol | Açıklama |
 |---|---|
-| `hr-admin` | Tüm ana modülleri görür. |
-| `manager` | Risk, ekip, personel, izin, mesai ve aksiyon odaklı görünüm alır. Bordro ve ayarlar kısıtlıdır. |
-| `employee` | Genel durum, aksiyonlar, izinler ve bordro self-servis kapsamındaki sınırlı görünümü alır. |
+| `hr-admin` | Tüm ana İK modüllerini görebilen yönetici görünümü |
+| `manager` | Ekip, izin, mesai, aksiyon ve risk odaklı yönetici görünümü |
+| `employee` | Self-servis ağırlıklı sınırlı çalışan görünümü |
 
-Not: Bu yalnızca frontend simülasyonudur. Gerçek ürün güvenliği backend authorization policy ile sağlanmalıdır.
+> Kritik not: Bu rol kontrolü sadece frontend UX simülasyonudur. Gerçek güvenlik için backend authorization policy gerekir.
+
+### Tema Değiştirme
+
+Light/dark tema tercihi `localStorage` içinde saklanır.
+
+### Sidebar
+
+Sidebar açık/kapalı tercihi `localStorage` içinde saklanır.
+
+---
+
+## Modüller
+
+### Risk Merkezi
+
+Ana karar ekranıdır.
+
+Hedef soru:
+
+```text
+Hangi İK riski büyüyor, neden büyüyor ve hangi aksiyon alınmalı?
+```
+
+İçerikler:
+
+- İK risk skoru
+- Ayrılma riski
+- Tükenmişlik sinyalleri
+- Yönetici yükü
+- Departman bazlı risk görünümü
+- Aksiyon merkezi bağlantıları
+- Kurumsal sinyaller
+
+---
+
+### Genel Durum
+
+Operasyonel İK dashboard ekranıdır.
+
+İçerikler:
+
+- Aktif personel
+- Onay bekleyen işlemler
+- Açık pozisyonlar
+- Kritik hatırlatmalar
+- Departman dağılımı
+- İşe alım hunisi
+- Günlük operasyon görünümü
+
+---
+
+### Global Aksiyon Merkezi
+
+Farklı modüllerden gelen işleri tek ekranda toplamayı hedefler.
+
+İçerikler:
+
+- Bugün kapanacak aksiyonlar
+- Geciken aksiyonlar
+- Yüksek öncelikli işler
+- Tamamlanan aksiyonlar
+- Denetim izi sekmesi
+- Kaynak modüle hızlı geçiş
+
+---
+
+### Denetim İzi
+
+Ürün içinde gerçekleşen önemli aksiyonları timeline mantığıyla göstermeyi hedefler.
+
+Örnek kayıtlar:
+
+- Kullanıcı giriş yaptı
+- Bordro ayarı güncellendi
+- Risk aksiyonu oluşturuldu
+- Uyum evrak durumu değişti
+- İzin talebi onaya gönderildi
+
+---
+
+### Personel Yönetimi
+
+Çalışan kayıtlarının yönetileceği temel modül prototipidir.
+
+İçerikler:
+
+- Personel listesi
+- Personel kartları
+- Yeni personel ekleme modalı
+- Departman / rol / durum bilgileri
+
+---
+
+### İzinler
+
+İzin yönetim sürecinin demo ekranıdır.
+
+İçerikler:
+
+- İzin bakiyesi
+- Bekleyen izin talepleri
+- Ekip yokluk görünümü
+- İzin talebi oluşturma akışı
+
+---
+
+### Mesai ve Puantaj
+
+Çalışma zamanı ve puantaj takibi için tasarlanmış demo modüldür.
+
+İçerikler:
+
+- Canlı çalışma durumu
+- Mesai kayıtları
+- Puantaj görünümü
+- Tab bazlı ekran akışı
+
+---
+
+### İşe Alım
+
+Aday takip ve işe alım operasyonları için demo modüldür.
+
+İçerikler:
+
+- Aday pipeline
+- CV ve aday bilgileri
+- Mülakat notları
+- Değerlendirme sekmeleri
+- İşe alım geçmişi
+
+---
+
+### Yönetici Konsolu
+
+Yönetici rolüne özel ekip ve operasyon görünümüdür.
+
+İçerikler:
+
+- Ekip özeti
+- Onay bekleyen işlemler
+- Operasyonel riskler
+- Yöneticiye özel aksiyonlar
+
+---
+
+### Bordro
+
+Bordro modülü demo / ön hesap seviyesindedir.
+
+Route’lar:
+
+```text
+#/payroll
+#/payroll/calculator
+#/payroll/settings
+```
+
+İçerikler:
+
+- Dönem bordrosu görünümü
+- Çalışan bordro tablosu
+- Bordro detay paneli
+- Tekil bordro hesaplama ekranı
+- Bordro varsayılan ayarları
+- localStorage tabanlı demo ayar saklama
+
+> Bordro hesapları resmi veya üretim kullanımı için değildir. Üretim seviyesinde mevzuat, mali müşavir kontrolü ve backend hesap motoru gerekir.
+
+---
 
 ## Routing Yapısı
 
-Proje hash tabanlı client-side routing kullanır. Bu tercih, projenin doğrudan `index.html` olarak açılabilmesini sağlar.
+Proje hash tabanlı client-side routing kullanır.
 
-Örnek route'lar:
+Örnek route’lar:
 
 ```text
 #/login
@@ -193,421 +554,125 @@ Proje hash tabanlı client-side routing kullanır. Bu tercih, projenin doğrudan
 #/risk/compliance
 ```
 
-Route config merkezi olarak `routes.js` içinde tutulur.
-
-Her route şu bilgileri taşıyabilir:
-
-- `key`
-- `path`
-- `title`
-- `eyebrow`
-- `navKey`
-- `roles`
-- `public`
-- `authMode`
-- `render`
-- `afterRender`
-
-Auth guard davranışı:
-
-- Session yokken protected route açılırsa `#/login` gösterilir.
-- Login olan kullanıcı `#/login` veya `#/signup` açarsa `#/dashboard` yönlendirilir.
-- Yetkisiz route açılırsa `Yetki Gerekli` ekranı gösterilir.
-- Refresh sonrası mevcut route korunur.
-- Browser back/forward desteklenir.
-
-## Modüller
-
-### Risk Merkezi
-
-Ana karar dashboard'udur. Şu soruya cevap vermeyi hedefler:
+Routing tercihinin sebebi:
 
 ```text
-Hangi risk büyüyor, neden büyüyor ve hangi aksiyon alınmalı?
+Projeyi backend fallback yapılandırması olmadan,
+statik dosya olarak kolayca çalıştırabilmek.
 ```
 
-İçerikler:
-
-- İK Risk Skoru
-- Yönetici Yük Endeksi
-- Ayrılma Riski
-- Kritik Aksiyonlar
-- 90 günlük risk trendi
-- Departman bazlı risk ısı haritası
-- Aksiyon Merkezi
-- Yetenek ve kapasite sinyalleri
-- Kurumsal sinyaller
-
-### Genel Durum
-
-Operasyonel İK dashboard'udur.
-
-İçerikler:
-
-- Aktif personel
-- Onay bekleyenler
-- Açık pozisyonlar
-- Kritik hatırlatmalar
-- Departman dağılımı
-- İşe alım hunisi
-- Anlık çalışma durumu
-- Bekleyen aksiyonlar
-
-### Global Aksiyon Merkezi
-
-Tüm modüllerden gelen aksiyonları tek merkezde toplar.
-
-İçerikler:
-
-- Bugün kapanacak aksiyonlar
-- Geciken aksiyonlar
-- Yüksek öncelikler
-- Tamamlanan işler
-- Açık / Bu Hafta / Tamamlanan sekmeleri
-- Denetim izi sekmesi
-- Kaynak modüle hızlı geçiş
-
-Mock kaynaklar:
-
-- Risk Merkezi
-- Bordro
-- Uyum
-- Çalışan Nabzı
-- İzin / Mesai
-
-### Denetim İzi
-
-Global Aksiyon Merkezi içinde timeline olarak gösterilir.
-
-Örnek kayıtlar:
-
-- Kullanıcı giriş yaptı
-- Bordro ayarı güncellendi
-- Bordro ön hesabı çalıştırıldı
-- Uyum evrak durumu değişti
-- Risk aksiyonu onaya gönderildi
-
-### Personel Yönetimi
-
-Personel listesi ve yeni personel ekleme modalı içerir.
-
-### İzinler
-
-İzin bakiyesi, bekleyen talepler, ekip yokluğu ve izin talebi oluşturma akışını içerir.
-
-### Mesai & Puantaj
-
-Canlı çalışma durumu ve aylık puantaj görünümünü içerir.
-
-### İşe Alım
-
-Aday takip, CV, mülakat notları, değerlendirme ve geçmiş sekmeleri içerir.
-
-### Yönetici Konsolu
-
-Yönetici odaklı ekip, onay ve performans/operasyon takip görünümüdür.
-
-### Ayarlar
-
-Genel ayarlar, bildirim, güvenlik ve faturalama benzeri demo sekmeleri içerir.
-
-## Bordro Modülü
-
-Bordro modülü Türkiye özel sektör 4/a bordro akışı için demo ön hesap mantığıyla tasarlanmıştır.
-
-Route'lar:
-
-```text
-#/payroll
-#/payroll/calculator
-#/payroll/settings
-```
-
-### Dönem Bordrosu
-
-İçerikler:
-
-- Dönem durumu
-- Çalışan sayısı
-- Toplam brüt
-- Toplam net
-- İşveren maliyeti
-- Bordro akışı
-- Kontrol merkezi
-- Çalışan bordro tablosu
-- Çalışan bordro detay paneli
-- Bordro pusulası önizleme
-
-### Tekil Hesaplama
-
-Tekil bordro senaryosu oluşturmak için kullanılır.
-
-Form alanları:
-
-- Personel
-- Brüt ücret
-- Çalışılan gün
-- Fazla mesai saati
-- Fazla mesai çarpanı
-- Prim
-- Yol yardımı
-- Yemek yardımı
-- Yan hak / ek ödeme
-- Özel kesinti
-- Önceki gelir vergisi matrahı
-
-Fazla mesai hesabı:
-
-```text
-Saatlik ücret = Brüt ücret / Aylık çalışma saati
-Fazla mesai tutarı = Saatlik ücret × Fazla mesai saati × Fazla mesai çarpanı
-```
-
-### Bordro Ayarları
-
-localStorage ile saklanan varsayılan ayarları içerir:
-
-- Fazla mesai çarpanı
-- Aylık çalışma saati
-- Varsayılan çalışılan gün
-- SGK işçi oranı
-- İşsizlik işçi oranı
-- SGK işveren oranı
-- İşsizlik işveren oranı
-- Damga vergisi oranı
-- SGK PEK alt sınırı
-- SGK PEK üst sınırı
-- Asgari ücret gelir vergisi istisnası
-- Asgari ücret damga vergisi istisnası
-
-Not: Bordro hesapları demo/ön hesap niteliğindedir. Üretim kullanımında mevzuat ve müşavir doğrulaması gerekir.
-
-## Service Adapter ve Backend Hazırlığı
-
-Backend bu projede yoktur. Ancak frontend servis katmanı, ileride .NET 9 backend'e bağlanacak şekilde isimlendirilmiştir.
-
-### `services/apiClient.js`
-
-Ortak API istemci şablonudur.
-
-Hazır fonksiyonlar:
-
-```js
-apiGet(path)
-apiPost(path, body)
-apiPut(path, body)
-apiDelete(path)
-getAuthHeaders()
-```
-
-Varsayılan API base:
-
-```js
-const API_BASE_URL = window.IKPRO_API_BASE_URL || "https://localhost:7001/api";
-```
-
-Beklenen backend endpoint örnekleri:
-
-```text
-POST  /api/auth/login
-POST  /api/auth/register
-GET   /api/me
-GET   /api/actions
-GET   /api/audit-logs
-PATCH /api/actions/{id}/status
-```
-
-### `services/authService.js`
-
-Demo auth ve rol simülasyonu içerir.
-
-Hazır fonksiyonlar:
-
-```js
-login(credentials)
-signup(payload)
-logout()
-getCurrentUser()
-isAuthenticated()
-hasRole(roleOrRoles)
-canAccessRoute(route)
-canAccessPage(page)
-switchDemoRole(role)
-```
-
-### `services/mockData.js`
-
-Demo kullanıcı, global aksiyon ve audit log verilerini içerir.
-
-## .NET 9 Backend Entegrasyon Notları
-
-Planlanan backend mimarisi:
-
-```text
-Clean Architecture + MVC + Onion Architecture
-```
-
-Önerilen çözüm yapısı:
-
-```text
-backend/
-├── IkPro.Api
-├── IkPro.Application
-├── IkPro.Domain
-├── IkPro.Infrastructure
-└── IkPro.Persistence
-```
-
-Frontend açısından önerilen entegrasyon sırası:
-
-1. Auth endpointleri bağlanır.
-2. Demo session yerine JWT veya secure cookie kullanılır.
-3. `GET /api/me` ile kullanıcı/rol bilgisi backend'den okunur.
-4. Global aksiyonlar `GET /api/actions` ile beslenir.
-5. Audit log `GET /api/audit-logs` ile beslenir.
-6. Bordro, personel, izin, mesai ve risk verileri modül bazlı API servislerine ayrılır.
-
-Backend güvenliği için öneriler:
-
-- Rol ve yetki kontrolleri backend policy ile yapılmalı.
-- Bordro ve çalışan verileri için endpoint seviyesinde authorization şart olmalı.
-- Audit log backend tarafında otomatik üretilmeli.
-- Frontend rol görünümü sadece UX kolaylığı olarak kalmalı.
+---
 
 ## State ve Veri Yönetimi
 
-Bu sürümde kullanılan localStorage anahtarları:
+Bu demo sürümde veriler iki kaynaktan gelir:
+
+1. Mock data
+2. localStorage
+
+### localStorage Anahtarları
 
 | Anahtar | Amaç |
 |---|---|
 | `ikpro-demo-session` | Demo kullanıcı session bilgisi |
 | `ikpro-theme` | Light/dark tema tercihi |
-| `ikpro-sidebar` | Sidebar expanded/collapsed tercihi |
+| `ikpro-sidebar` | Sidebar açık/kapalı tercihi |
 | `ikpro-payroll-settings` | Bordro varsayılan ayarları |
 
-Mock veriler runtime sırasında kalıcı olarak güncellenmez.
+### Mock Data
+
+Mock data, backend geliştirilmeden önce ekranların gerçekçi veriyle incelenmesini sağlar.
+
+Bu yaklaşım sayesinde:
+
+- UI akışları hızlı test edilir
+- Dashboard kompozisyonu doğrulanır
+- Backend API ihtiyaçları daha net çıkarılır
+- Ürün hissi erken aşamada görünür olur
+
+---
 
 ## UI/UX Tasarım Prensipleri
 
-Arayüz operasyonel SaaS mantığıyla tasarlanmıştır:
+Bu arayüzde hedeflenen tasarım yaklaşımı:
 
-- Yoğun ama okunabilir bilgi hiyerarşisi
-- Kartların sınırlı ve işlevsel kullanımı
-- Dashboard'larda karar ve aksiyon önceliği
-- Premium ama sakin renk paleti
+```text
+Kurumsal ama ağır değil.
+Veri yoğun ama boğucu değil.
+Görsel ama oyuncak gibi değil.
+Aksiyon odaklı, okunabilir ve SaaS kalitesinde.
+```
+
+Ana prensipler:
+
+- Dashboard’larda karar destek önceliği
+- Kartlarda sade ama yoğun bilgi hiyerarşisi
+- Risk ve aksiyonların görsel olarak öne çıkarılması
+- Rol bazlı arayüz deneyimi
+- Tablo, badge, buton ve form bileşenlerinde tutarlı tasarım dili
 - Light/dark mode desteği
-- Tablo, form, badge ve button stillerinde ortak tasarım dili
-- Rol bazlı görünüm simülasyonu
-- Mobilde yatay taşmayı önleyen responsive davranış
+- Mobil ve tablet kırılımlarında taşmayı azaltan responsive yapı
+- Yazıdan çok hızlı anlamaya yardımcı görsel düzen
 
-Ortak sınıflar:
+---
 
-```text
-btn
-btn-primary
-btn-secondary
-input-control
-status-pill
-data-table
-page-header
-surface
-card
-stat-box
-```
+## Backend Entegrasyon Planı
 
-## Test Checklist
+Bu proje şu anda backend içermez. Ancak ileride .NET tabanlı backend ile entegre edilecek şekilde genişletilebilir.
 
-Manuel test için önerilen akış:
-
-### Auth
-
-- Session yokken `#/login` açılmalı.
-- `Giriş yap` dashboard'a almalı.
-- `Hesap oluştur` demo session oluşturmalı.
-- `Çıkış yap` tekrar login ekranına döndürmeli.
-
-### Routing
-
-- `#/dashboard` açılmalı.
-- `#/actions` açılmalı.
-- `#/payroll/calculator` refresh sonrası aynı sekmede kalmalı.
-- `#/payroll/settings` açılmalı.
-- `#/risk/attrition` risk detayını açmalı.
-- Browser back/forward çalışmalı.
-
-### Rol Simülasyonu
-
-- `hr-admin` tüm ana modülleri görmeli.
-- `manager` bordro ve ayarlar gibi kısıtlı alanları görmemeli.
-- `employee` sadece sınırlı self-servis menüleri görmeli.
-- Yetkisiz route açıldığında `Yetki Gerekli` ekranı görünmeli.
-
-### Dashboard ve Modüller
-
-- Risk Merkezi grafik ve kartları dolu görünmeli.
-- Genel Durum dashboard'u çalışmalı.
-- Personel modalı açılıp kapanmalı.
-- İzin modalı çalışmalı.
-- Mesai tabları çalışmalı.
-- İşe alım tabları çalışmalı.
-- Bordro detay paneli açılıp kapanmalı.
-- Tekil bordro hesaplama sonuç üretmeli.
-- Bordro ayarları localStorage'da kalmalı.
-- Aksiyon Merkezi sekmeleri çalışmalı.
-- Denetim izi dolu görünmeli.
-
-### UI
-
-- Light/dark mode bozulmamalı.
-- Sidebar collapse/expand çalışmalı.
-- Desktop/tablet/mobile genişliklerde taşma olmamalı.
-
-## Geliştirici Notları
-
-Bu proje şu anda build adımı gerektirmez. JS dosyaları doğrudan script olarak yüklenir.
-
-Sözdizimi kontrolü için:
-
-```bash
-node --check main.js
-node --check routes.js
-```
-
-PowerShell ile tüm component/service JS dosyalarını kontrol etmek için:
-
-```powershell
-Get-ChildItem services,components -Filter *.js | ForEach-Object { node --check $_.FullName }
-```
-
-## Bilinen Sınırlar
-
-- Gerçek backend yoktur.
-- Auth gerçek güvenlik sağlamaz.
-- Rol bazlı görünüm frontend simülasyonudur.
-- Bordro hesapları demo/ön hesap niteliğindedir.
-- Aksiyonlar ve audit log gerçek olarak persist edilmez.
-- Dosya yükleme, bildirim, banka dosyası, muhasebe fişi ve resmi bildirge entegrasyonları yoktur.
-- Hash routing kullanılır; path-based routing'e geçiş backend host kararına göre yapılmalıdır.
-
-## Önerilen Sonraki Fazlar
-
-1. .NET 9 backend solution oluşturma
-2. Auth ve kullanıcı/rol yönetimi
-3. Gerçek action/audit log API'leri
-4. Personel master data API'si
-5. Bordro hesap motorunun backend'e taşınması
-6. Bordro pusulası PDF üretimi
-7. Dosya/evrak yükleme altyapısı
-8. Bildirim ve görev hatırlatma sistemi
-9. Veri tutarlılığı kontrol motoru
-10. Path-based routing'e geçiş ve backend fallback yapılandırması
-
-## Kısa Ürün Vizyonu
-
-İK Pro, klasik İK operasyon ekranlarından öteye geçerek şu üç alanı bir araya getirmeyi hedefler:
+Önerilen backend mimarisi:
 
 ```text
-Operasyonel İK + Risk/Aksiyon Intelligence + Bordro ve Uyum Kontrolü
+.NET 8/9 Web API
+Clean Architecture
+SQL Server
+JWT Authentication
+Role-based Authorization
+Audit Logging
+File Storage
+Background Jobs
+Notification System
 ```
 
-Bu sürüm, gerçek backend öncesi ürün deneyimini göstermek ve .NET tabanlı kurumsal mimariye hazırlanmak için tasarlanmış frontend prototipidir.
+### Beklenen Backend Modülleri
+
+| Modül | Açıklama |
+|---|---|
+| Auth | Login, register, token, refresh token |
+| Users & Roles | Kullanıcı, rol ve yetki yönetimi |
+| Personnel | Çalışan master data |
+| Recruitment | Aday ve iş ilanı yönetimi |
+| Leaves | İzin talep/onay akışı |
+| Attendance | Mesai ve puantaj kayıtları |
+| Payroll | Bordro hesap motoru |
+| Actions | Global aksiyon yönetimi |
+| Audit Logs | Denetim izi kayıtları |
+| Documents | Evrak ve dosya yönetimi |
+| Notifications | Hatırlatma ve bildirimler |
+
+---
+
+## Kısa Teknik Özet
+
+```text
+İK Pro UI; kurumsal İK operasyonları için hazırlanmış,
+backend içermeyen, mock data ve localStorage ile çalışan,
+hash routing tabanlı, vanilla HTML/CSS/JavaScript kullanılarak geliştirilmiş
+bir HR SaaS ürün arayüz demosudur.
+```
+
+---
+
+## Kısa Ürün Özeti
+
+```text
+İK Pro; personel, işe alım, izin, mesai, bordro, risk ve aksiyon yönetimini
+tek bir modern SaaS arayüzünde birleştirmeyi hedefleyen bir HR Tech ürün fikridir.
+Bu repo, ürünün ilk arayüz/prototip katmanını temsil eder.
+```
+
+---
+
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&height=110&section=footer&color=0:06B6D4,50:2563EB,100:0F172A" alt="Footer" />
+</p>
