@@ -4,6 +4,7 @@ import { PublicOnly, RequireAuth, RouteGate } from "./auth/guards";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { AppShell } from "./layout/AppShell";
 import { OverviewPage } from "./features/overview/OverviewPage";
+import { RiskCenterPage } from "./features/dashboard/RiskCenterPage";
 
 export type Role = "hr-admin" | "manager" | "employee";
 
@@ -62,6 +63,7 @@ export const navGroups = [
 // Sayfa component eşlemesi: sonraki dilimler PlaceholderPage'i gerçek sayfayla değiştirir.
 const pageFor: Record<string, () => JSX.Element> = {
   overview: OverviewPage,
+  dashboard: RiskCenterPage,
 };
 
 // Component JSX olarak render edilir (düz fonksiyon çağrısı hook kurallarını bozar).
