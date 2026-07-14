@@ -10,6 +10,7 @@ import { BurnoutDetailPage } from "./features/dashboard/BurnoutDetailPage";
 import { ManagerLoadPage } from "./features/dashboard/ManagerLoadPage";
 import { EmployeeVoicePage } from "./features/dashboard/EmployeeVoicePage";
 import { ComplianceRiskPage } from "./features/dashboard/ComplianceRiskPage";
+import { PersonnelPage } from "./features/personnel/PersonnelPage";
 
 export type Role = "hr-admin" | "manager" | "employee";
 
@@ -74,6 +75,7 @@ const pageFor: Record<string, () => JSX.Element> = {
   "manager-load": ManagerLoadPage,
   "employee-voice": EmployeeVoicePage,
   "compliance-risk": ComplianceRiskPage,
+  personnel: PersonnelPage,
 };
 
 // Component JSX olarak render edilir (düz fonksiyon çağrısı hook kurallarını bozar).
