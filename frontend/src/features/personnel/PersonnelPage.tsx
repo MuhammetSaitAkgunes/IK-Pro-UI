@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { useToast } from "../../layout/ToastProvider";
 import { PageError, PageLoading } from "../shared/PageState";
-import { downloadCsv, tableToCsvLines } from "./csv";
+import { downloadCsv, tableToCsvLines } from "../shared/csv";
 import { PersonnelModal } from "./PersonnelModal";
 import { useBulkDeactivate, useDepartments, useEmployees, type EmployeeFilters } from "./queries";
 
