@@ -6,17 +6,19 @@
 
 ## Şu an neredeyiz
 
-- **Aktif iş:** React portu — **Dilim 3 tamamlandı**; dal `feature/react-port-dilim-3`
+- **Aktif iş:** React portu — **Dilim 4 tamamlandı**; dal `feature/react-port-dilim-4`
   main'e merge kararı bekliyor.
-- **Son tamamlanan:** Dilim 3 (Personel + Departman) — 6 görev, 49 birim test,
-  15 kontrollük duman testi (gerçek CRUD/evrak/foto dahil) ve parite kontrolü geçti.
-- **Sıradaki adım:** Dilim 3'ü main'e merge et; sonra Dilim 4 (İzin & Onay + Puantaj)
-  planını yeni dalda yaz (`docs/superpowers/plans/`).
+- **Son tamamlanan:** Dilim 4 (İzin & Onay + Puantaj) — 6 görev, 64 birim test,
+  16 kontrollük duman testi (talep→onay uçtan uca, manuel puantaj girişi dahil)
+  ve parite kontrolü geçti.
+- **Sıradaki adım:** Dilim 4'ü main'e merge et; sonra Dilim 5 (Bordro) planını
+  yeni dalda yaz (`docs/superpowers/plans/`).
 - **Referanslar:**
   - Tasarım dokümanı: `docs/superpowers/specs/2026-07-13-react-frontend-port-design.md`
   - Dilim 1 planı (tamamlandı): `docs/superpowers/plans/2026-07-13-react-port-dilim-1-iskelet.md`
   - Dilim 2 planı (tamamlandı): `docs/superpowers/plans/2026-07-14-react-port-dilim-2-overview-dashboard.md`
   - Dilim 3 planı (tamamlandı): `docs/superpowers/plans/2026-07-14-react-port-dilim-3-personel.md`
+  - Dilim 4 planı (tamamlandı): `docs/superpowers/plans/2026-07-14-react-port-dilim-4-izin-puantaj.md`
   - Backend faz planı: `raporlar/backend-development-plan.md`
 - **Çalıştırma komutları:**
   - Backend: `cd backend && dotnet run --project src/IKPro.API --launch-profile http` → `http://localhost:5053`
@@ -27,6 +29,35 @@
 ---
 
 ## Kayıtlar (yeni → eski)
+
+### 2026-07-14 — Dilim 4: İzin & Onay + Puantaj
+
+- 6 görev TDD ile tamamlandı; 64 birim test + build yeşil.
+- `src/features/leaves/`: `LeavesPage` (bakiye kartları `GET /leaves/balance`,
+  hareket tablosu + pending iptal, "Ofiste Kimler Yok?" `GET /leaves/team`),
+  `LeaveRequestModal` (türler `GET /leaves/types`tan dinamik, takvim günü süre
+  ön izlemesi, MGMT'de yerine bakacak kişi listesi, gerçek `POST /leaves`),
+  `format.ts`, `queries.ts`.
+- `src/features/attendance/`: `AttendancePage` (canlı pano `GET /attendance/live`,
+  özet şeridi `GET /attendance/summary` toplamları, gerçek yıl/ay değiştirici,
+  aylık puantaj tablosu + CSV), `AttendanceEntryModal` (manuel giriş `POST`,
+  satır düzenleme `PUT`), `format.ts`, `queries.ts`.
+- Overview'a MGMT rollerine gerçek "Bekleyen Aksiyonlar" kartı eklendi
+  (`GET /leaves/pending` + onay/red → `["leaves"]` + dashboard invalidation).
+- CSV yardımcıları `features/shared/csv.ts`'e taşındı (personel + puantaj ortak).
+- **Kararlar:** kullanılan toplam tek pill (tür kırılımı backend'de yok);
+  "Önemli Günler" (doğum günü) eklenmedi (backend'de yok); manuel giriş modalı
+  yeni (eskide ghost kart işlevsizdi); kesin izin gün sayısını backend hesaplar
+  (UI yalnız takvim günü ön izler). hr-admin/manager hesabına bağlı personel
+  kaydı olmadığından `#/leaves` bu rollerde backend'in 403 mesajını gösterir
+  ("Hesabınıza bağlı personel kaydı yok...") — bilinçli backend davranışı.
+- Duman: 16 kontrol geçti — çalışan talep oluştur/iptal, hr-admin onayı sonrası
+  çalışan tarafında "Onaylandı", ekip yokluk widget'ı, canlı pano, ay değiştirici,
+  manuel giriş → satır → düzenleme, CSV, çalışan `#/attendance` yetki ekranı.
+  Not: backend puantaj seed'i yok; satırlar manuel giriş/gerçek check-in ile oluşur.
+- Parite: `#/leaves` (+modal) ve `#/attendance` (iki sekme) yan yana birebir;
+  tüm farklar veri kaynaklı (gerçek ay etiketi, gerçek personel) veya plandaki
+  bilinçli farklar. Kod düzeltmesi gerekmedi.
 
 ### 2026-07-14 — Dilim 3: Personel + Departman
 

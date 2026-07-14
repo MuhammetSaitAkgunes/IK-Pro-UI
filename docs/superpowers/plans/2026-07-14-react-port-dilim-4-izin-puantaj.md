@@ -1,6 +1,6 @@
 # React Port — Dilim 4: İzin & Onay + Puantaj — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** İzinlerim ekranını (`/leaves`, tüm roller) gerçek izin API'sine bağla (bakiye, talepler, talep oluşturma/iptal, ekip yokluk widget'ı), yönetim rollerine Overview'da gerçek izin onay kartını ekle ve Mesai & Puantaj ekranını (`/attendance`, MGMT) canlı pano + aylık puantaj + manuel giriş/düzenleme ile portla.
 
@@ -63,9 +63,9 @@
     - `useEmployeeOptions()` → `GET /employees?status=active&pageSize=50`, `select: r => r.items ?? []`
     - `useSaveAttendanceEntry()` → mutation `{ id: number | null; employeeId: number; model: AttendanceEntryModel }`: id null → `POST /attendance` `{ employeeId, model }`, değilse `PUT /attendance/{id}` `model`; başarıda `["attendance"]` invalidation
 
-- [ ] **Step 1: csv taşı** — `git mv frontend/src/features/personnel/csv.ts frontend/src/features/shared/csv.ts` ve `git mv .../personnel/csv.test.ts .../shared/csv.test.ts`; `PersonnelPage.tsx` içindeki `from "./csv"` → `from "../shared/csv"`.
+- [x] **Step 1: csv taşı** — `git mv frontend/src/features/personnel/csv.ts frontend/src/features/shared/csv.ts` ve `git mv .../personnel/csv.test.ts .../shared/csv.test.ts`; `PersonnelPage.tsx` içindeki `from "./csv"` → `from "../shared/csv"`.
 
-- [ ] **Step 2: `leaves/queries.ts` yaz**
+- [x] **Step 2: `leaves/queries.ts` yaz**
 
 ```ts
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -139,7 +139,7 @@ export const useDecideLeave = () => {
 };
 ```
 
-- [ ] **Step 3: `attendance/queries.ts` yaz**
+- [x] **Step 3: `attendance/queries.ts` yaz**
 
 ```ts
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -188,9 +188,9 @@ export const useSaveAttendanceEntry = () => {
 };
 ```
 
-- [ ] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS (csv testleri yeni yerinden koşar).
+- [x] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS (csv testleri yeni yerinden koşar).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/
@@ -212,7 +212,7 @@ git commit -m "refactor(frontend): CSV yardımcıları shared'a; izin ve puantaj
   - `format.ts`: `formatLeaveDate(v?: string): string` ("12 Ağu 2024"), `LEAVE_STATUS_TEXT: Record<string,string>` (`pending→Bekliyor, approved→Onaylandı, rejected→Reddedildi, cancelled→İptal Edildi`), `awayDateLabel(start?: string, end?: string): string` (bugün aralıktaysa "Bugün", başlangıç yarınsa "Yarın", değilse formatlı başlangıç).
   - `LeavesPage()` — talep modalı Task 3'te; bu görevde "İzin Talebi Oluşturu" butonu `setModalOpen(true)` state'ini kurar, modal `{modalOpen && null}` placeholder'ıyla bağlanır (Task 3 dolduracak).
 
-- [ ] **Step 1: Başarısız testleri yaz** — `LeavesPage.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `LeavesPage.test.tsx`:
 
 ```tsx
 import { screen, waitFor } from "@testing-library/react";
@@ -284,7 +284,7 @@ test("ekip yokluk widget'ı dolar", async () => {
 
 Run: `npm test -- --run src/features/leaves` → FAIL.
 
-- [ ] **Step 2: `format.ts` yaz**
+- [x] **Step 2: `format.ts` yaz**
 
 ```ts
 export const formatLeaveDate = (value?: string | null): string =>
@@ -313,7 +313,7 @@ export const awayDateLabel = (start?: string | null, end?: string | null): strin
 };
 ```
 
-- [ ] **Step 3: `LeavesPage.tsx` yaz** (eski Leaves() DOM paritesi; modal Task 3'te)
+- [x] **Step 3: `LeavesPage.tsx` yaz** (eski Leaves() DOM paritesi; modal Task 3'te)
 
 ```tsx
 import { useState } from "react";
@@ -480,11 +480,11 @@ export function LeavesPage() {
 }
 ```
 
-- [ ] **Step 4: `routes.tsx` `pageFor`'a ekle** (`leaves: LeavesPage` + import)
+- [x] **Step 4: `routes.tsx` `pageFor`'a ekle** (`leaves: LeavesPage` + import)
 
-- [ ] **Step 5: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
+- [x] **Step 5: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/
@@ -506,7 +506,7 @@ git commit -m "feat(frontend): İzinlerim sayfası — bakiye, hareketler, iptal
 
 Tür kartı eşlemesi (ada göre, `includes`): "Yıllık"→`{icon:"fa-sun",tone:"annual"}` alt metin `Kalan: {remainingDays} gün`; "Rapor"→`{"fa-notes-medical","sick"}` "Belge gerekli"; "Mazeret"→`{"fa-clock","excuse"}` "Saatlik/günlük"; "Uzaktan"→`{"fa-laptop-house","remote"}` "Evden çalışma"; diğer→`{"fa-sun","annual"}` + tür adı.
 
-- [ ] **Step 1: Başarısız testleri yaz** — `LeaveRequestModal.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `LeaveRequestModal.test.tsx`:
 
 ```tsx
 import { screen, waitFor } from "@testing-library/react";
@@ -601,7 +601,7 @@ test("tarihler boşsa uyarı toast'ı, istek gitmez", async () => {
 
 Run: `npm test -- --run src/features/leaves/LeaveRequestModal.test.tsx` → FAIL.
 
-- [ ] **Step 2: `LeaveRequestModal.tsx` yaz**
+- [x] **Step 2: `LeaveRequestModal.tsx` yaz**
 
 ```tsx
 import { useState } from "react";
@@ -748,11 +748,11 @@ export function LeaveRequestModal({ onClose }: { onClose: () => void }) {
 }
 ```
 
-- [ ] **Step 3: `LeavesPage.tsx`'te bağla** — `{modalOpen && null}` → `{modalOpen && <LeaveRequestModal onClose={() => setModalOpen(false)} />}` + import.
+- [x] **Step 3: `LeavesPage.tsx`'te bağla** — `{modalOpen && null}` → `{modalOpen && <LeaveRequestModal onClose={() => setModalOpen(false)} />}` + import.
 
-- [ ] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
+- [x] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/features/leaves/
@@ -770,7 +770,7 @@ git commit -m "feat(frontend): izin talebi modalı — dinamik türler, süre ö
 **Interfaces:**
 - Consumes: `usePendingLeaves`, `useDecideLeave` (leaves/queries), `useAuth`, `useToast`, `formatLeaveDate`.
 
-- [ ] **Step 1: Başarısız testleri yaz** — `OverviewApprovals.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `OverviewApprovals.test.tsx`:
 
 ```tsx
 import { screen, waitFor } from "@testing-library/react";
@@ -842,7 +842,7 @@ Run: `npm test -- --run src/features/overview/OverviewApprovals.test.tsx` → FA
 
 Not: mevcut `OverviewPage.test.tsx` AuthProvider'sız render ediyor ve kart MGMT'ye bağlı olduğundan `useAuth` çağrısı patlar → o testin `renderPage` sarmalayıcısına da `AuthProvider` eklenir (oturum yazmadan: user null → kart görünmez, testler aynen geçer). `stubApi` haritasına `"/api/leaves/pending": []` eklemek gerekmez (user null → sorgu disabled).
 
-- [ ] **Step 2: `OverviewPage.tsx`'i genişlet**
+- [x] **Step 2: `OverviewPage.tsx`'i genişlet**
 
 Eklenen import'lar:
 
@@ -912,9 +912,9 @@ Component başına:
       )}
 ```
 
-- [ ] **Step 3: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS (OverviewPage.test.tsx sarmalayıcı güncellemesi dahil).
+- [x] **Step 3: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS (OverviewPage.test.tsx sarmalayıcı güncellemesi dahil).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add frontend/src/features/overview/
@@ -936,7 +936,7 @@ git commit -m "feat(frontend): Overview'a gerçek izin onay kartı (MGMT) — ap
   - `format.ts`: `minutesToHhMm(m?: number): string` ("08:00"), `formatTime(t?: string | null): string` ("09:00" | "--:--"), `formatBreak(m?: number): string` ("-"|"1s"|"45 dk"), `formatTsDate(v?: string): string` ("01 Eki Pzt"), `monthLabel(year: number, month: number): string` ("Ekim 2025"), `LIVE_STATUS_TEXT` (`ontime→Zamanında, late→Geç kaldı, absent→Gelmedi, early→Erken giriş`).
   - `AttendancePage()` — manuel giriş modalı Task 6'da; ghost kart ve satır kalem butonu `setEntry(...)` state kurar, `{entry && null}` placeholder.
 
-- [ ] **Step 1: Başarısız testleri yaz** — `AttendancePage.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `AttendancePage.test.tsx`:
 
 ```tsx
 import { screen } from "@testing-library/react";
@@ -1011,7 +1011,7 @@ test("puantaj sekmesi tabloyu ve aylık toplamı gösterir", async () => {
 
 Run: `npm test -- --run src/features/attendance` → FAIL.
 
-- [ ] **Step 2: `format.ts` yaz**
+- [x] **Step 2: `format.ts` yaz**
 
 ```ts
 export const minutesToHhMm = (minutes?: number): string => {
@@ -1047,7 +1047,7 @@ export const LIVE_STATUS_TEXT: Record<string, string> = {
 };
 ```
 
-- [ ] **Step 3: `AttendancePage.tsx` yaz** (eski Attendance() DOM paritesi)
+- [x] **Step 3: `AttendancePage.tsx` yaz** (eski Attendance() DOM paritesi)
 
 ```tsx
 import { useEffect, useRef, useState } from "react";
@@ -1255,11 +1255,11 @@ export function AttendancePage() {
 }
 ```
 
-- [ ] **Step 4: `routes.tsx` `pageFor`'a ekle** (`attendance: AttendancePage` + import)
+- [x] **Step 4: `routes.tsx` `pageFor`'a ekle** (`attendance: AttendancePage` + import)
 
-- [ ] **Step 5: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
+- [x] **Step 5: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/
@@ -1280,7 +1280,7 @@ git commit -m "feat(frontend): Mesai & Puantaj — canlı pano, aylık puantaj, 
 - Produces: `AttendanceEntryModal({ rowId, initial, defaultEmployeeId, onClose })`:
   - `rowId: number | null` (null → yeni kayıt `POST`), `initial?: TimesheetRowDto` (düzenlemede alanları doldurur), `defaultEmployeeId: number | null`.
 
-- [ ] **Step 1: Başarısız testleri yaz** — `AttendanceEntryModal.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `AttendanceEntryModal.test.tsx`:
 
 ```tsx
 import { screen, waitFor } from "@testing-library/react";
@@ -1340,7 +1340,7 @@ test("düzenleme PUT /attendance/{id} ile gider ve alanlar dolu gelir", async ()
 
 Run: `npm test -- --run src/features/attendance/AttendanceEntryModal.test.tsx` → FAIL.
 
-- [ ] **Step 2: `AttendanceEntryModal.tsx` yaz** (mevcut modal-overlay/modal-card sınıflarıyla)
+- [x] **Step 2: `AttendanceEntryModal.tsx` yaz** (mevcut modal-overlay/modal-card sınıflarıyla)
 
 ```tsx
 import { useState } from "react";
@@ -1466,7 +1466,7 @@ export function AttendanceEntryModal({ rowId, initial, defaultEmployeeId, onClos
 }
 ```
 
-- [ ] **Step 3: `AttendancePage.tsx`'e bağla** — `{entry && null}` yerine:
+- [x] **Step 3: `AttendancePage.tsx`'e bağla** — `{entry && null}` yerine:
 
 ```tsx
       {entry && (
@@ -1481,9 +1481,9 @@ export function AttendanceEntryModal({ rowId, initial, defaultEmployeeId, onClos
 
 `import { AttendanceEntryModal } from "./AttendanceEntryModal";` ekle.
 
-- [ ] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS. `npm run build` → hatasız.
+- [x] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS. `npm run build` → hatasız.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/features/attendance/
@@ -1497,9 +1497,9 @@ git commit -m "feat(frontend): puantaj manuel giriş ve satır düzenleme modal�
 **Files:**
 - Modify: `docs/gelistirme-gunlugu.md`; gerekirse küçük düzeltmeler.
 
-- [ ] **Step 1: Backend + frontend'i başlat** (önceki dilimlerle aynı)
+- [x] **Step 1: Backend + frontend'i başlat** (önceki dilimlerle aynı)
 
-- [ ] **Step 2: Duman testi**
+- [x] **Step 2: Duman testi**
 
 1. Çalışan (`ahmet.yilmaz@hrmaster.local`) → `#/leaves`: bakiye kartları gerçek; talep oluştur (yarın→+2 gün) → listede "Bekliyor"; iptal et → listeden düşer/İptal.
 2. Tekrar talep oluştur (onay testi için bırak).
@@ -1510,9 +1510,9 @@ git commit -m "feat(frontend): puantaj manuel giriş ve satır düzenleme modal�
 7. Manuel giriş ekle → yeni satır. Rapor Al → CSV iner.
 8. Çalışan `#/attendance` → "Bu alan için yetki gerekli".
 
-- [ ] **Step 3: Görsel parite** — eski/yeni `#/leaves` (+ modal) ve `#/attendance` (iki sekme) yan yana. Bilinçli farklar: tek stat-pill, dinamik pending cümlesi, Overview'da tek kart (Önemli Günler yok), manuel giriş modalı (eskide yoktu), gerçek ay etiketi. Diğer farklar DOM/class düzeltmesiyle giderilir.
+- [x] **Step 3: Görsel parite** — eski/yeni `#/leaves` (+ modal) ve `#/attendance` (iki sekme) yan yana. Bilinçli farklar: tek stat-pill, dinamik pending cümlesi, Overview'da tek kart (Önemli Günler yok), manuel giriş modalı (eskide yoktu), gerçek ay etiketi. Diğer farklar DOM/class düzeltmesiyle giderilir.
 
-- [ ] **Step 4: Günlük + kapanış commit** — "Şu an neredeyiz" → Dilim 5 (Bordro); Dilim 4 kaydı; plan kutuları işaretlenir.
+- [x] **Step 4: Günlük + kapanış commit** — "Şu an neredeyiz" → Dilim 5 (Bordro); Dilim 4 kaydı; plan kutuları işaretlenir.
 
 ```bash
 git add frontend/ docs/
