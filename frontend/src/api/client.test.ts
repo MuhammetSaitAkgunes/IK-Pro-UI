@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { ApiError, apiFetch } from "./client";
+import { ApiError, apiDownload, apiFetch } from "./client";
 import { SESSION_KEY, getSession, setSession } from "./session";
 
 const user = { id: "u1", name: "İK Yöneticisi", email: "ik@hrmaster.local", role: "hr-admin", roleLabel: "İK Admin", initials: "İK", employeeId: null } as never;
@@ -57,4 +57,36 @@ test("refresh de düşerse oturum silinir ve login'e yönlenir", async () => {
   await expect(apiFetch("/me")).rejects.toMatchObject({ status: 401 });
   expect(localStorage.getItem(SESSION_KEY)).toBeNull();
   expect(window.location.hash).toBe("#/login");
+});
+
+test("FormData gövdesinde Content-Type başlığı eklenmez", async () => {
+  setSession({ token: "T1", refreshToken: "R1", user });
+  vi.mocked(fetch).mockResolvedValueOnce(json(200, { ok: true }));
+
+  const form = new FormData();
+  form.append("documentType", "kimlik");
+  await apiFetch("/employees/1/documents", { method: "POST", body: form });
+
+  const [, init] = vi.mocked(fetch).mock.calls[0];
+  expect(new Headers(init?.headers).has("Content-Type")).toBe(false);
+});
+
+test("apiDownload blob ve Content-Disposition dosya adını döner", async () => {
+  setSession({ token: "T1", refreshToken: "R1", user });
+  vi.mocked(fetch).mockResolvedValueOnce(
+    new Response("pdf-icerik", {
+      status: 200,
+      headers: { "Content-Disposition": 'attachment; filename="ozluk.pdf"' },
+    }),
+  );
+
+  const result = await apiDownload("/employees/1/documents/9");
+
+  expect(result.fileName).toBe("ozluk.pdf");
+  expect(await result.blob.text()).toBe("pdf-icerik");
+});
+
+test("apiDownload hata durumunda ApiError fırlatır", async () => {
+  vi.mocked(fetch).mockResolvedValueOnce(json(404, { title: "Evrak bulunamadı.", status: 404 }));
+  await expect(apiDownload("/employees/1/documents/9")).rejects.toMatchObject({ status: 404 });
 });

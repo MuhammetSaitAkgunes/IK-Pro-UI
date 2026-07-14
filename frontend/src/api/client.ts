@@ -26,7 +26,8 @@ let refreshInFlight: Promise<boolean> | null = null;
 
 const rawFetch = async (path: string, init: RequestInit = {}): Promise<Response> => {
   const headers = new Headers(init.headers);
-  if (!headers.has("Content-Type") && init.body) headers.set("Content-Type", "application/json");
+  if (!headers.has("Content-Type") && init.body && !(init.body instanceof FormData))
+    headers.set("Content-Type", "application/json");
   const token = getSession()?.token;
   if (token) headers.set("Authorization", `Bearer ${token}`);
   return fetch(`${API_BASE}${path}`, { ...init, headers });
@@ -79,4 +80,29 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   if (!response.ok) throw await toError(response);
   if (response.status === 204) return null as T;
   return (await response.json()) as T;
+}
+
+const fileNameFrom = (disposition: string | null): string | null => {
+  if (!disposition) return null;
+  const utf8 = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8) return decodeURIComponent(utf8[1]);
+  const plain = disposition.match(/filename="?([^";]+)"?/i);
+  return plain ? plain[1] : null;
+};
+
+/** İkili indirme (evrak/pusula): Bearer + 401-refresh apiFetch ile aynı. */
+export async function apiDownload(path: string): Promise<{ blob: Blob; fileName: string | null }> {
+  let response = await rawFetch(path);
+
+  if (response.status === 401 && !path.startsWith("/auth/")) {
+    if (await tryRefresh()) {
+      response = await rawFetch(path);
+    } else {
+      clearSession();
+      window.location.hash = "/login";
+    }
+  }
+
+  if (!response.ok) throw await toError(response);
+  return { blob: await response.blob(), fileName: fileNameFrom(response.headers.get("Content-Disposition")) };
 }
