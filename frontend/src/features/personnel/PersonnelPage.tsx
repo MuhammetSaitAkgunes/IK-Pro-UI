@@ -3,6 +3,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { useToast } from "../../layout/ToastProvider";
 import { PageError, PageLoading } from "../shared/PageState";
 import { downloadCsv, tableToCsvLines } from "./csv";
+import { PersonnelModal } from "./PersonnelModal";
 import { useBulkDeactivate, useDepartments, useEmployees, type EmployeeFilters } from "./queries";
 
 const formatDate = (value?: string): string =>
@@ -218,8 +219,13 @@ export function PersonnelPage() {
         </div>
       </div>
 
-      {/* Personel kartı modalı Task 4'te: cardId === undefined → kapalı */}
-      {cardId !== undefined && null}
+      {cardId !== undefined && (
+        <PersonnelModal
+          employeeId={cardId}
+          readOnly={!isHrAdmin}
+          onClose={() => setCardId(undefined)}
+        />
+      )}
     </div>
   );
 }

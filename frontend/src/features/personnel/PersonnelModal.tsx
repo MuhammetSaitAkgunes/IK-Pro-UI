@@ -1,0 +1,360 @@
+import { useEffect, useRef, useState } from "react";
+import { ApiError } from "../../api/client";
+import { useToast } from "../../layout/ToastProvider";
+import { PageError, PageLoading } from "../shared/PageState";
+import { useDepartments, useEmployee, useSaveEmployee, useUploadPhoto, type EmployeeDetailDto, type EmployeeUpsertModel } from "./queries";
+
+type TabId = "tab-kimlik" | "tab-iletisim" | "tab-is" | "tab-mali" | "tab-ozluk" | "tab-evrak";
+
+const TABS: { id: TabId; icon: string; label: string }[] = [
+  { id: "tab-kimlik", icon: "fa-regular fa-id-card", label: "Kimlik Bilgileri" },
+  { id: "tab-iletisim", icon: "fa-solid fa-phone", label: "İletişim & Adres" },
+  { id: "tab-is", icon: "fa-solid fa-briefcase", label: "İş & Kurumsal" },
+  { id: "tab-mali", icon: "fa-solid fa-wallet", label: "Mali Bilgiler" },
+  { id: "tab-ozluk", icon: "fa-solid fa-shield-heart", label: "Özlük & Sağlık" },
+  { id: "tab-evrak", icon: "fa-solid fa-folder-tree", label: "Evraklar" },
+];
+
+type FormState = {
+  nationalId: string; birthDate: string; firstName: string; lastName: string;
+  gender: string; maritalStatus: string; bloodType: string;
+  mobilePhone: string; personalEmail: string; homeAddress: string;
+  emergencyContactName: string; emergencyContactPhone: string;
+  departmentId: string; title: string; hireDate: string; employmentType: string;
+  rehireEligibility: string; exitCode: string;
+  iban: string; bankName: string; salaryType: string; pensionStatus: string; mealCard: string;
+  tshirtSize: string; pantsSize: string; coatSize: string; shoeSize: string;
+  canWorkAtHeight: boolean; canWorkNightShift: boolean; canLiftHeavyLoads: boolean; healthNotes: string;
+};
+
+const emptyForm: FormState = {
+  nationalId: "", birthDate: "", firstName: "", lastName: "",
+  gender: "Erkek", maritalStatus: "Evli", bloodType: "0 Rh+",
+  mobilePhone: "", personalEmail: "", homeAddress: "",
+  emergencyContactName: "", emergencyContactPhone: "",
+  departmentId: "", title: "", hireDate: "", employmentType: "Tam Zamanlı",
+  rehireEligibility: "Değerlendirilmedi", exitCode: "Yok",
+  iban: "", bankName: "", salaryType: "Net Maaş", pensionStatus: "Otomatik Katılım", mealCard: "",
+  tshirtSize: "M", pantsSize: "32", coatSize: "M", shoeSize: "42",
+  canWorkAtHeight: false, canWorkNightShift: false, canLiftHeavyLoads: false, healthNotes: "",
+};
+
+const formFrom = (detail: EmployeeDetailDto): FormState => ({
+  ...emptyForm,
+  nationalId: detail.nationalId ?? "",
+  firstName: detail.firstName ?? "",
+  lastName: detail.lastName ?? "",
+  departmentId: String(detail.departmentId ?? ""),
+  title: detail.title ?? "",
+  hireDate: detail.hireDate ?? "",
+  birthDate: detail.profile?.birthDate ?? "",
+  gender: detail.profile?.gender ?? emptyForm.gender,
+  maritalStatus: detail.profile?.maritalStatus ?? emptyForm.maritalStatus,
+  bloodType: detail.profile?.bloodType ?? emptyForm.bloodType,
+  mobilePhone: detail.profile?.mobilePhone ?? "",
+  personalEmail: detail.profile?.personalEmail ?? "",
+  homeAddress: detail.profile?.homeAddress ?? "",
+  emergencyContactName: detail.profile?.emergencyContactName ?? "",
+  emergencyContactPhone: detail.profile?.emergencyContactPhone ?? "",
+  employmentType: detail.profile?.employmentType ?? emptyForm.employmentType,
+  rehireEligibility: detail.profile?.rehireEligibility ?? emptyForm.rehireEligibility,
+  exitCode: detail.profile?.exitCode ?? emptyForm.exitCode,
+  iban: detail.profile?.iban ?? "",
+  bankName: detail.profile?.bankName ?? "",
+  salaryType: detail.profile?.salaryType ?? emptyForm.salaryType,
+  pensionStatus: detail.profile?.pensionStatus ?? emptyForm.pensionStatus,
+  mealCard: detail.profile?.mealCard ?? "",
+  tshirtSize: detail.profile?.tshirtSize ?? emptyForm.tshirtSize,
+  pantsSize: detail.profile?.pantsSize ?? emptyForm.pantsSize,
+  coatSize: detail.profile?.coatSize ?? emptyForm.coatSize,
+  shoeSize: detail.profile?.shoeSize ?? emptyForm.shoeSize,
+  canWorkAtHeight: detail.profile?.canWorkAtHeight ?? false,
+  canWorkNightShift: detail.profile?.canWorkNightShift ?? false,
+  canLiftHeavyLoads: detail.profile?.canLiftHeavyLoads ?? false,
+  healthNotes: detail.profile?.healthNotes ?? "",
+});
+
+const modelFrom = (form: FormState, existing: EmployeeDetailDto | undefined): EmployeeUpsertModel => ({
+  firstName: form.firstName,
+  lastName: form.lastName,
+  title: form.title,
+  departmentId: Number(form.departmentId) || undefined,
+  hireDate: form.hireDate || undefined,
+  nationalId: form.nationalId,
+  managerId: existing?.managerId ?? null,
+  status: existing?.status ?? "active",
+  profile: {
+    birthDate: form.birthDate || null,
+    gender: form.gender, maritalStatus: form.maritalStatus, bloodType: form.bloodType,
+    mobilePhone: form.mobilePhone || null, personalEmail: form.personalEmail || null,
+    homeAddress: form.homeAddress || null,
+    emergencyContactName: form.emergencyContactName || null,
+    emergencyContactRelation: null,
+    emergencyContactPhone: form.emergencyContactPhone || null,
+    employmentType: form.employmentType,
+    rehireEligibility: form.rehireEligibility, exitCode: form.exitCode,
+    iban: form.iban || null, bankName: form.bankName || null,
+    salaryType: form.salaryType, pensionStatus: form.pensionStatus,
+    mealCard: form.mealCard || null,
+    tshirtSize: form.tshirtSize, pantsSize: form.pantsSize, coatSize: form.coatSize,
+    shoeSize: form.shoeSize,
+    canWorkAtHeight: form.canWorkAtHeight, canWorkNightShift: form.canWorkNightShift,
+    canLiftHeavyLoads: form.canLiftHeavyLoads,
+    healthNotes: form.healthNotes || null,
+  },
+});
+
+export function PersonnelModal({ employeeId, readOnly, onClose }:
+  { employeeId: number | null; readOnly: boolean; onClose: () => void }) {
+  const { showToast } = useToast();
+  const [activeTab, setActiveTab] = useState<TabId>("tab-kimlik");
+  const [form, setForm] = useState<FormState>(emptyForm);
+  const [error, setError] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const detailQ = useEmployee(employeeId);
+  const departmentsQ = useDepartments();
+  const save = useSaveEmployee();
+  const uploadPhoto = useUploadPhoto();
+
+  useEffect(() => {
+    if (detailQ.data) setForm(formFrom(detailQ.data));
+  }, [detailQ.data]);
+
+  const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
+    setForm((current) => ({ ...current, [key]: value }));
+
+  const isEdit = employeeId !== null;
+  const title = isEdit && detailQ.data ? `Personel Kartı — ${detailQ.data.name}` : "Yeni Personel Kartı";
+  const description = isEdit
+    ? "Kayıtlı özlük bilgilerini görüntüleyin ve güncelleyin."
+    : "Gerekli alanları tamamlayarak özlük kaydını oluşturun.";
+
+  const handleSave = async () => {
+    setError(null);
+    try {
+      await save.mutateAsync({ id: employeeId, model: modelFrom(form, detailQ.data) });
+      showToast(isEdit ? "Personel kaydı güncellendi." : "Personel kaydı başarıyla oluşturuldu.", "success");
+      onClose();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Beklenmeyen bir hata oluştu.");
+    }
+  };
+
+  const handlePhoto = async (file: File | undefined) => {
+    if (!file || employeeId === null) return;
+    try {
+      await uploadPhoto.mutateAsync({ id: employeeId, file });
+      showToast("Fotoğraf yüklendi.", "success");
+    } catch (e) {
+      showToast(e instanceof ApiError ? e.message : "Fotoğraf yüklenemedi.", "error");
+    }
+  };
+
+  if (isEdit && detailQ.isPending) return <div className="fullscreen-modal" style={{ display: "flex" }}><PageLoading /></div>;
+  if (isEdit && detailQ.isError) return <div className="fullscreen-modal" style={{ display: "flex" }}><PageError error={detailQ.error} /></div>;
+
+  return (
+    <div id="personnel-modal" className="fullscreen-modal" style={{ display: "flex" }}>
+      <div className="modal-header">
+        <div>
+          <h2>{title}</h2>
+          <p>{description}</p>
+          {error && <p className="form-error" role="alert">{error}</p>}
+        </div>
+        <div className="modal-actions">
+          <button className="btn btn-ghost" onClick={onClose}>Vazgeç</button>
+          {!readOnly && (
+            <button className="btn btn-primary" onClick={handleSave} disabled={save.isPending}>
+              <i aria-hidden="true" className="fa-solid fa-check" /> Kaydet
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="modal-body">
+        <aside className="modal-sidebar">
+          {TABS.map((tab) => (
+            <button key={tab.id} className={`nav-btn ${activeTab === tab.id ? "active" : ""}`} onClick={() => setActiveTab(tab.id)}>
+              <i aria-hidden="true" className={tab.icon} /> {tab.label}
+            </button>
+          ))}
+        </aside>
+
+        <main className="modal-content-area">
+          <div id="tab-kimlik" className={`content-section ${activeTab === "tab-kimlik" ? "active" : ""}`}>
+            <div className="section-head">
+              <div>
+                <h3>Kimlik & Kişisel Bilgiler</h3>
+                <span>Nüfus bilgilerini resmi evraklarla uyumlu girin.</span>
+              </div>
+            </div>
+            <div className="form-grid">
+              <div className="photo-upload col-12">
+                <div className="photo-preview"><i aria-hidden="true" className="fa-solid fa-user" /></div>
+                <div>
+                  <button
+                    type="button"
+                    className="upload-btn"
+                    onClick={() => {
+                      if (readOnly) return;
+                      if (employeeId === null) { showToast("Fotoğraf için önce kaydı oluşturun.", "info"); return; }
+                      photoInputRef.current?.click();
+                    }}
+                  >
+                    Fotoğraf Yükle
+                  </button>
+                  <small>JPG/PNG, maksimum 2 MB</small>
+                  <input ref={photoInputRef} type="file" accept="image/jpeg,image/png" hidden onChange={(e) => handlePhoto(e.target.files?.[0])} />
+                </div>
+              </div>
+              <div className="input-group col-6">
+                <label className="input-label" htmlFor="pm-tc">TC Kimlik No *</label>
+                <input id="pm-tc" type="text" className="input-control" maxLength={11} placeholder="11 haneli numara" value={form.nationalId} disabled={readOnly} onChange={(e) => set("nationalId", e.target.value)} />
+              </div>
+              <div className="input-group col-6">
+                <label className="input-label" htmlFor="pm-birth">Doğum Tarihi</label>
+                <input id="pm-birth" type="date" className="input-control" value={form.birthDate} disabled={readOnly} onChange={(e) => set("birthDate", e.target.value)} />
+              </div>
+              <div className="input-group col-6">
+                <label className="input-label" htmlFor="pm-first">Adı</label>
+                <input id="pm-first" type="text" className="input-control" value={form.firstName} disabled={readOnly} onChange={(e) => set("firstName", e.target.value)} />
+              </div>
+              <div className="input-group col-6">
+                <label className="input-label" htmlFor="pm-last">Soyadı</label>
+                <input id="pm-last" type="text" className="input-control" value={form.lastName} disabled={readOnly} onChange={(e) => set("lastName", e.target.value)} />
+              </div>
+              <div className="input-group col-4">
+                <label className="input-label" htmlFor="pm-gender">Cinsiyet</label>
+                <select id="pm-gender" className="input-control" value={form.gender} disabled={readOnly} onChange={(e) => set("gender", e.target.value)}>
+                  <option>Erkek</option><option>Kadın</option>
+                </select>
+              </div>
+              <div className="input-group col-4">
+                <label className="input-label" htmlFor="pm-marital">Medeni Durum</label>
+                <select id="pm-marital" className="input-control" value={form.maritalStatus} disabled={readOnly} onChange={(e) => set("maritalStatus", e.target.value)}>
+                  <option>Evli</option><option>Bekar</option>
+                </select>
+              </div>
+              <div className="input-group col-4">
+                <label className="input-label" htmlFor="pm-blood">Kan Grubu</label>
+                <select id="pm-blood" className="input-control" value={form.bloodType} disabled={readOnly} onChange={(e) => set("bloodType", e.target.value)}>
+                  <option>0 Rh+</option><option>A Rh+</option><option>B Rh+</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div id="tab-iletisim" className={`content-section ${activeTab === "tab-iletisim" ? "active" : ""}`}>
+            <div className="section-head"><div><h3>İletişim Bilgileri</h3><span>Personelin ulaşılabilir iletişim kanalları.</span></div></div>
+            <div className="form-grid">
+              <div className="input-group col-6"><label className="input-label" htmlFor="pm-phone">Cep Telefonu</label><input id="pm-phone" type="tel" className="input-control" placeholder="(5XX) ..." value={form.mobilePhone} disabled={readOnly} onChange={(e) => set("mobilePhone", e.target.value)} /></div>
+              <div className="input-group col-6"><label className="input-label" htmlFor="pm-email">Kişisel E-Posta</label><input id="pm-email" type="email" className="input-control" value={form.personalEmail} disabled={readOnly} onChange={(e) => set("personalEmail", e.target.value)} /></div>
+              <div className="input-group col-12"><label className="input-label" htmlFor="pm-address">Ev Adresi</label><textarea id="pm-address" className="input-control" rows={3} value={form.homeAddress} disabled={readOnly} onChange={(e) => set("homeAddress", e.target.value)} /></div>
+              <div className="input-group col-6"><label className="input-label" htmlFor="pm-emg-name">Acil Durum Kişisi</label><input id="pm-emg-name" type="text" className="input-control" placeholder="Ad Soyad" value={form.emergencyContactName} disabled={readOnly} onChange={(e) => set("emergencyContactName", e.target.value)} /></div>
+              <div className="input-group col-6"><label className="input-label" htmlFor="pm-emg-phone">Yakınlık / Telefon</label><input id="pm-emg-phone" type="text" className="input-control" placeholder="Örn: Eşi - 0532..." value={form.emergencyContactPhone} disabled={readOnly} onChange={(e) => set("emergencyContactPhone", e.target.value)} /></div>
+            </div>
+          </div>
+
+          <div id="tab-is" className={`content-section ${activeTab === "tab-is" ? "active" : ""}`}>
+            <div className="section-head"><div><h3>Kurumsal Bilgiler</h3><span>Pozisyon, çalışma şekli ve organizasyon bilgileri.</span></div></div>
+            <div className="form-grid">
+              <div className="input-group col-6">
+                <label className="input-label" htmlFor="pm-dept">Departman</label>
+                <select id="pm-dept" className="input-control" value={form.departmentId} disabled={readOnly} onChange={(e) => set("departmentId", e.target.value)}>
+                  <option value="">Seçin</option>
+                  {(departmentsQ.data ?? []).map((dept) => <option key={dept.id} value={dept.id}>{dept.name}</option>)}
+                </select>
+              </div>
+              <div className="input-group col-6"><label className="input-label" htmlFor="pm-title">Ünvan / Görev</label><input id="pm-title" type="text" className="input-control" value={form.title} disabled={readOnly} onChange={(e) => set("title", e.target.value)} /></div>
+              <div className="input-group col-6"><label className="input-label" htmlFor="pm-hire">İşe Giriş Tarihi</label><input id="pm-hire" type="date" className="input-control" value={form.hireDate} disabled={readOnly} onChange={(e) => set("hireDate", e.target.value)} /></div>
+              <div className="input-group col-6">
+                <label className="input-label" htmlFor="pm-employment">Çalışma Şekli</label>
+                <select id="pm-employment" className="input-control" value={form.employmentType} disabled={readOnly} onChange={(e) => set("employmentType", e.target.value)}>
+                  <option>Tam Zamanlı</option><option>Yarı Zamanlı</option><option>Uzaktan</option>
+                </select>
+              </div>
+              <div className="notice-card col-12">
+                <strong>Önceki çalışma geçmişi</strong>
+                <p>Yeniden işe alım kararları için değerlendirme notu bırakın.</p>
+                <div className="form-grid-2">
+                  <div className="input-group">
+                    <label className="input-label" htmlFor="pm-rehire">Tekrar Çalışma Durumu</label>
+                    <select id="pm-rehire" className="input-control" value={form.rehireEligibility} disabled={readOnly} onChange={(e) => set("rehireEligibility", e.target.value)}>
+                      <option>Değerlendirilmedi</option><option>Çalışılabilir</option><option>Kararsız</option><option>Çalışılmaz</option>
+                    </select>
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label" htmlFor="pm-exit">Eski Çıkış Kodu</label>
+                    <select id="pm-exit" className="input-control" value={form.exitCode} disabled={readOnly} onChange={(e) => set("exitCode", e.target.value)}>
+                      <option>Yok</option><option>Kod-03 (İstifa)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="tab-mali" className={`content-section ${activeTab === "tab-mali" ? "active" : ""}`}>
+            <div className="section-head"><div><h3>Mali & Yan Haklar</h3><span>Banka, BES ve yan hak tanımlamaları.</span></div></div>
+            <div className="form-grid">
+              <div className="input-group col-12"><label className="input-label" htmlFor="pm-iban">IBAN Numarası</label><input id="pm-iban" type="text" className="input-control mono" placeholder="TR..." value={form.iban} disabled={readOnly} onChange={(e) => set("iban", e.target.value)} /></div>
+              <div className="input-group col-6"><label className="input-label" htmlFor="pm-bank">Banka Adı</label><input id="pm-bank" type="text" className="input-control" value={form.bankName} disabled={readOnly} onChange={(e) => set("bankName", e.target.value)} /></div>
+              <div className="input-group col-6">
+                <label className="input-label" htmlFor="pm-salary">Maaş Tipi</label>
+                <select id="pm-salary" className="input-control" value={form.salaryType} disabled={readOnly} onChange={(e) => set("salaryType", e.target.value)}>
+                  <option>Net Maaş</option><option>Brüt Maaş</option>
+                </select>
+              </div>
+              <div className="input-group col-6">
+                <label className="input-label" htmlFor="pm-pension">BES Durumu</label>
+                <select id="pm-pension" className="input-control" value={form.pensionStatus} disabled={readOnly} onChange={(e) => set("pensionStatus", e.target.value)}>
+                  <option>Otomatik Katılım</option><option>İptal</option><option>Muaf</option>
+                </select>
+              </div>
+              <div className="input-group col-6"><label className="input-label" htmlFor="pm-meal">Yemek Kartı</label><input id="pm-meal" type="text" className="input-control" value={form.mealCard} disabled={readOnly} onChange={(e) => set("mealCard", e.target.value)} /></div>
+            </div>
+          </div>
+
+          <div id="tab-ozluk" className={`content-section ${activeTab === "tab-ozluk" ? "active" : ""}`}>
+            <div className="section-head"><div><h3>Özlük & Sağlık</h3><span>Zimmet ve İSG süreçleri için ek bilgiler.</span></div></div>
+            <div className="form-grid">
+              <div className="input-group col-3">
+                <label className="input-label" htmlFor="pm-tshirt">T-Shirt</label>
+                <select id="pm-tshirt" className="input-control" value={form.tshirtSize} disabled={readOnly} onChange={(e) => set("tshirtSize", e.target.value)}>
+                  <option>S</option><option>M</option><option>L</option><option>XL</option>
+                </select>
+              </div>
+              <div className="input-group col-3">
+                <label className="input-label" htmlFor="pm-pants">Pantolon</label>
+                <select id="pm-pants" className="input-control" value={form.pantsSize} disabled={readOnly} onChange={(e) => set("pantsSize", e.target.value)}>
+                  <option>30</option><option>32</option><option>34</option>
+                </select>
+              </div>
+              <div className="input-group col-3">
+                <label className="input-label" htmlFor="pm-coat">Mont</label>
+                <select id="pm-coat" className="input-control" value={form.coatSize} disabled={readOnly} onChange={(e) => set("coatSize", e.target.value)}>
+                  <option>M</option><option>L</option>
+                </select>
+              </div>
+              <div className="input-group col-3"><label className="input-label" htmlFor="pm-shoe">Ayakkabı</label><input id="pm-shoe" type="number" className="input-control" value={form.shoeSize} disabled={readOnly} onChange={(e) => set("shoeSize", e.target.value)} /></div>
+              <label className="check-card col-4"><input type="checkbox" checked={form.canWorkAtHeight} disabled={readOnly} onChange={(e) => set("canWorkAtHeight", e.target.checked)} /> <span>Yüksekte çalışabilir</span></label>
+              <label className="check-card col-4"><input type="checkbox" checked={form.canWorkNightShift} disabled={readOnly} onChange={(e) => set("canWorkNightShift", e.target.checked)} /> <span>Gece vardiyası</span></label>
+              <label className="check-card col-4"><input type="checkbox" checked={form.canLiftHeavyLoads} disabled={readOnly} onChange={(e) => set("canLiftHeavyLoads", e.target.checked)} /> <span>Ağır yük taşıma</span></label>
+              <div className="input-group col-12"><label className="input-label" htmlFor="pm-health">Bilinen Hastalık / Notlar</label><textarea id="pm-health" className="input-control" rows={2} value={form.healthNotes} disabled={readOnly} onChange={(e) => set("healthNotes", e.target.value)} /></div>
+            </div>
+          </div>
+
+          <div id="tab-evrak" className={`content-section ${activeTab === "tab-evrak" ? "active" : ""}`}>
+            {/* Task 5: gerçek evrak listesi + yükleme/indirme */}
+            <div className="upload-drop">
+              <i aria-hidden="true" className="fa-solid fa-cloud-arrow-up" />
+              <h4>Dosyaları sürükleyip bırakın</h4>
+              <p>Nüfus cüzdanı, ikametgah, adli sicil ve diğer özlük evrakları.</p>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
