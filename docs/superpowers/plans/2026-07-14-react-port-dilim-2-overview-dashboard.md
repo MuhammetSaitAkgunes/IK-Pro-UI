@@ -1,4 +1,4 @@
-# React Port — Dilim 2: Overview + Risk Merkezi — Implementation Plan
+﻿# React Port — Dilim 2: Overview + Risk Merkezi — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -52,14 +52,14 @@
   - `apiStub.ts`: `stubApi(routes: Record<string, unknown>): void` — anahtar **tam path** (`"/api/dashboard/metrics"`), query string yok sayılır
   - `renderPage.tsx`: `renderPage(ui: ReactElement)` — QueryClientProvider (retry:false) + MemoryRouter sarmalayıcı
 
-- [ ] **Step 1: Bağımlılıkları kur**
+- [x] **Step 1: Bağımlılıkları kur**
 
 ```bash
 cd frontend
 npm install chart.js@^4 react-chartjs-2@^5
 ```
 
-- [ ] **Step 2: Başarısız testleri yaz** — `src/features/dashboard/format.test.ts`:
+- [x] **Step 2: Başarısız testleri yaz** — `src/features/dashboard/format.test.ts`:
 
 ```ts
 import { expect, test } from "vitest";
@@ -115,7 +115,7 @@ test("ApiError mesajı gösterilir", () => {
 
 Run: `npm test -- --run src/features` → Beklenen: FAIL (modüller yok).
 
-- [ ] **Step 3: `format.ts` yaz**
+- [x] **Step 3: `format.ts` yaz**
 
 ```ts
 export const getRiskLevel = (score: number): "high" | "medium" | "low" =>
@@ -148,7 +148,7 @@ export const formatToday = (): string =>
   new Date().toLocaleDateString("tr-TR", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 ```
 
-- [ ] **Step 4: `PageState.tsx` yaz**
+- [x] **Step 4: `PageState.tsx` yaz**
 
 ```tsx
 import { ApiError } from "../../api/client";
@@ -175,7 +175,7 @@ export function PageError({ error }: { error: unknown }) {
 }
 ```
 
-- [ ] **Step 5: `chartSetup.ts`, `chartStub.tsx`, `apiStub.ts`, `renderPage.tsx` yaz**
+- [x] **Step 5: `chartSetup.ts`, `chartStub.tsx`, `apiStub.ts`, `renderPage.tsx` yaz**
 
 `src/features/shared/chartSetup.ts`:
 
@@ -238,7 +238,7 @@ export const renderPage = (ui: ReactElement) =>
   );
 ```
 
-- [ ] **Step 6: `vite.config.ts`'e test alias'ı ekle** — `test` bloğunu şu hale getir:
+- [x] **Step 6: `vite.config.ts`'e test alias'ı ekle** — `test` bloğunu şu hale getir:
 
 ```ts
 import { fileURLToPath } from "node:url";
@@ -253,11 +253,11 @@ import { fileURLToPath } from "node:url";
   },
 ```
 
-- [ ] **Step 7: Testleri doğrula**
+- [x] **Step 7: Testleri doğrula**
 
 Run: `npm test -- --run` → Beklenen: eski 14 + yeni 7 test PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add frontend/
@@ -277,7 +277,7 @@ git commit -m "feat(frontend): dilim 2 altyapısı — chart kurulumu, test stub
 - Consumes: `apiFetch`, `PageLoading/PageError`, `formatToday`, `chartToken`, `renderPage`, `stubApi`.
 - Produces: `useOverview(): UseQueryResult<OverviewDto>`; `OverviewPage(): JSX.Element`; `DeptDistributionChart({ distribution })`, `RecruitmentFunnelChart({ funnel })`.
 
-- [ ] **Step 1: Başarısız testi yaz** — `OverviewPage.test.tsx`:
+- [x] **Step 1: Başarısız testi yaz** — `OverviewPage.test.tsx`:
 
 ```tsx
 import { screen } from "@testing-library/react";
@@ -330,7 +330,7 @@ test("grafikler render edilir (stub canvas)", async () => {
 
 Run: `npm test -- --run src/features/overview` → Beklenen: FAIL.
 
-- [ ] **Step 2: `queries.ts` yaz**
+- [x] **Step 2: `queries.ts` yaz**
 
 ```ts
 import { useQuery } from "@tanstack/react-query";
@@ -343,7 +343,7 @@ export const useOverview = () =>
   useQuery({ queryKey: ["dashboard", "overview"], queryFn: () => apiFetch<OverviewDto>("/dashboard/overview") });
 ```
 
-- [ ] **Step 3: `OverviewCharts.tsx` yaz** (eski initDashboardCharts paritesi)
+- [x] **Step 3: `OverviewCharts.tsx` yaz** (eski initDashboardCharts paritesi)
 
 ```tsx
 import { Bar, Doughnut } from "react-chartjs-2";
@@ -410,7 +410,7 @@ export function RecruitmentFunnelChart({ funnel }: { funnel: RecruitmentFunnelSl
 }
 ```
 
-- [ ] **Step 4: `OverviewPage.tsx` yaz** (eski OverviewDashboard DOM paritesi; alt grid Dilim 4'te)
+- [x] **Step 4: `OverviewPage.tsx` yaz** (eski OverviewDashboard DOM paritesi; alt grid Dilim 4'te)
 
 ```tsx
 import { useNavigate } from "react-router-dom";
@@ -537,7 +537,7 @@ export function OverviewPage() {
 
 Not: eski `kpi-link` bir `<a href="#">` idi; React'te `<button type="button" className="kpi-link">` kullanılır (görsel fark yoksa sorun yok; parite kontrolünde doğrulanır).
 
-- [ ] **Step 5: `routes.tsx`'te kaydet** — `pageFor` satırını değiştir:
+- [x] **Step 5: `routes.tsx`'te kaydet** — `pageFor` satırını değiştir:
 
 ```tsx
 import { OverviewPage } from "./features/overview/OverviewPage";
@@ -547,11 +547,11 @@ const pageFor: Record<string, () => JSX.Element> = {
 };
 ```
 
-- [ ] **Step 6: Testleri doğrula**
+- [x] **Step 6: Testleri doğrula**
 
 Run: `npm test -- --run` → Beklenen: tümü PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add frontend/src/
@@ -571,7 +571,7 @@ git commit -m "feat(frontend): Genel Durum sayfası gerçek API + Chart.js ile p
 - Consumes: Task 1 yardımcıları; `appRoutes` (sourceRoute → path çevirisi).
 - Produces: `useDashboardMetrics()`, `useManagerLoad()`, `useEmployeeVoice()`, `useComplianceRisk()`, `useOpenActions()`, `useAttritionDetail()`, `useBurnoutDetail()` hook'ları (sonraki task'lar da kullanır); `RiskCenterPage()`; `RiskTrendChart({ trend })`.
 
-- [ ] **Step 1: Başarısız testi yaz** — `RiskCenterPage.test.tsx`:
+- [x] **Step 1: Başarısız testi yaz** — `RiskCenterPage.test.tsx`:
 
 ```tsx
 import { screen } from "@testing-library/react";
@@ -640,7 +640,7 @@ test("en acil aksiyonlar done hariç önceliğe göre listelenir", async () => {
 
 Run: `npm test -- --run src/features/dashboard/RiskCenterPage.test.tsx` → Beklenen: FAIL.
 
-- [ ] **Step 2: `queries.ts` yaz**
+- [x] **Step 2: `queries.ts` yaz**
 
 ```ts
 import { useQuery } from "@tanstack/react-query";
@@ -681,7 +681,7 @@ export const useOpenActions = () =>
   });
 ```
 
-- [ ] **Step 3: `RiskTrendChart.tsx` yaz** (eski riskTrendChart birebir; etiketler diziden türetilir: sonuncu "Bu hafta", öncekiler `H-{uzaklık}`)
+- [x] **Step 3: `RiskTrendChart.tsx` yaz** (eski riskTrendChart birebir; etiketler diziden türetilir: sonuncu "Bu hafta", öncekiler `H-{uzaklık}`)
 
 ```tsx
 import { Line } from "react-chartjs-2";
@@ -724,7 +724,7 @@ export function RiskTrendChart({ trend }: { trend: number[] }) {
 }
 ```
 
-- [ ] **Step 4: `RiskCenterPage.tsx` yaz** (eski Dashboard() DOM paritesi)
+- [x] **Step 4: `RiskCenterPage.tsx` yaz** (eski Dashboard() DOM paritesi)
 
 ```tsx
 import { useNavigate } from "react-router-dom";
@@ -959,7 +959,7 @@ export function RiskCenterPage() {
 }
 ```
 
-- [ ] **Step 5: `routes.tsx` `pageFor`'a ekle**
+- [x] **Step 5: `routes.tsx` `pageFor`'a ekle**
 
 ```tsx
 import { RiskCenterPage } from "./features/dashboard/RiskCenterPage";
@@ -970,11 +970,11 @@ const pageFor: Record<string, () => JSX.Element> = {
 };
 ```
 
-- [ ] **Step 6: Testleri doğrula**
+- [x] **Step 6: Testleri doğrula**
 
 Run: `npm test -- --run` → Beklenen: tümü PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add frontend/src/
@@ -994,7 +994,7 @@ git commit -m "feat(frontend): Risk Merkezi sayfası — 5 sorgu, trend grafiği
 - Consumes: `useAttritionDetail`, `useBurnoutDetail` (Task 3), `getLevelText`, `PageLoading/PageError`.
 - Produces: `BackToRisk()` (diğer detay sayfaları da kullanır), `AttritionDetailPage()`, `BurnoutDetailPage()`.
 
-- [ ] **Step 1: Başarısız testleri yaz** — `RiskDetailPages.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `RiskDetailPages.test.tsx`:
 
 ```tsx
 import { screen } from "@testing-library/react";
@@ -1036,7 +1036,7 @@ test("tükenmişlik detayı ortalamaları ve seviye rozetini gösterir", async (
 
 Run: `npm test -- --run src/features/dashboard/RiskDetailPages.test.tsx` → Beklenen: FAIL.
 
-- [ ] **Step 2: `BackToRisk.tsx` yaz**
+- [x] **Step 2: `BackToRisk.tsx` yaz**
 
 ```tsx
 import { useNavigate } from "react-router-dom";
@@ -1051,7 +1051,7 @@ export function BackToRisk() {
 }
 ```
 
-- [ ] **Step 3: `AttritionDetailPage.tsx` yaz**
+- [x] **Step 3: `AttritionDetailPage.tsx` yaz**
 
 ```tsx
 import { PageError, PageLoading } from "../shared/PageState";
@@ -1106,7 +1106,7 @@ export function AttritionDetailPage() {
 }
 ```
 
-- [ ] **Step 4: `BurnoutDetailPage.tsx` yaz**
+- [x] **Step 4: `BurnoutDetailPage.tsx` yaz**
 
 ```tsx
 import { PageError, PageLoading } from "../shared/PageState";
@@ -1164,11 +1164,11 @@ export function BurnoutDetailPage() {
 }
 ```
 
-- [ ] **Step 5: `routes.tsx` `pageFor`'a ekle** (`attrition-risk: AttritionDetailPage, "burnout-risk": BurnoutDetailPage` — anahtarlar tırnaklı yazılır çünkü tire içerir)
+- [x] **Step 5: `routes.tsx` `pageFor`'a ekle** (`attrition-risk: AttritionDetailPage, "burnout-risk": BurnoutDetailPage` — anahtarlar tırnaklı yazılır çünkü tire içerir)
 
-- [ ] **Step 6: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
+- [x] **Step 6: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add frontend/src/
@@ -1188,7 +1188,7 @@ git commit -m "feat(frontend): ayrılma ve tükenmişlik risk detay sayfaları"
 - Consumes: `useManagerLoad`, `useEmployeeVoice` (Task 3), `getRiskLevel`, `getLevelText`, `BackToRisk`.
 - Produces: `ManagerLoadPage()`, `EmployeeVoicePage()`.
 
-- [ ] **Step 1: Başarısız testleri yaz** — `ManagerVoicePages.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `ManagerVoicePages.test.tsx`:
 
 ```tsx
 import { screen } from "@testing-library/react";
@@ -1240,7 +1240,7 @@ test("nabız sayfası departman tablosu + türetilmiş riskli ekipleri gösterir
 
 Run: `npm test -- --run src/features/dashboard/ManagerVoicePages.test.tsx` → Beklenen: FAIL.
 
-- [ ] **Step 2: `ManagerLoadPage.tsx` yaz**
+- [x] **Step 2: `ManagerLoadPage.tsx` yaz**
 
 ```tsx
 import { PageError, PageLoading } from "../shared/PageState";
@@ -1296,7 +1296,7 @@ export function ManagerLoadPage() {
 }
 ```
 
-- [ ] **Step 3: `EmployeeVoicePage.tsx` yaz** (riskTeams aside `level !== "low"` departmanlardan türetilir)
+- [x] **Step 3: `EmployeeVoicePage.tsx` yaz** (riskTeams aside `level !== "low"` departmanlardan türetilir)
 
 ```tsx
 import { PageError, PageLoading } from "../shared/PageState";
@@ -1394,11 +1394,11 @@ export function EmployeeVoicePage() {
 }
 ```
 
-- [ ] **Step 4: `routes.tsx` `pageFor`'a ekle** (`"manager-load": ManagerLoadPage, "employee-voice": EmployeeVoicePage`)
+- [x] **Step 4: `routes.tsx` `pageFor`'a ekle** (`"manager-load": ManagerLoadPage, "employee-voice": EmployeeVoicePage`)
 
-- [ ] **Step 5: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
+- [x] **Step 5: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/
@@ -1418,7 +1418,7 @@ git commit -m "feat(frontend): yönetici yükü ve çalışan nabzı detay sayfa
 - Consumes: `useComplianceRisk` (Task 3), `getLevelText`, `BackToRisk`.
 - Produces: `ComplianceRiskPage()`.
 
-- [ ] **Step 1: Başarısız testi yaz** — `ComplianceRiskPage.test.tsx`:
+- [x] **Step 1: Başarısız testi yaz** — `ComplianceRiskPage.test.tsx`:
 
 ```tsx
 import { screen } from "@testing-library/react";
@@ -1458,7 +1458,7 @@ test("yaklaşan son tarihler aside'ı dolar", async () => {
 
 Run: `npm test -- --run src/features/dashboard/ComplianceRiskPage.test.tsx` → Beklenen: FAIL.
 
-- [ ] **Step 2: `ComplianceRiskPage.tsx` yaz** (detail-support-grid yok — Dilim 6'da)
+- [x] **Step 2: `ComplianceRiskPage.tsx` yaz** (detail-support-grid yok — Dilim 6'da)
 
 ```tsx
 import { PageError, PageLoading } from "../shared/PageState";
@@ -1540,12 +1540,12 @@ export function ComplianceRiskPage() {
 }
 ```
 
-- [ ] **Step 3: `routes.tsx` `pageFor`'a ekle** (`"compliance-risk": ComplianceRiskPage`)
+- [x] **Step 3: `routes.tsx` `pageFor`'a ekle** (`"compliance-risk": ComplianceRiskPage`)
 
-- [ ] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
+- [x] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
 Ek olarak build: `npm run build` → hatasız.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/
@@ -1559,12 +1559,12 @@ git commit -m "feat(frontend): uyum risk merkezi detay sayfası"
 **Files:**
 - Modify: `docs/gelistirme-gunlugu.md` (yeni kayıt + "Şu an neredeyiz"); gerekirse bulunan küçük hatalar düzeltilir.
 
-- [ ] **Step 1: Backend + frontend'i başlat**
+- [x] **Step 1: Backend + frontend'i başlat**
 
 Terminal 1: `cd backend && dotnet run --project src/IKPro.API --launch-profile http`
 Terminal 2: `cd frontend && npm run dev` → `http://localhost:5173`
 
-- [ ] **Step 2: Duman testi (hr-admin: ik@hrmaster.local / demo123)**
+- [x] **Step 2: Duman testi (hr-admin: ik@hrmaster.local / demo123)**
 
 1. `#/dashboard` → KPI kartları gerçek sayılarla dolar; risk trendi çizgi grafiği çizilir; ısı haritası departman satırları gelir.
 2. "En Acil Aksiyonlar" kartına tıkla → ilgili risk detayına gider.
@@ -1574,11 +1574,11 @@ Terminal 2: `cd frontend && npm run dev` → `http://localhost:5173`
 6. Rol değiştirici → Çalışan → `#/overview` açılır (employee overview'a erişebilir, dashboard'a erişemez).
 7. Backend'i durdur, dashboard'ı yenile → `PageError` ("Veri yüklenemedi") ekranı; backend'i tekrar başlat.
 
-- [ ] **Step 3: Görsel parite kontrolü**
+- [x] **Step 3: Görsel parite kontrolü**
 
 Eski uygulamayı statik sunucuyla aç (kök `index.html`, ör. `npx http-server -p 4173 -s .`), hr-admin ile giriş yap. Eski/yeni `#/dashboard`, `#/overview` ve 5 risk detayını yan yana karşılaştır (renk, boşluk, ikon, tipografi). **Bilinçli farklar:** ısı haritası satır metinleri, KPI alt metinleri, Overview 4. KPI ("Bugün İzinli"), Overview alt grid'in olmaması, nabız sayfasında riskli ekip kartlarının sade hali, uyum sayfasında destek grid'inin olmaması — bunlar veri eşleme kararlarıdır, DOM/class farkı değildir. Bunun dışında fark bulunursa DOM/class düzeltmesi yap (CSS'e dokunma).
 
-- [ ] **Step 4: Günlüğü güncelle ve kapanış commit'i**
+- [x] **Step 4: Günlüğü güncelle ve kapanış commit'i**
 
 `docs/gelistirme-gunlugu.md`: "Şu an neredeyiz" → Dilim 3 (Personel + Departman) planı; kayıtlara Dilim 2 özeti eklenir.
 

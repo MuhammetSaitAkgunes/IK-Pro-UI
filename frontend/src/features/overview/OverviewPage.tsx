@@ -1,11 +1,10 @@
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { formatToday } from "../dashboard/format";
 import { PageError, PageLoading } from "../shared/PageState";
 import { DeptDistributionChart, RecruitmentFunnelChart } from "./OverviewCharts";
 import { useOverview } from "./queries";
 
 export function OverviewPage() {
-  const navigate = useNavigate();
   const overview = useOverview();
 
   if (overview.isPending) return <PageLoading />;
@@ -48,7 +47,7 @@ export function OverviewPage() {
           <div className="kpi-content">
             <span className="kpi-label">Onay Bekleyen</span>
             <h3 className="kpi-value">{data.pendingApprovals ?? 0}</h3>
-            <button type="button" className="kpi-link" onClick={() => navigate("/manager")}>Talepleri incele</button>
+            <Link className="kpi-link" to="/manager">Talepleri incele</Link>
           </div>
         </div>
         <div className="kpi-card">

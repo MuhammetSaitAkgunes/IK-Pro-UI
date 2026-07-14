@@ -6,13 +6,16 @@
 
 ## Şu an neredeyiz
 
-- **Aktif iş:** React portu — **Dilim 2 (Overview + Dashboard sayfa portu)** başlıyor.
-- **Son tamamlanan:** Dilim 1 (iskelet) — main'e merge edildi, dal silindi.
-- **Sıradaki adım:** `feature/react-port-dilim-2` dalında Dilim 2 planını yaz
-  (`docs/superpowers/plans/`), sonra görev görev uygula.
+- **Aktif iş:** React portu — **Dilim 2 tamamlandı**; dal `feature/react-port-dilim-2`
+  main'e merge kararı bekliyor.
+- **Son tamamlanan:** Dilim 2 (Overview + Risk Merkezi + 5 risk detayı) — 7 görev,
+  33 birim test, duman testi ve parite kontrolü geçti.
+- **Sıradaki adım:** Dilim 2'yi main'e merge et; sonra Dilim 3 (Personel + Departman)
+  planını yeni dalda yaz (`docs/superpowers/plans/`).
 - **Referanslar:**
   - Tasarım dokümanı: `docs/superpowers/specs/2026-07-13-react-frontend-port-design.md`
   - Dilim 1 planı (tamamlandı): `docs/superpowers/plans/2026-07-13-react-port-dilim-1-iskelet.md`
+  - Dilim 2 planı (tamamlandı): `docs/superpowers/plans/2026-07-14-react-port-dilim-2-overview-dashboard.md`
   - Backend faz planı: `raporlar/backend-development-plan.md`
 - **Çalıştırma komutları:**
   - Backend: `cd backend && dotnet run --project src/IKPro.API --launch-profile http` → `http://localhost:5053`
@@ -23,6 +26,27 @@
 ---
 
 ## Kayıtlar (yeni → eski)
+
+### 2026-07-14 — Dilim 2: Overview + Risk Merkezi + 5 risk detayı
+
+- Plan yazıldı (`2026-07-14-react-port-dilim-2-overview-dashboard.md`) ve 7 görev
+  TDD ile uygulandı; 33 birim test + `npm run build` yeşil.
+- Sayfalar: `OverviewPage`, `RiskCenterPage` (5 paralel sorgu), `AttritionDetailPage`,
+  `BurnoutDetailPage`, `ManagerLoadPage`, `EmployeeVoicePage`, `ComplianceRiskPage` —
+  hepsi `src/features/` altında, `routes.tsx` `pageFor`'a kayıtlı.
+- Altyapı: chart.js 4 + react-chartjs-2 5 (renkler `chartToken` ile CSS token'larından),
+  `PageLoading/PageError`, test tarafında `stubApi` (path bazlı fetch stub) ve
+  Vitest alias'lı `chartStub` (jsdom'da canvas yok).
+- **Veri eşleme kararları** (mock ↔ backend farkları planın tablosunda): ısı haritası
+  sürücü metni sayılardan türetilir; dashboard aksiyonları `GET /api/actions`'tan;
+  Overview 4. KPI "Bugün İzinli"; Overview alt grid (onay kartları + doğum günleri)
+  Dilim 4'e ertelendi; nabız "Riskli Ekipler" `level != low` departmanlardan türetilir;
+  uyum sayfasının denetim çeklisti Dilim 6'ya bırakıldı (backend'de yok).
+- Duman testi: 15 Playwright kontrolü geçti (grafikler, tablolar, rol geçişi,
+  yetki ekranı, API kesintisinde PageError). Bulunan tek gerçek fark düzeltildi:
+  Overview "Talepleri incele" `<button>` yerine eskisi gibi `<a>` (`Link`) oldu.
+- Not: rol değiştirici testinde yarış var — değişimin bitmesi kullanıcı etiketinden
+  beklenmeli (duman script'lerinde `user-profile strong` kontrolü).
 
 ### 2026-07-14 — Dilim 1 kapanışı: duman testi, parite, merge
 
