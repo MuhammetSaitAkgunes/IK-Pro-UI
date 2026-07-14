@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ApiError } from "../../api/client";
 import { useToast } from "../../layout/ToastProvider";
 import { PageError, PageLoading } from "../shared/PageState";
+import { LeaveRequestModal } from "./LeaveRequestModal";
 import { LEAVE_STATUS_TEXT, awayDateLabel, formatLeaveDate } from "./format";
 import { useCancelLeave, useLeaveBalance, useMyLeaves, useTeamLeaves } from "./queries";
 
@@ -155,8 +156,7 @@ export function LeavesPage() {
         </div>
       </div>
 
-      {/* İzin talebi modalı Task 3'te */}
-      {modalOpen && null}
+      {modalOpen && <LeaveRequestModal onClose={() => setModalOpen(false)} />}
     </div>
   );
 }
