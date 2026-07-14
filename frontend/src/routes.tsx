@@ -11,6 +11,7 @@ import { ManagerLoadPage } from "./features/dashboard/ManagerLoadPage";
 import { EmployeeVoicePage } from "./features/dashboard/EmployeeVoicePage";
 import { ComplianceRiskPage } from "./features/dashboard/ComplianceRiskPage";
 import { PersonnelPage } from "./features/personnel/PersonnelPage";
+import { LeavesPage } from "./features/leaves/LeavesPage";
 
 export type Role = "hr-admin" | "manager" | "employee";
 
@@ -76,6 +77,7 @@ const pageFor: Record<string, () => JSX.Element> = {
   "employee-voice": EmployeeVoicePage,
   "compliance-risk": ComplianceRiskPage,
   personnel: PersonnelPage,
+  leaves: LeavesPage,
 };
 
 // Component JSX olarak render edilir (düz fonksiyon çağrısı hook kurallarını bozar).
