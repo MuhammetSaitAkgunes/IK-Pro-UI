@@ -7,6 +7,8 @@ import { OverviewPage } from "./features/overview/OverviewPage";
 import { RiskCenterPage } from "./features/dashboard/RiskCenterPage";
 import { AttritionDetailPage } from "./features/dashboard/AttritionDetailPage";
 import { BurnoutDetailPage } from "./features/dashboard/BurnoutDetailPage";
+import { ManagerLoadPage } from "./features/dashboard/ManagerLoadPage";
+import { EmployeeVoicePage } from "./features/dashboard/EmployeeVoicePage";
 
 export type Role = "hr-admin" | "manager" | "employee";
 
@@ -68,6 +70,8 @@ const pageFor: Record<string, () => JSX.Element> = {
   dashboard: RiskCenterPage,
   "attrition-risk": AttritionDetailPage,
   "burnout-risk": BurnoutDetailPage,
+  "manager-load": ManagerLoadPage,
+  "employee-voice": EmployeeVoicePage,
 };
 
 // Component JSX olarak render edilir (düz fonksiyon çağrısı hook kurallarını bozar).
