@@ -5,6 +5,8 @@ import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { AppShell } from "./layout/AppShell";
 import { OverviewPage } from "./features/overview/OverviewPage";
 import { RiskCenterPage } from "./features/dashboard/RiskCenterPage";
+import { AttritionDetailPage } from "./features/dashboard/AttritionDetailPage";
+import { BurnoutDetailPage } from "./features/dashboard/BurnoutDetailPage";
 
 export type Role = "hr-admin" | "manager" | "employee";
 
@@ -64,6 +66,8 @@ export const navGroups = [
 const pageFor: Record<string, () => JSX.Element> = {
   overview: OverviewPage,
   dashboard: RiskCenterPage,
+  "attrition-risk": AttritionDetailPage,
+  "burnout-risk": BurnoutDetailPage,
 };
 
 // Component JSX olarak render edilir (düz fonksiyon çağrısı hook kurallarını bozar).
