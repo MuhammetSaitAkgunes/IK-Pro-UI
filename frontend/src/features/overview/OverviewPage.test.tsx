@@ -2,6 +2,8 @@ import { screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { stubApi } from "../../test/apiStub";
 import { renderPage } from "../../test/renderPage";
+import { AuthProvider } from "../../auth/AuthContext";
+import { ToastProvider } from "../../layout/ToastProvider";
 import { OverviewPage } from "./OverviewPage";
 
 const overview = {
@@ -23,7 +25,7 @@ beforeEach(() => stubApi({ "/api/dashboard/overview": overview }));
 afterEach(() => vi.unstubAllGlobals());
 
 test("KPI kartları backend verisiyle dolar", async () => {
-  renderPage(<OverviewPage />);
+  renderPage(<AuthProvider><ToastProvider><OverviewPage /></ToastProvider></AuthProvider>);
   expect(await screen.findByText("42")).toBeInTheDocument();
   expect(screen.getByText("Aktif Personel")).toBeInTheDocument();
   expect(screen.getByText("32 yeni başvuru")).toBeInTheDocument();
@@ -31,7 +33,7 @@ test("KPI kartları backend verisiyle dolar", async () => {
 });
 
 test("çalışma durumu satırları türetilmiş sayıları gösterir", async () => {
-  renderPage(<OverviewPage />);
+  renderPage(<AuthProvider><ToastProvider><OverviewPage /></ToastProvider></AuthProvider>);
   expect(await screen.findByText("Ofiste")).toBeInTheDocument();
   expect(screen.getByText("30")).toBeInTheDocument();
   // Kayıt bekleyen = 42 - 30 - 4 = 8; "8" açık pozisyon KPI'ında da geçer, satır bazlı kontrol:
@@ -40,7 +42,7 @@ test("çalışma durumu satırları türetilmiş sayıları gösterir", async ()
 });
 
 test("grafikler render edilir (stub canvas)", async () => {
-  renderPage(<OverviewPage />);
+  renderPage(<AuthProvider><ToastProvider><OverviewPage /></ToastProvider></AuthProvider>);
   expect(await screen.findByTestId("chart-doughnut")).toBeInTheDocument();
   expect(screen.getByTestId("chart-bar")).toBeInTheDocument();
 });
