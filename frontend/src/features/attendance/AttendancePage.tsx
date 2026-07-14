@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "../../layout/ToastProvider";
+import { AttendanceEntryModal } from "./AttendanceEntryModal";
 import { downloadCsv, tableToCsvLines } from "../shared/csv";
 import { PageError, PageLoading } from "../shared/PageState";
 import { LIVE_STATUS_TEXT, formatBreak, formatTime, formatTsDate, minutesToHhMm, monthLabel } from "./format";
@@ -196,8 +197,14 @@ export function AttendancePage() {
         </div>
       </div>
 
-      {/* Manuel giriş/düzenleme modalı Task 6'da */}
-      {entry && null}
+      {entry && (
+        <AttendanceEntryModal
+          rowId={entry.rowId}
+          initial={entry.row}
+          defaultEmployeeId={employeeId}
+          onClose={() => setEntry(null)}
+        />
+      )}
     </div>
   );
 }
