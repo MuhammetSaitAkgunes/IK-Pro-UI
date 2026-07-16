@@ -4,6 +4,7 @@ import { ApiError } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
 import { useToast } from "../../layout/ToastProvider";
 import { PageError, PageLoading } from "../shared/PageState";
+import { CalculatorTab } from "./CalculatorTab";
 import { MyPayslipsView } from "./MyPayslipsView";
 import { PeriodTab } from "./PeriodTab";
 import { useCreatePayrollPeriod, usePayrollPeriods, useSubmitPayrollPeriod } from "./queries";
@@ -111,7 +112,7 @@ function PayrollAdminShell({ tab }: { tab: "period" | "calculator" | "settings" 
         </section>
       )}
       {tab === "calculator" && (
-        <section id="payroll-calculator" className="payroll-tab-content active">{null}</section>
+        <section id="payroll-calculator" className="payroll-tab-content active"><CalculatorTab /></section>
       )}
       {tab === "settings" && (
         <section id="payroll-settings" className="payroll-tab-content active">{null}</section>
