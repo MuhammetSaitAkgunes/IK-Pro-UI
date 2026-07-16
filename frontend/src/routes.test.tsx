@@ -50,8 +50,9 @@ test("employee, dashboard'da 'Yetki Gerekli' ekranı görür (redirect yok)", ()
   expect(screen.getByText("Bu alan için yetki gerekli")).toBeInTheDocument();
 });
 
-test("hr-admin, settings placeholder'ını görür", () => {
+test("hr-admin, settings'te gerçek Sistem Ayarları sayfasını görür", () => {
   localStorage.setItem(SESSION_KEY, sessionFor("hr-admin", "İK Yöneticisi"));
   renderShellAt("/settings");
-  expect(screen.getByText("Bu alan hazırlanıyor")).toBeInTheDocument();
+  // Dilim 7: settings placeholder'ı gerçek sayfayla değişti; sayfa önce yükleniyor durumundadır.
+  expect(screen.queryByText("Bu alan hazırlanıyor")).not.toBeInTheDocument();
 });

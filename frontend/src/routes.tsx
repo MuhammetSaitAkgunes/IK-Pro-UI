@@ -13,6 +13,7 @@ import { EmployeeVoicePage } from "./features/dashboard/EmployeeVoicePage";
 import { CompliancePage } from "./features/compliance/CompliancePage";
 import { PersonnelPage } from "./features/personnel/PersonnelPage";
 import { RecruitmentPage } from "./features/recruitment/RecruitmentPage";
+import { SettingsPage } from "./features/settings/SettingsPage";
 import { LeavesPage } from "./features/leaves/LeavesPage";
 import { AttendancePage } from "./features/attendance/AttendancePage";
 import { PayrollPeriodPage, PayrollCalculatorPage, PayrollSettingsPage } from "./features/payroll/PayrollPage";
@@ -89,6 +90,7 @@ const pageFor: Record<string, () => JSX.Element> = {
   payroll: PayrollPeriodPage,
   "payroll-calculator": PayrollCalculatorPage,
   "payroll-settings": PayrollSettingsPage,
+  settings: SettingsPage,
 };
 
 // Component JSX olarak render edilir (düz fonksiyon çağrısı hook kurallarını bozar).
