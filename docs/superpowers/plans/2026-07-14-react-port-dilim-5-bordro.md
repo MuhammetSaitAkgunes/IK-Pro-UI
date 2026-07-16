@@ -52,7 +52,7 @@
   - `derivePayrollSteps(status: string | undefined, rows: PayrollRowDto[], controls: PayrollControlDto[]): PayrollStepView[]`
 - Produces (`queries.ts`): tipler `PayrollPeriodListItemDto, PayrollPeriodDetailDto, PayrollRowDto, PayrollControlDto, PayrollRowInputModel, PayrollCalculation, PreviewPayrollCommand, PayrollSettingsDto, UpdatePayrollSettingsCommand, MyPayslipDto` + hook'lar (aşağıda).
 
-- [ ] **Step 1: Başarısız testleri yaz** — `format.test.ts`:
+- [x] **Step 1: Başarısız testleri yaz** — `format.test.ts`:
 
 ```ts
 import { describe, expect, test } from "vitest";
@@ -113,7 +113,7 @@ describe("derivePayrollSteps", () => {
 
 Run: `npm test -- --run src/features/payroll` → FAIL.
 
-- [ ] **Step 2: `format.ts` yaz**
+- [x] **Step 2: `format.ts` yaz**
 
 ```ts
 import type { PayrollControlDto, PayrollRowDto } from "./queries";
@@ -197,7 +197,7 @@ export const derivePayrollSteps = (
 };
 ```
 
-- [ ] **Step 3: `queries.ts` yaz**
+- [x] **Step 3: `queries.ts` yaz**
 
 ```ts
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -321,9 +321,9 @@ export const useMyPayslips = () =>
   useQuery({ queryKey: ["payroll", "my"], queryFn: () => apiFetch<MyPayslipDto[]>("/payroll/my") });
 ```
 
-- [ ] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
+- [x] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/features/payroll/
@@ -346,7 +346,7 @@ git commit -m "feat(frontend): bordro format yardımcıları ve query katmanı"
   - `PayrollPeriodPage()`, `PayrollCalculatorPage()`, `PayrollSettingsPage()` — rota sarmalayıcıları.
   - `MyPayslipsView()` — çalışan pusula listesi.
 
-- [ ] **Step 1: Başarısız testleri yaz**
+- [x] **Step 1: Başarısız testleri yaz**
 
 `MyPayslipsView.test.tsx`:
 
@@ -457,7 +457,7 @@ test("çalışan sekme kabuğu yerine Bordrolarım görünümünü alır", async
 
 Run: `npm test -- --run src/features/payroll` → FAIL.
 
-- [ ] **Step 2: `MyPayslipsView.tsx` yaz**
+- [x] **Step 2: `MyPayslipsView.tsx` yaz**
 
 ```tsx
 import { ApiError, apiDownload } from "../../api/client";
@@ -547,7 +547,7 @@ export function MyPayslipsView() {
 }
 ```
 
-- [ ] **Step 3: `PayrollPage.tsx` yaz** (sekme içerikleri placeholder; Task 3/5/6 doldurur)
+- [x] **Step 3: `PayrollPage.tsx` yaz** (sekme içerikleri placeholder; Task 3/5/6 doldurur)
 
 ```tsx
 import { useEffect, useState } from "react";
@@ -739,7 +739,7 @@ export const PayrollCalculatorPage = () => <PayrollPage tab="calculator" />;
 export const PayrollSettingsPage = () => <PayrollPage tab="settings" />;
 ```
 
-- [ ] **Step 4: `routes.tsx` `pageFor`'a ekle**
+- [x] **Step 4: `routes.tsx` `pageFor`'a ekle**
 
 ```tsx
 import { PayrollPeriodPage, PayrollCalculatorPage, PayrollSettingsPage } from "./features/payroll/PayrollPage";
@@ -749,9 +749,9 @@ import { PayrollPeriodPage, PayrollCalculatorPage, PayrollSettingsPage } from ".
 //   "payroll-settings": PayrollSettingsPage,
 ```
 
-- [ ] **Step 5: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
+- [x] **Step 5: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/
@@ -771,7 +771,7 @@ git commit -m "feat(frontend): bordro kabuğu — sekmeler, dönem seçici/oluş
 - Consumes: `usePayrollPeriod`, `useRunPayrollCheck`, `usePayrollSettings`, format yardımcıları, `useToast`.
 - Produces: `PeriodTab({ periodId }: { periodId: number | null })`. Satır "Detay" butonu `setDetailRow(row)` state kurar; overlay `{detailRow && null}` placeholder (Task 4 doldurur). `PayrollDetailPanel`'a geçecek prop'lar: `periodId`, `periodName`, `row`, `onClose`.
 
-- [ ] **Step 1: Başarısız testleri yaz** — `PeriodTab.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `PeriodTab.test.tsx`:
 
 ```tsx
 import { screen, waitFor } from "@testing-library/react";
@@ -874,7 +874,7 @@ test("dönem seçili değilse boş durum görünür", async () => {
 
 Run: `npm test -- --run src/features/payroll/PeriodTab.test.tsx` → FAIL.
 
-- [ ] **Step 2: `PeriodTab.tsx` yaz** (eski `renderPayrollPeriodTab` + `renderPayrollParameters` DOM paritesi)
+- [x] **Step 2: `PeriodTab.tsx` yaz** (eski `renderPayrollPeriodTab` + `renderPayrollParameters` DOM paritesi)
 
 ```tsx
 import { useState } from "react";
@@ -1088,7 +1088,7 @@ export function PeriodTab({ periodId }: { periodId: number | null }) {
 }
 ```
 
-- [ ] **Step 3: `PayrollPage.tsx`'te bağla** — period placeholder'ı değiştir:
+- [x] **Step 3: `PayrollPage.tsx`'te bağla** — period placeholder'ı değiştir:
 
 ```tsx
 // import { PeriodTab } from "./PeriodTab";
@@ -1099,9 +1099,9 @@ export function PeriodTab({ periodId }: { periodId: number | null }) {
 )}
 ```
 
-- [ ] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
+- [x] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/features/payroll/
@@ -1123,7 +1123,7 @@ git commit -m "feat(frontend): dönem bordrosu sekmesi — KPI, akış, kontrol 
 
 Davranış: eski `renderPayrollDetail` DOM'u (özet + kazanç/kesinti/matrah kartları + slip önizleme) + **yeni** "Girdiler" düzenleme formu (onaylı satırda gizli). Footer: Kapat · Kaydet (`PUT` row) · Onaya gönder (`POST` approve) · onaylı satırda "Pusula İndir" (PDF).
 
-- [ ] **Step 1: Başarısız testleri yaz** — `PayrollDetailPanel.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `PayrollDetailPanel.test.tsx`:
 
 ```tsx
 import { screen, waitFor } from "@testing-library/react";
@@ -1208,7 +1208,7 @@ test("onaylı satırda düzenleme formu gizli, PDF butonu görünür", async () 
 
 Run: `npm test -- --run src/features/payroll/PayrollDetailPanel.test.tsx` → FAIL.
 
-- [ ] **Step 2: `PayrollDetailPanel.tsx` yaz**
+- [x] **Step 2: `PayrollDetailPanel.tsx` yaz**
 
 ```tsx
 import { useState } from "react";
@@ -1468,7 +1468,7 @@ export function PayrollDetailPanel({ periodId, periodName, row, onClose }: {
 }
 ```
 
-- [ ] **Step 3: `PeriodTab.tsx`'te bağla** — overlay placeholder'ı değiştir:
+- [x] **Step 3: `PeriodTab.tsx`'te bağla** — overlay placeholder'ı değiştir:
 
 ```tsx
 // import { PayrollDetailPanel } from "./PayrollDetailPanel";
@@ -1484,9 +1484,9 @@ export function PayrollDetailPanel({ periodId, periodName, row, onClose }: {
 </div>
 ```
 
-- [ ] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
+- [x] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/features/payroll/
@@ -1506,7 +1506,7 @@ git commit -m "feat(frontend): bordro satır detay paneli — girdi düzenleme, 
 - Consumes: `usePayrollPreview`, `usePayrollSettings`, `usePayrollPeriods`, `usePayrollPeriod`.
 - Produces: `CalculatorTab()`. Form değişikliğinden 300ms sonra `POST /payroll/preview`; personel seçimi en yeni dönemin satırlarından form doldurur.
 
-- [ ] **Step 1: Başarısız testleri yaz** — `CalculatorTab.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `CalculatorTab.test.tsx`:
 
 ```tsx
 import { screen, waitFor } from "@testing-library/react";
@@ -1590,7 +1590,7 @@ test("sonuç panelinde net ödeme görünür", async () => {
 
 Run: `npm test -- --run src/features/payroll/CalculatorTab.test.tsx` → FAIL.
 
-- [ ] **Step 2: `CalculatorTab.tsx` yaz** (eski `renderPayrollCalculatorTab` + `renderScenarioResult` DOM paritesi)
+- [x] **Step 2: `CalculatorTab.tsx` yaz** (eski `renderPayrollCalculatorTab` + `renderScenarioResult` DOM paritesi)
 
 ```tsx
 import { useEffect, useState } from "react";
@@ -1797,11 +1797,11 @@ export function CalculatorTab() {
 }
 ```
 
-- [ ] **Step 3: `PayrollPage.tsx`'te bağla** — calculator placeholder'ı `<CalculatorTab />` yap + import.
+- [x] **Step 3: `PayrollPage.tsx`'te bağla** — calculator placeholder'ı `<CalculatorTab />` yap + import.
 
-- [ ] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
+- [x] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/features/payroll/
@@ -1821,7 +1821,7 @@ git commit -m "feat(frontend): tekil bordro hesaplama — server-side preview, d
 - Consumes: `usePayrollSettings`, `useUpdatePayrollSettings`, `useToast`.
 - Produces: `SettingsTab()`. 12 alan (eski sıra/etiket/step birebir); Kaydet → `PUT /payroll/settings` (`minWageGross = sgkBaseMin`, `taxBrackets` gönderilmez); "Varsayılana dön" → form son kaydedilen (sorgudaki) değerlere döner.
 
-- [ ] **Step 1: Başarısız testleri yaz** — `SettingsTab.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `SettingsTab.test.tsx`:
 
 ```tsx
 import { screen, waitFor } from "@testing-library/react";
@@ -1886,7 +1886,7 @@ test("varsayılana dön formu sorgu değerlerine geri alır", async () => {
 
 Run: `npm test -- --run src/features/payroll/SettingsTab.test.tsx` → FAIL.
 
-- [ ] **Step 2: `SettingsTab.tsx` yaz** (eski `renderPayrollSettingsTab` DOM paritesi)
+- [x] **Step 2: `SettingsTab.tsx` yaz** (eski `renderPayrollSettingsTab` DOM paritesi)
 
 ```tsx
 import { useEffect, useState } from "react";
@@ -2006,11 +2006,11 @@ export function SettingsTab() {
 }
 ```
 
-- [ ] **Step 3: `PayrollPage.tsx`'te bağla** — settings placeholder'ı `<SettingsTab />` yap + import.
+- [x] **Step 3: `PayrollPage.tsx`'te bağla** — settings placeholder'ı `<SettingsTab />` yap + import.
 
-- [ ] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS. `npm run build` → hatasız.
+- [x] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS. `npm run build` → hatasız.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/features/payroll/
@@ -2024,9 +2024,9 @@ git commit -m "feat(frontend): bordro ayarları sekmesi — yıla göre versiyon
 **Files:**
 - Modify: `docs/gelistirme-gunlugu.md`; gerekirse küçük düzeltmeler.
 
-- [ ] **Step 1: Backend + frontend'i başlat** (önceki dilimlerle aynı: `dotnet run --project src/IKPro.API --launch-profile http` + `npm run dev`)
+- [x] **Step 1: Backend + frontend'i başlat** (önceki dilimlerle aynı: `dotnet run --project src/IKPro.API --launch-profile http` + `npm run dev`)
 
-- [ ] **Step 2: Duman testi** (Playwright, scratchpad script'i)
+- [x] **Step 2: Duman testi** (Playwright, scratchpad script'i)
 
 1. hr-admin → `#/payroll`: dönem yoksa boş durum; "Yeni Dönem" → bu ay → oluşur, seçilir; KPI'lar `Taslak`, satırlar aktif personelle dolu (brüt 0).
 2. Tabloda "Detay" → girdi formunda brüt ücret gir (ör. 100000) → Kaydet → tablo yenilenir, net > 0.
@@ -2037,9 +2037,9 @@ git commit -m "feat(frontend): bordro ayarları sekmesi — yıla göre versiyon
 7. `#/payroll/settings`: çarpanı değiştir → Kaydet → feedback metni; sayfa yenile → değer kalıcı.
 8. Çalışan (`ahmet.yilmaz@hrmaster.local`) → `#/payroll`: "Bordrolarım" listesi (onaylanan dönem görünür) → PDF iner. `#/payroll/settings` → yetki ekranı.
 
-- [ ] **Step 3: Görsel parite** — eski/yeni `#/payroll` (üç sekme + detay paneli) yan yana. Bilinçli farklar: dönem seçici + "Yeni Dönem" (eskide yoktu), detay panelinde girdi formu (eskide salt-okur), çalışan görünümü "Bordrolarım" (eskide demo tablo), gerçek dönem adı. Diğer farklar DOM/class düzeltmesiyle giderilir.
+- [x] **Step 3: Görsel parite** — eski/yeni `#/payroll` (üç sekme + detay paneli) yan yana. Bilinçli farklar: dönem seçici + "Yeni Dönem" (eskide yoktu), detay panelinde girdi formu (eskide salt-okur), çalışan görünümü "Bordrolarım" (eskide demo tablo), gerçek dönem adı. Diğer farklar DOM/class düzeltmesiyle giderilir.
 
-- [ ] **Step 4: Günlük + kapanış commit** — "Şu an neredeyiz" → Dilim 6 (İşe Alım + Uyum); Dilim 5 kaydı; plan kutuları işaretlenir.
+- [x] **Step 4: Günlük + kapanış commit** — "Şu an neredeyiz" → Dilim 6 (İşe Alım + Uyum); Dilim 5 kaydı; plan kutuları işaretlenir.
 
 ```bash
 git add frontend/ docs/

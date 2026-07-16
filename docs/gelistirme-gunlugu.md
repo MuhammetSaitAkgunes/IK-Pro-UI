@@ -6,19 +6,21 @@
 
 ## Şu an neredeyiz
 
-- **Aktif iş:** React portu — **Dilim 4 tamamlandı**; dal `feature/react-port-dilim-4`
+- **Aktif iş:** React portu — **Dilim 5 tamamlandı**; dal `feature/react-port-dilim-5`
   main'e merge kararı bekliyor.
-- **Son tamamlanan:** Dilim 4 (İzin & Onay + Puantaj) — 6 görev, 64 birim test,
-  16 kontrollük duman testi (talep→onay uçtan uca, manuel puantaj girişi dahil)
+- **Son tamamlanan:** Dilim 5 (Bordro) — 7 görev, 88 birim test, 10 kontrollük
+  duman testi (dönem oluştur→girdi→kontrol→satır onayı→dönem onayı→pusula PDF,
+  tekil hesaplama, ayarlar kalıcılığı, çalışan Bordrolarım + yetki kilidi)
   ve parite kontrolü geçti.
-- **Sıradaki adım:** Dilim 4'ü main'e merge et; sonra Dilim 5 (Bordro) planını
-  yeni dalda yaz (`docs/superpowers/plans/`).
+- **Sıradaki adım:** Dilim 5'i main'e merge et; sonra Dilim 6 (İşe Alım + Uyum)
+  planını yeni dalda yaz (`docs/superpowers/plans/`).
 - **Referanslar:**
   - Tasarım dokümanı: `docs/superpowers/specs/2026-07-13-react-frontend-port-design.md`
   - Dilim 1 planı (tamamlandı): `docs/superpowers/plans/2026-07-13-react-port-dilim-1-iskelet.md`
   - Dilim 2 planı (tamamlandı): `docs/superpowers/plans/2026-07-14-react-port-dilim-2-overview-dashboard.md`
   - Dilim 3 planı (tamamlandı): `docs/superpowers/plans/2026-07-14-react-port-dilim-3-personel.md`
   - Dilim 4 planı (tamamlandı): `docs/superpowers/plans/2026-07-14-react-port-dilim-4-izin-puantaj.md`
+  - Dilim 5 planı (tamamlandı): `docs/superpowers/plans/2026-07-14-react-port-dilim-5-bordro.md`
   - Backend faz planı: `raporlar/backend-development-plan.md`
 - **Çalıştırma komutları:**
   - Backend: `cd backend && dotnet run --project src/IKPro.API --launch-profile http` → `http://localhost:5053`
@@ -29,6 +31,34 @@
 ---
 
 ## Kayıtlar (yeni → eski)
+
+### 2026-07-16 — Dilim 5: Bordro
+
+- 7 görev TDD ile tamamlandı; 88 birim test + build yeşil.
+- `src/features/payroll/`: `format.ts` + `queries.ts` (dönem/satır/preview/ayar
+  uçları), `PayrollPage` (sekmeler, dönem seçici + "Yeni Dönem", dönem onaya
+  gönderme, çalışan rolünde `MyPayslipsView`), `PeriodTab` (KPI, akış, kontrol
+  merkezi, parametreler, çalışan tablosu), `PayrollDetailPanel` (özet +
+  kazanç/kesinti/matrah kartları + pusula önizleme + **yeni** girdi düzenleme
+  formu; Kaydet `PUT` row, Onaya gönder `POST` approve, onaylı satırda Pusula
+  İndir PDF), `CalculatorTab` (300ms debounce ile `POST /payroll/preview`,
+  personel seçiminde formu satırdan doldurma), `SettingsTab` (12 alan,
+  `PUT /payroll/settings`, varsayılana dön).
+- **Kararlar / bilinçli farklar:** dönem seçici + "Yeni Dönem" eskide yoktu;
+  detay panelinde girdi formu (eskide salt-okur); çalışan görünümü "Bordrolarım"
+  (eskide demo tablo); ayar metni "yıla göre saklanır" (eskide tarayıcıda).
+  Brüt 0 satırlarda backend SGK taban/istisna hesabı nedeniyle net negatif
+  görünebilir — backend davranışı, girdi girilince normalleşir.
+- Test düzeltmeleri: detay testinde isim başlık rolüyle sorgulanıyor (isim
+  pusula önizlemede de geçiyor); calculator testi son preview POST'una bakıyor
+  (ilk debounce brüt=0 ile yarışıyordu).
+- Duman: 10 kontrol geçti — dönem oluşturma, girdi kaydetme, kontrol, 409
+  "eksik veri" mesajı sonrası IBAN/puantaj işaretleyip satır onayı (4/4),
+  dönem onayı + pusula PDF indirme, tekil hesaplama (backend sonucu ₺77.383),
+  ayar kaydet + yenilemede kalıcılık, çalışan Bordrolarım + PDF + settings
+  yetki kilidi.
+- Parite: üç sekme + detay paneli eski uygulamayla yan yana birebir; tüm
+  farklar plandaki bilinçli farklar. Kod düzeltmesi gerekmedi.
 
 ### 2026-07-14 — Dilim 4: İzin & Onay + Puantaj
 
