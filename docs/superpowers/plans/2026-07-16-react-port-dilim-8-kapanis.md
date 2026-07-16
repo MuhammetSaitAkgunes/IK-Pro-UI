@@ -22,14 +22,14 @@
 - Move: `index.html`, `main.js`, `routes.js`, `components/`, `styles/`, `services/` → `legacy-frontend/`
 - Create: `legacy-frontend/README.md`
 
-- [ ] **Step 1: Taşı**
+- [x] **Step 1: Taşı**
 
 ```bash
 mkdir legacy-frontend
 git mv index.html main.js routes.js components styles services legacy-frontend/
 ```
 
-- [ ] **Step 2: `legacy-frontend/README.md` yaz**
+- [x] **Step 2: `legacy-frontend/README.md` yaz**
 
 ```markdown
 # Legacy Frontend (Mock)
@@ -49,9 +49,9 @@ npx serve -l 4173 legacy-frontend
 Veri tamamen mock'tur (`services/mockData.js` + localStorage); backend gerekmez.
 ```
 
-- [ ] **Step 3: Doğrula** — Run: `cd frontend && npm test -- --run` → tümü PASS; `npm run build` → hatasız. Kökte eski dosya kalmadığını `git status` ile gör.
+- [x] **Step 3: Doğrula** — Run: `cd frontend && npm test -- --run` → tümü PASS; `npm run build` → hatasız. Kökte eski dosya kalmadığını `git status` ile gör.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add -A
@@ -65,16 +65,16 @@ git commit -m "chore: eski mock frontend legacy-frontend/ altına taşındı (pa
 **Files:**
 - Create: `.gitignore`
 
-- [ ] **Step 1: Yaz** (App_Data backend'in çalışma zamanında oluşturduğu yükleme deposudur — repo'ya girmez)
+- [x] **Step 1: Yaz** (App_Data backend'in çalışma zamanında oluşturduğu yükleme deposudur — repo'ya girmez)
 
 ```gitignore
 # Backend çalışma zamanı dosya deposu (logo/evrak yüklemeleri)
 backend/src/IKPro.API/App_Data/
 ```
 
-- [ ] **Step 2: Doğrula** — `git status --short` çıktısında `App_Data` artık görünmez.
+- [x] **Step 2: Doğrula** — `git status --short` çıktısında `App_Data` artık görünmez.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add .gitignore
@@ -88,11 +88,11 @@ git commit -m "chore: backend App_Data çalışma zamanı deposu ignore edildi"
 **Files:**
 - Modify: `README.md` (eski içerik mock-demo dönemine ait; "Backend Not Included" vb. artık yanlış)
 
-- [ ] **Step 1: Yeni `README.md` yaz** — bölümler: proje tanımı (3 rollü İK SaaS demo: hr-admin/manager/employee), depo yapısı (`backend/` .NET 9 Clean Architecture + EF Core + MSSQL; `frontend/` React 18 + Vite + TanStack Query; `legacy-frontend/` parite referansı; `docs/` günlük/spec/planlar; `raporlar/` backend faz planı), kurulum ve çalıştırma (backend `dotnet run --project src/IKPro.API --launch-profile http` → :5053, frontend `npm install && npm run dev` → :5173 `/api` proxy'li, testler `npm test -- --run` + `dotnet test`), demo kullanıcılar tablosu (`ik@hrmaster.local` / `ece.arslan@hrmaster.local` / `ahmet.yilmaz@hrmaster.local`, hepsi `demo123`), modül listesi (Risk Merkezi, Genel Durum, Aksiyonlar, Personel, İşe Alım, Mesai & Puantaj, İzinler, Bordro, Uyum, Yönetici Konsolu, Ayarlar, global arama), dokümantasyon işaretçileri (günlük + tasarım dokümanı + backend plan), "Üretim değil demo" uyarısı (bordro/mevzuat müşavir doğrulaması notu).
+- [x] **Step 1: Yeni `README.md` yaz** — bölümler: proje tanımı (3 rollü İK SaaS demo: hr-admin/manager/employee), depo yapısı (`backend/` .NET 9 Clean Architecture + EF Core + MSSQL; `frontend/` React 18 + Vite + TanStack Query; `legacy-frontend/` parite referansı; `docs/` günlük/spec/planlar; `raporlar/` backend faz planı), kurulum ve çalıştırma (backend `dotnet run --project src/IKPro.API --launch-profile http` → :5053, frontend `npm install && npm run dev` → :5173 `/api` proxy'li, testler `npm test -- --run` + `dotnet test`), demo kullanıcılar tablosu (`ik@hrmaster.local` / `ece.arslan@hrmaster.local` / `ahmet.yilmaz@hrmaster.local`, hepsi `demo123`), modül listesi (Risk Merkezi, Genel Durum, Aksiyonlar, Personel, İşe Alım, Mesai & Puantaj, İzinler, Bordro, Uyum, Yönetici Konsolu, Ayarlar, global arama), dokümantasyon işaretçileri (günlük + tasarım dokümanı + backend plan), "Üretim değil demo" uyarısı (bordro/mevzuat müşavir doğrulaması notu).
 
 Not: rozet/başlık görselleri sadeleştirilir; içerik Türkçe kalır. Eski README'nin ayrıntılı mock anlatımı silinir (legacy-frontend/README.md zaten işaret ediyor).
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add README.md
@@ -106,13 +106,13 @@ git commit -m "docs: kök README monorepo (backend + React frontend) gerçeğine
 **Files:**
 - Modify: `docs/gelistirme-gunlugu.md`
 
-- [ ] **Step 1: Günlükteki eski-yol referanslarını güncelle** — "kökteki `index.html`" ifadeleri `legacy-frontend/` olarak düzeltilir ("Çalıştırma komutları" ve "Öncesi — Backend" bölümleri).
+- [x] **Step 1: Günlükteki eski-yol referanslarını güncelle** — "kökteki `index.html`" ifadeleri `legacy-frontend/` olarak düzeltilir ("Çalıştırma komutları" ve "Öncesi — Backend" bölümleri).
 
-- [ ] **Step 2: Duman testi** — backend + frontend başlat; kısa Playwright: hr-admin girişi → `#/dashboard`, `#/payroll`, `#/actions` açılır (taşıma hiçbir şeyi kırmadı); `npx serve -l 4173 legacy-frontend` → eski uygulama login ekranı açılır.
+- [x] **Step 2: Duman testi** — backend + frontend başlat; kısa Playwright: hr-admin girişi → `#/dashboard`, `#/payroll`, `#/actions` açılır (taşıma hiçbir şeyi kırmadı); `npx serve -l 4173 legacy-frontend` → eski uygulama login ekranı açılır.
 
-- [ ] **Step 3: Günlük kapanış kaydı** — "Şu an neredeyiz": React portu **tamamlandı** (8/8 dilim); sıradaki adım: merge + istenirse yeni işler (ör. E2E paketi, i18n) ayrı karar. Dilim 8 kaydı eklenir; plan kutuları işaretlenir.
+- [x] **Step 3: Günlük kapanış kaydı** — "Şu an neredeyiz": React portu **tamamlandı** (8/8 dilim); sıradaki adım: merge + istenirse yeni işler (ör. E2E paketi, i18n) ayrı karar. Dilim 8 kaydı eklenir; plan kutuları işaretlenir.
 
-- [ ] **Step 4: Kapanış commit**
+- [x] **Step 4: Kapanış commit**
 
 ```bash
 git add docs/

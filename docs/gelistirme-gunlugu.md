@@ -6,16 +6,15 @@
 
 ## Şu an neredeyiz
 
-- **Aktif iş:** React portu — **Dilim 7 tamamlandı**; dal `feature/react-port-dilim-7`
-  main'e merge kararı bekliyor.
-- **Son tamamlanan:** Dilim 7 (Aksiyon Merkezi + Global Arama + Ayarlar +
-  Yönetici Konsolu) — 7 görev, 128 birim test, 10 kontrollük duman testi
-  (aksiyon CRUD + ileri yönlü durum akışı, gerçek denetim izi, birleşik arama,
-  ayarlarda kalıcılık + şifre değişikliği, manager onay paneli + CSV) ve
-  parite kontrolü geçti.
-- **Sıradaki adım:** Dilim 7'yi main'e merge et; sonra Dilim 8 (Kapanış:
-  eski dosyalar `legacy-frontend/`e, README/dokümantasyon güncellemesi)
-  planını yeni dalda yaz (`docs/superpowers/plans/`).
+- **Aktif iş:** **React portu tamamlandı (8/8 dilim).** Dal
+  `feature/react-port-dilim-8` main'e merge kararı bekliyor.
+- **Son tamamlanan:** Dilim 8 (Kapanış) — eski mock uygulama
+  `legacy-frontend/` altına taşındı, kök README monorepo gerçeğine göre
+  yeniden yazıldı, `App_Data` ignore edildi; 128 birim test + build + duman
+  (yeni uygulama 3 sayfa + legacy yeni konumdan) yeşil.
+- **Sıradaki adım:** Dilim 8'i main'e merge et. Port sonrası olası ayrı işler
+  (spec YAGNI listesi): Playwright E2E paketi, i18n, Storybook, Tailwind —
+  istenirse yeni spec/plan ile.
 - **Referanslar:**
   - Tasarım dokümanı: `docs/superpowers/specs/2026-07-13-react-frontend-port-design.md`
   - Dilim 1 planı (tamamlandı): `docs/superpowers/plans/2026-07-13-react-port-dilim-1-iskelet.md`
@@ -25,16 +24,36 @@
   - Dilim 5 planı (tamamlandı): `docs/superpowers/plans/2026-07-14-react-port-dilim-5-bordro.md`
   - Dilim 6 planı (tamamlandı): `docs/superpowers/plans/2026-07-16-react-port-dilim-6-isealim-uyum.md`
   - Dilim 7 planı (tamamlandı): `docs/superpowers/plans/2026-07-16-react-port-dilim-7-aksiyonlar-arama-ayarlar.md`
+  - Dilim 8 planı (tamamlandı): `docs/superpowers/plans/2026-07-16-react-port-dilim-8-kapanis.md`
   - Backend faz planı: `raporlar/backend-development-plan.md`
 - **Çalıştırma komutları:**
   - Backend: `cd backend && dotnet run --project src/IKPro.API --launch-profile http` → `http://localhost:5053`
   - Frontend: `cd frontend && npm run dev` → `http://localhost:5173`
   - Testler: `cd frontend && npm test -- --run`
-  - Eski mock uygulama (parite referansı): kökteki `index.html` (statik sunucuyla aç)
+  - Eski mock uygulama (parite referansı): `npx serve -l 4173 legacy-frontend`
 
 ---
 
 ## Kayıtlar (yeni → eski)
+
+### 2026-07-16 — Dilim 8: Kapanış
+
+- Eski mock frontend (`index.html`, `main.js`, `routes.js`, `components/`,
+  `styles/`, `services/`) içeriği değişmeden `legacy-frontend/` altına taşındı;
+  kısa README ile statik çalıştırma tarifi eklendi (`npx serve -l 4173
+  legacy-frontend`). Göreli yollar sayesinde yeni konumdan aynen çalışıyor.
+- Kök `README.md` yeniden yazıldı: monorepo yapısı, kurulum/çalıştırma, demo
+  kullanıcılar, modül listesi, dokümantasyon işaretçileri ("üretim değil demo"
+  uyarısıyla). Eski mock-dönemi README anlatımı kaldırıldı.
+- Kök `.gitignore`: `backend/src/IKPro.API/App_Data/` (çalışma zamanı
+  yükleme deposu) ignore edildi.
+- Günlükteki "kökteki index.html" referansları `legacy-frontend/` olarak
+  düzeltildi.
+- Doğrulama: 128 birim test + build yeşil; duman — yeni uygulamada
+  dashboard/bordro/aksiyonlar açılıyor, legacy uygulama yeni konumdan login
+  ekranıyla açılıyor. Not: 4173 portunda önceki oturumdan kalan sunucu süreci
+  dizin listelemesi döndürüyordu; süreç kapatılıp yeniden doğrulandı.
+- **React portu bu dilimle tamamlandı (8/8).**
 
 ### 2026-07-16 — Dilim 7: Aksiyon Merkezi + Global Arama + Ayarlar + Yönetici Konsolu
 
@@ -262,5 +281,5 @@
 
 - `backend/` altında .NET 9 Clean Architecture (EF Core + MSSQL, CPM);
   ayrıntı ve faz planı: `raporlar/backend-development-plan.md`.
-- Eski frontend: kökteki `index.html` + `components/` + `styles/` (mock,
-  dokunulmaz — parite referansı).
+- Eski frontend: mock uygulama (dokunulmaz — parite referansı); Dilim 8'de
+  `legacy-frontend/` altına taşındı.
