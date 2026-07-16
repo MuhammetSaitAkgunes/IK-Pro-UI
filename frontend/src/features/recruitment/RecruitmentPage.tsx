@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { PageError, PageLoading } from "../shared/PageState";
 import { CandidateDetail } from "./CandidateDetail";
+import { CandidateModal } from "./CandidateModal";
 import { formatTimeAgo, scoreClass, statusTagClass } from "./format";
 import { useCandidates } from "./queries";
 
@@ -96,8 +97,9 @@ export function RecruitmentPage() {
         )}
       </main>
 
-      {/* Yeni Aday modalı Task 4'te */}
-      {createOpen && null}
+      {createOpen && (
+        <CandidateModal onClose={() => setCreateOpen(false)} onCreated={(id) => setSelectedId(id)} />
+      )}
     </div>
   );
 }
