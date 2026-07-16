@@ -1,0 +1,306 @@
+import { useState } from "react";
+import { ApiError } from "../../api/client";
+import { useToast } from "../../layout/ToastProvider";
+import { PageError, PageLoading } from "../shared/PageState";
+import { useDepartments } from "../personnel/queries";
+import { NOTE_TYPES, PIPELINE_STATUSES, formatTimeAgo } from "./format";
+import { useAddInterviewNote, useCandidate, useHireCandidate, useSetCandidateStatus } from "./queries";
+
+const TABS: [string, string][] = [
+  ["cv", "Özgeçmiş"], ["notes", "Mülakat Notları"], ["eval", "Değerlendirme"], ["history", "Geçmiş"],
+];
+
+const initialsOf = (name?: string | null): string =>
+  (name ?? "")
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0]?.toLocaleUpperCase("tr-TR"))
+    .slice(0, 2)
+    .join("") || "İK";
+
+export function CandidateDetail({ id }: { id: number }) {
+  const { showToast } = useToast();
+  const detailQ = useCandidate(id);
+  const setStatus = useSetCandidateStatus();
+  const addNote = useAddInterviewNote();
+  const [tab, setTab] = useState("cv");
+  const [noteText, setNoteText] = useState("");
+  const [noteType, setNoteType] = useState(NOTE_TYPES[0]);
+  const [hireOpen, setHireOpen] = useState(false);
+
+  if (detailQ.isPending) return <PageLoading />;
+  if (detailQ.isError) return <PageError error={detailQ.error} />;
+
+  const candidate = detailQ.data;
+  const isHired = candidate.status === "İşe Alındı";
+
+  const changeStatus = async (status: string) => {
+    try {
+      await setStatus.mutateAsync({ id, status });
+      showToast(`${candidate.name} durumu "${status}" olarak güncellendi.`, "success");
+    } catch (e) {
+      showToast(e instanceof ApiError ? e.message : "Durum güncellenemedi.", "error");
+    }
+  };
+
+  const submitNote = async () => {
+    const text = noteText.trim();
+    if (!text) {
+      showToast("Önce not içeriğini yazın.", "warning");
+      return;
+    }
+    try {
+      await addNote.mutateAsync({ id, noteType, text });
+      setNoteText("");
+      showToast("Mülakat notu eklendi.", "success");
+    } catch (e) {
+      showToast(e instanceof ApiError ? e.message : "Not eklenemedi.", "error");
+    }
+  };
+
+  return (
+    <>
+      <div className="detail-header">
+        <div className="dh-profile">
+          <div className="dh-avatar-lg">{candidate.initials}</div>
+          <div>
+            <h2>{candidate.name}</h2>
+            <p className="dh-role">{candidate.appliedRole}</p>
+            <div className="dh-tags">
+              <span className="tag-pill"><i aria-hidden="true" className="fa-solid fa-location-dot" /> {candidate.location || "Belirtilmedi"}</span>
+              <span className="tag-pill"><i aria-hidden="true" className="fa-solid fa-briefcase" /> {candidate.experienceYears ?? 0} yıl deneyim</span>
+            </div>
+          </div>
+        </div>
+        <div className="dh-actions">
+          <div className="match-score"><span className="score-circle">{candidate.score}</span><span className="score-label">AI puanı</span></div>
+          <label className="sr-only" htmlFor="candidate-status">Pipeline durumu</label>
+          <select
+            id="candidate-status"
+            className="input-control"
+            value={isHired ? "" : candidate.status ?? "Yeni"}
+            disabled={isHired || setStatus.isPending}
+            onChange={(e) => changeStatus(e.target.value)}
+          >
+            {isHired && <option value="">İşe Alındı</option>}
+            {PIPELINE_STATUSES.map((status) => (
+              <option key={status} value={status}>{status}</option>
+            ))}
+          </select>
+          <button className="btn btn-primary" disabled={isHired} onClick={() => setHireOpen(true)}>
+            <i aria-hidden="true" className="fa-solid fa-thumbs-up" /> İşe Al
+          </button>
+        </div>
+      </div>
+
+      <div className="detail-tabs">
+        {TABS.map(([key, label]) => (
+          <button key={key} className={`tab-link ${tab === key ? "active" : ""}`} onClick={() => setTab(key)}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="detail-content-wrapper">
+        {tab === "cv" && (
+          <div id="tab-cv" className="tab-content active">
+            <div className="content-block">
+              <h4><i aria-hidden="true" className="fa-regular fa-file-lines" /> Başvuru Özeti</h4>
+              <p className="summary-text">{candidate.summary || "Başvuru özeti girilmedi."}</p>
+            </div>
+            <div className="content-block">
+              <h4><i aria-hidden="true" className="fa-solid fa-wand-magic-sparkles" /> Yetenek Seti</h4>
+              <div className="skills-wrap">
+                {(candidate.skills ?? []).map((skill) => (
+                  <span key={skill.id} className="skill-tag">{skill.name}</span>
+                ))}
+                {(candidate.skills ?? []).length === 0 && <span className="text-muted">Yetenek girilmedi.</span>}
+              </div>
+            </div>
+            <div className="content-block">
+              <h4><i aria-hidden="true" className="fa-solid fa-history" /> İş Deneyimi</h4>
+              <div className="timeline">
+                {(candidate.experiences ?? []).map((experience) => (
+                  <div key={experience.id} className="tl-item">
+                    <div className="tl-dot" />
+                    <div className="tl-content">
+                      <strong>{experience.title}</strong>
+                      <span>{experience.company} • {experience.period || "-"}</span>
+                      <p>{experience.description}</p>
+                    </div>
+                  </div>
+                ))}
+                {(candidate.experiences ?? []).length === 0 && <p className="text-muted">Deneyim girilmedi.</p>}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === "notes" && (
+          <div id="tab-notes" className="tab-content active">
+            <div className="notes-container">
+              <div className="add-note-box">
+                <label className="sr-only" htmlFor="interview-note">Mülakat notu</label>
+                <textarea
+                  id="interview-note"
+                  placeholder="Mülakat notunuzu buraya girin"
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                />
+                <div className="note-actions">
+                  <label className="sr-only" htmlFor="interview-note-type">Not türü</label>
+                  <select id="interview-note-type" value={noteType} onChange={(e) => setNoteType(e.target.value)}>
+                    {NOTE_TYPES.map((type) => <option key={type}>{type}</option>)}
+                  </select>
+                  <button className="btn btn-primary btn-sm" onClick={submitNote} disabled={addNote.isPending}>
+                    Not Ekle
+                  </button>
+                </div>
+              </div>
+              {(candidate.notes ?? []).map((note) => (
+                <div key={note.id} className="note-item">
+                  <div className="note-avatar" aria-hidden="true">{initialsOf(note.authorName)}</div>
+                  <div className="note-body">
+                    <div className="note-header">
+                      <strong>{note.authorName} ({note.noteType})</strong> <span>{formatTimeAgo(note.createdAtUtc)}</span>
+                    </div>
+                    <p>{note.text}</p>
+                  </div>
+                </div>
+              ))}
+              {(candidate.notes ?? []).length === 0 && <p className="pending-desc">Henüz mülakat notu yok.</p>}
+            </div>
+          </div>
+        )}
+
+        {tab === "eval" && (
+          <div id="tab-eval" className="tab-content active">
+            <div className="eval-grid">
+              {(candidate.evaluations ?? []).map((evaluation) => (
+                <div key={evaluation.id} className="eval-card">
+                  <div className="eval-header">
+                    <span>{evaluation.criterion}</span>
+                    <strong>{Number(evaluation.score).toFixed(1)}/{evaluation.maxScore}</strong>
+                  </div>
+                  <div className="progress-bg">
+                    <div
+                      className="progress-fill"
+                      style={{ width: `${Math.round(((evaluation.score ?? 0) / (evaluation.maxScore || 1)) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+              {(candidate.evaluations ?? []).length === 0 && <p className="pending-desc">Henüz değerlendirme yok.</p>}
+            </div>
+          </div>
+        )}
+
+        {tab === "history" && (
+          <div id="tab-history" className="tab-content active">
+            <div className="history-list">
+              {(candidate.history ?? []).map((entry) => (
+                <div key={entry.id} className="hist-item">
+                  <i aria-hidden="true" className="fa-solid fa-envelope bg-blue" />
+                  <div>
+                    <strong>{entry.event}</strong>
+                    <small>{formatTimeAgo(entry.occurredAtUtc)}</small>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {hireOpen && (
+        <HireModal
+          candidateId={id}
+          candidateName={candidate.name ?? ""}
+          appliedRole={candidate.appliedRole ?? ""}
+          onClose={() => setHireOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
+function HireModal({ candidateId, candidateName, appliedRole, onClose }: {
+  candidateId: number; candidateName: string; appliedRole: string; onClose: () => void;
+}) {
+  const { showToast } = useToast();
+  const hire = useHireCandidate();
+  const departmentsQ = useDepartments();
+  const [departmentId, setDepartmentId] = useState("");
+  const [title, setTitle] = useState(appliedRole);
+  const [hireDate, setHireDate] = useState(new Date().toISOString().slice(0, 10));
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async () => {
+    setError(null);
+    if (!departmentId) {
+      setError("Departman seçin.");
+      return;
+    }
+    try {
+      const result = await hire.mutateAsync({
+        id: candidateId,
+        departmentId: Number(departmentId),
+        title: title.trim() || null,
+        hireDate: hireDate || null,
+      });
+      showToast(`${result.employeeName} işe alındı — personel kaydı oluşturuldu.`, "success");
+      onClose();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Aday işe alınamadı.");
+    }
+  };
+
+  return (
+    <div className="modal-overlay" style={{ display: "flex" }}>
+      <div className="modal-card scale-in">
+        <div className="modal-head">
+          <div>
+            <h3>İşe Al: {candidateName}</h3>
+            <p>Aday personel kaydına dönüştürülür; pozisyon kontenjanı güncellenir.</p>
+          </div>
+          <button className="btn-icon-sm" onClick={onClose} title="Kapat" aria-label="İşe alım penceresini kapat">
+            <i aria-hidden="true" className="fa-solid fa-xmark" />
+          </button>
+        </div>
+        <div className="modal-body-scroll">
+          {error && <p className="form-error" role="alert">{error}</p>}
+          <div className="form-grid-2">
+            <div className="input-group">
+              <label className="input-label" htmlFor="hire-department">Departman</label>
+              <select
+                id="hire-department"
+                className="input-control"
+                value={departmentId}
+                onChange={(e) => setDepartmentId(e.target.value)}
+              >
+                <option value="">Seçin</option>
+                {(departmentsQ.data ?? []).map((department) => (
+                  <option key={department.id} value={department.id}>{department.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="input-group">
+              <label className="input-label" htmlFor="hire-title">Ünvan</label>
+              <input id="hire-title" className="input-control" value={title} onChange={(e) => setTitle(e.target.value)} />
+            </div>
+            <div className="input-group">
+              <label className="input-label" htmlFor="hire-date">İşe giriş tarihi</label>
+              <input id="hire-date" type="date" className="input-control" value={hireDate} onChange={(e) => setHireDate(e.target.value)} />
+            </div>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-ghost" onClick={onClose}>Vazgeç</button>
+          <button className="btn btn-primary" onClick={submit} disabled={hire.isPending}>
+            <i aria-hidden="true" className="fa-solid fa-check" /> Onayla
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

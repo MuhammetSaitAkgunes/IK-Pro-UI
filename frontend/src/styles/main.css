@@ -587,6 +587,7 @@ textarea.input-control,
 .badge-active,
 .status-tag.teklif,
 .status-tag.yeni,
+.status-tag.hired,
 .lc-badge.ontime,
 .type-badge.reg {
   background: var(--success-soft);

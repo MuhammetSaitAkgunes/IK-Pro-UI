@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { PageError, PageLoading } from "../shared/PageState";
+import { CandidateDetail } from "./CandidateDetail";
 import { formatTimeAgo, scoreClass, statusTagClass } from "./format";
 import { useCandidates } from "./queries";
 
@@ -88,8 +89,9 @@ export function RecruitmentPage() {
       </aside>
 
       <main className="ats-detail">
-        {/* Aday detayı Task 3'te */}
-        {activeId === null && (
+        {activeId !== null ? (
+          <CandidateDetail id={activeId} />
+        ) : (
           <div className="card"><p className="pending-desc">Görüntülenecek aday yok.</p></div>
         )}
       </main>
