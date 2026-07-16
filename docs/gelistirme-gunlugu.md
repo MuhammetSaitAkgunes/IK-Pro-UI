@@ -6,14 +6,14 @@
 
 ## Şu an neredeyiz
 
-- **Aktif iş:** React portu — **Dilim 5 tamamlandı**; dal `feature/react-port-dilim-5`
+- **Aktif iş:** React portu — **Dilim 6 tamamlandı**; dal `feature/react-port-dilim-6`
   main'e merge kararı bekliyor.
-- **Son tamamlanan:** Dilim 5 (Bordro) — 7 görev, 88 birim test, 10 kontrollük
-  duman testi (dönem oluştur→girdi→kontrol→satır onayı→dönem onayı→pusula PDF,
-  tekil hesaplama, ayarlar kalıcılığı, çalışan Bordrolarım + yetki kilidi)
-  ve parite kontrolü geçti.
-- **Sıradaki adım:** Dilim 5'i main'e merge et; sonra Dilim 6 (İşe Alım + Uyum)
-  planını yeni dalda yaz (`docs/superpowers/plans/`).
+- **Son tamamlanan:** Dilim 6 (İşe Alım + Uyum) — 7 görev, 107 birim test,
+  11 kontrollük duman testi (aday oluştur→not→pipeline→işe al→personel kaydı,
+  uyum belge CRUD + durum akışı + rol kısıtları) ve parite kontrolü geçti.
+- **Sıradaki adım:** Dilim 6'yı main'e merge et; sonra Dilim 7
+  (Aksiyonlar + Global Arama + Ayarlar) planını yeni dalda yaz
+  (`docs/superpowers/plans/`).
 - **Referanslar:**
   - Tasarım dokümanı: `docs/superpowers/specs/2026-07-13-react-frontend-port-design.md`
   - Dilim 1 planı (tamamlandı): `docs/superpowers/plans/2026-07-13-react-port-dilim-1-iskelet.md`
@@ -21,6 +21,7 @@
   - Dilim 3 planı (tamamlandı): `docs/superpowers/plans/2026-07-14-react-port-dilim-3-personel.md`
   - Dilim 4 planı (tamamlandı): `docs/superpowers/plans/2026-07-14-react-port-dilim-4-izin-puantaj.md`
   - Dilim 5 planı (tamamlandı): `docs/superpowers/plans/2026-07-14-react-port-dilim-5-bordro.md`
+  - Dilim 6 planı (tamamlandı): `docs/superpowers/plans/2026-07-16-react-port-dilim-6-isealim-uyum.md`
   - Backend faz planı: `raporlar/backend-development-plan.md`
 - **Çalıştırma komutları:**
   - Backend: `cd backend && dotnet run --project src/IKPro.API --launch-profile http` → `http://localhost:5053`
@@ -31,6 +32,43 @@
 ---
 
 ## Kayıtlar (yeni → eski)
+
+### 2026-07-16 — Dilim 6: İşe Alım (ATS) + Uyum
+
+- 7 görev TDD ile tamamlandı; 107 birim test + build yeşil.
+- `src/features/recruitment/`: `format.ts` (`formatTimeAgo`, `statusTagClass`,
+  `scoreClass`) + `queries.ts` (aday listesi/detay, oluşturma, durum PATCH,
+  not POST, hire POST — hire personel query'lerini de invalidate eder),
+  `RecruitmentPage` (ATS yerleşimi, server-side arama 300ms debounce +
+  Tümü/Yeni/Mülakat filtre sekmeleri, boş durum + "Yeni Aday"),
+  `CandidateDetail` (Özgeçmiş/Mülakat Notları/Değerlendirme/Geçmiş sekmeleri,
+  not ekleme, pipeline durum select'i, İşe Al modalı — departman/ünvan/tarih →
+  personel kaydı), `CandidateModal` (yeni aday formu).
+- `src/features/compliance/`: `queries.ts` (belgeler + readiness + 4 mutasyon),
+  `CompliancePage` (KPI'lar readiness'tan, durum/risk/arama filtreleri,
+  hr-admin'de satır içi durum select + düzenleme + "Yeni Belge",
+  manager salt-okur; Yaklaşan Son Tarihler dueDate'li belgelerden türetilir),
+  `DocumentModal` (oluşturma POST / düzenleme PUT + sorumlu değişince owner
+  PATCH). Dashboard'daki salt-okur `ComplianceRiskPage` silindi; rota
+  `/risk/compliance` yeni sayfaya bağlandı (`useComplianceRisk` özet kartı
+  için `dashboard/queries`te kaldı).
+- **Kararlar / bilinçli farklar:** aday seed'i yok → boş durum + "Yeni Aday"
+  (eskide statik 4 aday); pipeline durum select'i ve uyum filtre/mutasyon
+  UI'ları eskide yoktu; pozisyon/funnel uçları UI'da kullanılmadı (eski
+  ekranda yoktu — YAGNI); değerlendirme sekmesi salt görüntüleme (ekleme
+  eskide de yoktu); `.status-tag.hired` ve `.compliance-toolbar` stilleri
+  token'larla `main.css`e eklendi.
+- Duman: 11 kontrol geçti — aday oluştur/otomatik seçim, arama+filtre, not +
+  geçmiş kaydı, 2 pipeline geçişi, işe alım (personelde görünür, select/buton
+  pasif) + reddedilen adayda 409, manager recruitment kilidi, uyum tablo +
+  filtre, Tamamlandı→risk Düşük + aynı durum 409 toast'ı, yeni belge +
+  mükerrer 409, düzenleme (PUT+owner PATCH), manager salt-okur uyum.
+  Not: Playwright `has-text` büyük/küçük harf duyarsız alt dizgi eşleşmesi
+  yüzünden "Geçmiş" tıklaması "Özgeçmiş"e gidiyordu — script `exact: true`
+  ile düzeltildi (uygulama hatası değildi).
+- Parite: `#/recruitment` ve `#/risk/compliance` eski uygulamayla yan yana
+  birebir; tüm farklar plandaki bilinçli farklar. Tek düzeltme: uyum filtre
+  çubuğu yatay düzen CSS'i.
 
 ### 2026-07-16 — Dilim 5: Bordro
 

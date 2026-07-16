@@ -60,7 +60,7 @@ Seed durumu: uyum belgeleri seed'li; **aday/pozisyon seed'i yok** → İşe Alı
   - `useCandidates(search: string, status: string)`, `useCandidate(id: number | null)`, `useCreateCandidate()`, `useSetCandidateStatus()` (`{id,status}`), `useAddInterviewNote()` (`{id,noteType,text}`), `useHireCandidate()` (`{id,departmentId,title?,hireDate?}`)
   - Tipler: `CandidateListItemDto`, `CandidateDetailDto`, `InterviewNoteDto`, `HireResultDto`, `CreateCandidateCommand`
 
-- [ ] **Step 1: Başarısız testleri yaz** — `format.test.ts`:
+- [x] **Step 1: Başarısız testleri yaz** — `format.test.ts`:
 
 ```ts
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
@@ -97,7 +97,7 @@ test("scoreClass 80 eşiği", () => {
 
 Run: `npm test -- --run src/features/recruitment/format.test.ts` → FAIL.
 
-- [ ] **Step 2: `format.ts` yaz**
+- [x] **Step 2: `format.ts` yaz**
 
 ```ts
 export const formatTimeAgo = (iso?: string | null): string => {
@@ -121,7 +121,7 @@ export const PIPELINE_STATUSES = ["Yeni", "Mülakat", "Teklif", "Red"];
 export const NOTE_TYPES = ["Teknik Mülakat", "İK Görüşmesi"];
 ```
 
-- [ ] **Step 3: `queries.ts` yaz**
+- [x] **Step 3: `queries.ts` yaz**
 
 ```ts
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -209,9 +209,9 @@ export const useHireCandidate = () => {
 };
 ```
 
-- [ ] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
+- [x] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/features/recruitment/
@@ -233,7 +233,7 @@ git commit -m "feat(frontend): işe alım format yardımcıları ve query katman
 
 Davranış: eski `Recruitment()` DOM'u (`#ats-container > aside.ats-sidebar + main.ats-detail`). Bilinçli farklar: arama/filtre server-side (eskide client-side DOM gizleme), "Yeni Aday" butonu (seed yok), boş durum metni.
 
-- [ ] **Step 1: Başarısız testleri yaz** — `RecruitmentPage.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `RecruitmentPage.test.tsx`:
 
 ```tsx
 import { screen, waitFor } from "@testing-library/react";
@@ -302,7 +302,7 @@ test("aday yoksa boş durum ve Yeni Aday butonu görünür", async () => {
 
 Run: `npm test -- --run src/features/recruitment/RecruitmentPage.test.tsx` → FAIL.
 
-- [ ] **Step 2: `RecruitmentPage.tsx` yaz** (detay + modal placeholder; eski `Recruitment()` DOM paritesi)
+- [x] **Step 2: `RecruitmentPage.tsx` yaz** (detay + modal placeholder; eski `Recruitment()` DOM paritesi)
 
 ```tsx
 import { useEffect, useState } from "react";
@@ -408,7 +408,7 @@ export function RecruitmentPage() {
 }
 ```
 
-- [ ] **Step 3: `routes.tsx` `pageFor`'a ekle**
+- [x] **Step 3: `routes.tsx` `pageFor`'a ekle**
 
 ```tsx
 // import bloğuna:
@@ -417,9 +417,9 @@ import { RecruitmentPage } from "./features/recruitment/RecruitmentPage";
   recruitment: RecruitmentPage,
 ```
 
-- [ ] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
+- [x] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/features/recruitment/ frontend/src/routes.tsx
@@ -442,7 +442,7 @@ git commit -m "feat(frontend): işe alım kabuğu — aday havuzu, server-side a
 
 Davranış: eski detay DOM'u (dh-profile/dh-actions/detail-tabs/tab-content). Bilinçli farklar: durum select'i (eskide pipeline geçişi yoktu), İşe Al gerçek modal (departman/ünvan/tarih → `POST hire`), not ekleme gerçek `POST`, işe alınmış adayda durum select ve İşe Al pasif.
 
-- [ ] **Step 1: Başarısız testleri yaz** — `CandidateDetail.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `CandidateDetail.test.tsx`:
 
 ```tsx
 import { screen, waitFor } from "@testing-library/react";
@@ -548,7 +548,7 @@ test("işe alınmış adayda durum select ve İşe Al pasiftir", async () => {
 
 Run: `npm test -- --run src/features/recruitment/CandidateDetail.test.tsx` → FAIL.
 
-- [ ] **Step 2: `CandidateDetail.tsx` yaz**
+- [x] **Step 2: `CandidateDetail.tsx` yaz**
 
 ```tsx
 import { useState } from "react";
@@ -859,7 +859,7 @@ function HireModal({ candidateId, candidateName, appliedRole, onClose }: {
 }
 ```
 
-- [ ] **Step 3: `RecruitmentPage.tsx`'te bağla** — detay placeholder'ı değiştir:
+- [x] **Step 3: `RecruitmentPage.tsx`'te bağla** — detay placeholder'ı değiştir:
 
 ```tsx
 // import { CandidateDetail } from "./CandidateDetail";
@@ -872,7 +872,7 @@ function HireModal({ candidateId, candidateName, appliedRole, onClose }: {
 </main>
 ```
 
-- [ ] **Step 4: `.status-tag.hired` stilini ekle** — `frontend/src/styles/recruitment.css` dosyasında `.status-tag.teklif` bloğunun altına (mevcut token desenini kopyala; dosyadaki `.status-tag.yeni/.mülakat/.teklif/.red` bloklarına bak, aynı yapıyı kullan):
+- [x] **Step 4: `.status-tag.hired` stilini ekle** — `frontend/src/styles/recruitment.css` dosyasında `.status-tag.teklif` bloğunun altına (mevcut token desenini kopyala; dosyadaki `.status-tag.yeni/.mülakat/.teklif/.red` bloklarına bak, aynı yapıyı kullan):
 
 ```css
 .status-tag.hired {
@@ -883,9 +883,9 @@ function HireModal({ candidateId, candidateName, appliedRole, onClose }: {
 
 Not: dosyada `--success` benzeri token adları farklıysa (`grep -n "\.status-tag\." frontend/src/styles/recruitment.css` ile bak) aynı dosyada onaylı/success durumunda kullanılan mevcut değişkenleri kullan; yeni hex tanımlama.
 
-- [ ] **Step 5: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
+- [x] **Step 5: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/features/recruitment/ frontend/src/styles/recruitment.css
@@ -905,7 +905,7 @@ git commit -m "feat(frontend): aday detayı — sekmeler, not ekleme, pipeline g
 - Consumes: `useCreateCandidate`, `useToast`, `ApiError`.
 - Produces: `CandidateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: number) => void })`. Yetenekler virgülle ayrılır → `skills: string[]`.
 
-- [ ] **Step 1: Başarısız testleri yaz** — `CandidateModal.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `CandidateModal.test.tsx`:
 
 ```tsx
 import { screen, waitFor } from "@testing-library/react";
@@ -963,7 +963,7 @@ test("ad boşsa form hatası gösterilir, istek atılmaz", async () => {
 
 Run: `npm test -- --run src/features/recruitment/CandidateModal.test.tsx` → FAIL.
 
-- [ ] **Step 2: `CandidateModal.tsx` yaz**
+- [x] **Step 2: `CandidateModal.tsx` yaz**
 
 ```tsx
 import { useState } from "react";
@@ -1066,7 +1066,7 @@ export function CandidateModal({ onClose, onCreated }: {
 }
 ```
 
-- [ ] **Step 3: `RecruitmentPage.tsx`'te bağla** — modal placeholder'ı değiştir:
+- [x] **Step 3: `RecruitmentPage.tsx`'te bağla** — modal placeholder'ı değiştir:
 
 ```tsx
 // import { CandidateModal } from "./CandidateModal";
@@ -1075,9 +1075,9 @@ export function CandidateModal({ onClose, onCreated }: {
 )}
 ```
 
-- [ ] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
+- [x] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/features/recruitment/
@@ -1104,7 +1104,7 @@ git commit -m "feat(frontend): yeni aday modalı — havuza gerçek POST ile kay
 
 Davranış: eski `ComplianceRiskDetail` DOM'u. Veri kaynağı değişir: KPI'lar `GET /compliance/readiness`ten (Evrak Uyum Skoru=`documentComplianceScore`, Eksik Evrak=`missingCount`, Süresi Yaklaşan=`dueSoonCount`, Denetim Riski=`readinessRisk`), tablo `GET /compliance/documents`tan. Bilinçli farklar: durum/risk/arama filtreleri (server-side), "Yaklaşan Son Tarihler" paneli belgelerden türetilir (tamamlanmamış + `dueDate`li ilk 5), Denetim Hazırlığı + Önerilen Aksiyonlar readiness'tan gelir.
 
-- [ ] **Step 1: Başarısız testleri yaz** — `CompliancePage.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `CompliancePage.test.tsx`:
 
 ```tsx
 import { screen, waitFor } from "@testing-library/react";
@@ -1185,7 +1185,7 @@ test("yaklaşan son tarihler paneli dueDate'li belgelerden türetilir", async ()
 
 Run: `npm test -- --run src/features/compliance/CompliancePage.test.tsx` → FAIL.
 
-- [ ] **Step 2: `queries.ts` yaz**
+- [x] **Step 2: `queries.ts` yaz**
 
 ```ts
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -1273,7 +1273,7 @@ export const useAssignComplianceOwner = () => {
 };
 ```
 
-- [ ] **Step 3: `CompliancePage.tsx` yaz** (okuma görünümü; mutasyon butonları Task 6'da eklenir — `documentModal` state ve `isAdmin` bu görevde tanımlanır, UI Task 6)
+- [x] **Step 3: `CompliancePage.tsx` yaz** (okuma görünümü; mutasyon butonları Task 6'da eklenir — `documentModal` state ve `isAdmin` bu görevde tanımlanır, UI Task 6)
 
 ```tsx
 import { useEffect, useState } from "react";
@@ -1433,7 +1433,7 @@ export function CompliancePage() {
 
 Not: `useAuth`/`isAdmin`, `documentModal` state'i ve mutasyon UI'ları bu görevde **yok** — hepsini Task 6 ekler. Test dosyasının `AuthProvider` + `setRole` sarmalaması Task 6'daki rol testleri için şimdiden hazırdır (Task 5'te zararsızdır).
 
-- [ ] **Step 4: `routes.tsx` değiştir + eski sayfayı sil**
+- [x] **Step 4: `routes.tsx` değiştir + eski sayfayı sil**
 
 ```tsx
 // routes.tsx: ComplianceRiskPage importunu kaldır, yerine:
@@ -1446,9 +1446,9 @@ import { CompliancePage } from "./features/compliance/CompliancePage";
 git rm frontend/src/features/dashboard/ComplianceRiskPage.tsx frontend/src/features/dashboard/ComplianceRiskPage.test.tsx
 ```
 
-- [ ] **Step 5: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS (eski `ComplianceRiskPage.test` silindiği için sayı düşer, kalanlar yeşil).
+- [x] **Step 5: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS (eski `ComplianceRiskPage.test` silindiği için sayı düşer, kalanlar yeşil).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/features/compliance/ frontend/src/routes.tsx
@@ -1473,7 +1473,7 @@ Davranış (hepsi yalnız hr-admin; manager salt-okur):
 - Tabloya "İşlem" sütunu eklenir: kalem butonu → düzenleme modalı.
 - Toolbar'a "Yeni Belge" butonu (oluşturma modalı; 409 mükerrer → form-error).
 
-- [ ] **Step 1: Başarısız testleri yaz** — `DocumentModal.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `DocumentModal.test.tsx`:
 
 ```tsx
 import { screen, waitFor } from "@testing-library/react";
@@ -1580,7 +1580,7 @@ test("manager salt-okur: Yeni Belge ve durum select'i yok", async () => {
 
 Run: `npm test -- --run src/features/compliance/` → FAIL.
 
-- [ ] **Step 2: `DocumentModal.tsx` yaz**
+- [x] **Step 2: `DocumentModal.tsx` yaz**
 
 ```tsx
 import { useState } from "react";
@@ -1723,7 +1723,7 @@ export function DocumentModal({ document: doc, onClose }: {
 }
 ```
 
-- [ ] **Step 3: `CompliancePage.tsx`'e mutasyon UI'larını ekle**
+- [x] **Step 3: `CompliancePage.tsx`'e mutasyon UI'larını ekle**
 
 İçe aktarımlar + state (Task 5 notu gereği bu görevde eklenir):
 
@@ -1812,9 +1812,9 @@ Boş satır `colSpan` değeri `isAdmin ? 8 : 7` yapılır. Sayfa sonuna (kapanı
 )}
 ```
 
-- [ ] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS. `npm run build` → hatasız.
+- [x] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS. `npm run build` → hatasız.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/features/compliance/
@@ -1828,9 +1828,9 @@ git commit -m "feat(frontend): uyum belge mutasyonları — oluşturma, durum ge
 **Files:**
 - Modify: `docs/gelistirme-gunlugu.md`; gerekirse küçük düzeltmeler.
 
-- [ ] **Step 1: Backend + frontend'i başlat** (önceki dilimlerle aynı: `cd backend && dotnet run --project src/IKPro.API --launch-profile http` + `cd frontend && npm run dev`)
+- [x] **Step 1: Backend + frontend'i başlat** (önceki dilimlerle aynı: `cd backend && dotnet run --project src/IKPro.API --launch-profile http` + `cd frontend && npm run dev`)
 
-- [ ] **Step 2: Duman testi** (Playwright, scratchpad script'i; giriş: `ik@hrmaster.local` / `demo123`)
+- [x] **Step 2: Duman testi** (Playwright, scratchpad script'i; giriş: `ik@hrmaster.local` / `demo123`)
 
 1. hr-admin → `#/recruitment`: boş durum ("Henüz aday yok") + "Yeni Aday" → form doldur (ad, pozisyon, puan, yetenekler) → kaydet → listede görünür, otomatik seçilir, detay dolar.
 2. İkinci aday ekle → arama kutusuna ad yaz → 300ms sonra liste daralır; "Yeni" filtre sekmesi → yalnız yeni adaylar.
@@ -1844,9 +1844,9 @@ git commit -m "feat(frontend): uyum belge mutasyonları — oluşturma, durum ge
 10. Kalem → düzenleme modalı: ad/tarih/risk değiştir + sorumlu değiştir → kaydet → tablo güncellenir (PUT + owner PATCH).
 11. manager (`ece.arslan@hrmaster.local`) → `#/risk/compliance`: tablo salt-okur (select/Yeni Belge/İşlem yok), yalnız ekip kayıtları.
 
-- [ ] **Step 3: Görsel parite** — eski/yeni `#/recruitment` ve `#/risk/compliance` yan yana. Bilinçli farklar: "Yeni Aday"/"Yeni Belge" butonları, server-side arama/filtreler, uyum tablosunda durum select'i + İşlem sütunu (hr-admin), pipeline durum select'i, gerçek veri (seed'siz aday havuzu). Diğer farklar DOM/class düzeltmesiyle giderilir.
+- [x] **Step 3: Görsel parite** — eski/yeni `#/recruitment` ve `#/risk/compliance` yan yana. Bilinçli farklar: "Yeni Aday"/"Yeni Belge" butonları, server-side arama/filtreler, uyum tablosunda durum select'i + İşlem sütunu (hr-admin), pipeline durum select'i, gerçek veri (seed'siz aday havuzu). Diğer farklar DOM/class düzeltmesiyle giderilir.
 
-- [ ] **Step 4: Günlük + kapanış commit** — "Şu an neredeyiz" → Dilim 7 (Aksiyonlar + Arama + Ayarlar); Dilim 6 kaydı; plan kutuları işaretlenir.
+- [x] **Step 4: Günlük + kapanış commit** — "Şu an neredeyiz" → Dilim 7 (Aksiyonlar + Arama + Ayarlar); Dilim 6 kaydı; plan kutuları işaretlenir.
 
 ```bash
 git add frontend/ docs/
