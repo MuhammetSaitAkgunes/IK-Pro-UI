@@ -3,6 +3,7 @@ import { LoginPage } from "./auth/LoginPage";
 import { PublicOnly, RequireAuth, RouteGate } from "./auth/guards";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { AppShell } from "./layout/AppShell";
+import { ActionsPage } from "./features/actions/ActionsPage";
 import { OverviewPage } from "./features/overview/OverviewPage";
 import { RiskCenterPage } from "./features/dashboard/RiskCenterPage";
 import { AttritionDetailPage } from "./features/dashboard/AttritionDetailPage";
@@ -73,6 +74,8 @@ export const navGroups = [
 // Sayfa component eşlemesi: sonraki dilimler PlaceholderPage'i gerçek sayfayla değiştirir.
 const pageFor: Record<string, () => JSX.Element> = {
   overview: OverviewPage,
+  actions: ActionsPage,
+  "action-center": ActionsPage,
   dashboard: RiskCenterPage,
   "attrition-risk": AttritionDetailPage,
   "burnout-risk": BurnoutDetailPage,
