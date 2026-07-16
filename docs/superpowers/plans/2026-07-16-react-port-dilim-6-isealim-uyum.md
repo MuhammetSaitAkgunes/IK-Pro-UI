@@ -1160,7 +1160,8 @@ test("KPI'lar readiness'tan, tablo belgelerden dolar", async () => {
   expect(await screen.findByText("Uyum, Evrak ve Denetim Risk Merkezi")).toBeInTheDocument();
   expect((await screen.findAllByText("İş Sözleşmesi")).length).toBeGreaterThan(0);
   expect(screen.getByText("82")).toBeInTheDocument();
-  expect(screen.getByText("Orta")).toBeInTheDocument();
+  // "Orta" KPI'da, risk filtre seçeneğinde ve risk rozetinde geçer → getAllByText.
+  expect(screen.getAllByText("Orta").length).toBeGreaterThan(0);
   expect(screen.getByText("Eksik evraklar için sorumlu atayın.")).toBeInTheDocument();
 });
 

@@ -1,0 +1,153 @@
+import { useEffect, useState } from "react";
+import { PageError, PageLoading } from "../shared/PageState";
+import { BackToRisk } from "../dashboard/BackToRisk";
+import { getLevelText } from "../dashboard/format";
+import {
+  COMPLIANCE_STATUSES, RISK_LEVELS, useComplianceDocuments, useComplianceReadiness,
+} from "./queries";
+
+export const compliancePillClass = (status?: string | null): string =>
+  status === "Tamamlandı" ? "approved" : status === "Eksik" ? "rejected" : "pending";
+
+export function CompliancePage() {
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [levelFilter, setLevelFilter] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const documentsQ = useComplianceDocuments({ search: debouncedSearch, status: statusFilter, level: levelFilter });
+  const readinessQ = useComplianceReadiness();
+
+  if (documentsQ.isPending || readinessQ.isPending) return <PageLoading />;
+  if (documentsQ.isError) return <PageError error={documentsQ.error} />;
+  if (readinessQ.isError) return <PageError error={readinessQ.error} />;
+
+  const documents = documentsQ.data;
+  const readiness = readinessQ.data;
+  const deadlines = documents
+    .filter((doc) => doc.status !== "Tamamlandı" && doc.dueDate)
+    .sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)))
+    .slice(0, 5);
+
+  return (
+    <div className="detail-page">
+      <div className="page-header">
+        <div>
+          <h2>Uyum, Evrak ve Denetim Risk Merkezi</h2>
+          <p>Eksik evrak, yaklaşan son tarih ve denetim hazırlığını operasyonel takip görünümünde yönetin.</p>
+        </div>
+        <BackToRisk />
+      </div>
+
+      <div className="detail-kpi-grid">
+        <div className="stat-box"><span className="sb-label">Evrak Uyum Skoru</span><strong className="sb-val">{readiness.documentComplianceScore ?? 0}<small>/100</small></strong></div>
+        <div className="stat-box"><span className="sb-label">Eksik Evrak</span><strong className="sb-val text-red">{readiness.missingCount ?? 0}</strong></div>
+        <div className="stat-box"><span className="sb-label">Süresi Yaklaşan</span><strong className="sb-val text-orange">{readiness.dueSoonCount ?? 0}</strong></div>
+        <div className="stat-box"><span className="sb-label">Denetim Riski</span><strong className="sb-val text-orange">{readiness.readinessRisk}</strong></div>
+      </div>
+
+      <div className="toolbar-actions compliance-toolbar">
+        <div className="search-wrap">
+          <i aria-hidden="true" className="fa-solid fa-magnifying-glass" />
+          <label className="sr-only" htmlFor="comp-search">Evrak veya personel ara</label>
+          <input
+            id="comp-search"
+            type="text"
+            placeholder="Evrak veya personel ara"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <label className="sr-only" htmlFor="comp-status">Durum filtresi</label>
+        <select id="comp-status" className="input-control" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="">Tüm durumlar</option>
+          {COMPLIANCE_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
+        </select>
+        <label className="sr-only" htmlFor="comp-level">Risk filtresi</label>
+        <select id="comp-level" className="input-control" value={levelFilter} onChange={(e) => setLevelFilter(e.target.value)}>
+          <option value="">Tüm riskler</option>
+          {RISK_LEVELS.map((level) => <option key={level} value={level}>{getLevelText(level)}</option>)}
+        </select>
+        {/* "Yeni Belge" butonu Task 6'da (yalnız hr-admin) */}
+      </div>
+
+      <div className="compliance-layout">
+        <div className="table-container">
+          <table className="detail-table data-table">
+            <thead>
+              <tr><th>Personel</th><th>Departman</th><th>Evrak</th><th>Sorumlu</th><th>Son Tarih</th><th>Durum</th><th>Risk</th></tr>
+            </thead>
+            <tbody>
+              {documents.map((doc) => (
+                <tr key={doc.id}>
+                  <td><strong>{doc.employee}</strong></td>
+                  <td>{doc.dept}</td>
+                  <td>{doc.document}</td>
+                  <td>{doc.owner || "-"}</td>
+                  <td>{doc.dueLabel}</td>
+                  <td><span className={`status-pill ${compliancePillClass(doc.status)}`}>{doc.status}</span></td>
+                  <td><span className={`risk-badge ${doc.level ?? ""}`}>{getLevelText(doc.level)}</span></td>
+                </tr>
+              ))}
+              {documents.length === 0 && (
+                <tr><td colSpan={7}><p className="pending-desc">Filtreye uyan belge yok.</p></td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <aside className="card insight-panel">
+          <div className="card-header-clean">
+            <div>
+              <h4>Yaklaşan Son Tarihler</h4>
+              <p className="text-muted">Kritik evrak aksiyonları ve sorumlular.</p>
+            </div>
+          </div>
+          <div className="deadline-list">
+            {deadlines.map((doc) => (
+              <div key={doc.id} className={`deadline-item ${doc.level ?? ""}`}>
+                <div>
+                  <strong>{doc.document}</strong>
+                  <span>{doc.employee} · {doc.owner || "Sorumlu yok"}</span>
+                </div>
+                <em>{doc.dueLabel}</em>
+              </div>
+            ))}
+            {deadlines.length === 0 && <p className="pending-desc">Yaklaşan son tarih yok.</p>}
+          </div>
+        </aside>
+      </div>
+
+      <div className="detail-support-grid">
+        <section className="card">
+          <div className="card-header-clean"><h4>Denetim Hazırlığı</h4><span className="status-pill pending">{readiness.readinessScore ?? 0}/100</span></div>
+          <div className="audit-readiness-list">
+            {(readiness.auditChecklist ?? []).map((item) => (
+              <div key={item.label} className={`audit-readiness-item ${item.level ?? ""}`}>
+                <div className="capacity-top"><span>{item.label}</span><strong>{item.value}%</strong></div>
+                <div className="progress-bar"><div className="fill" style={{ width: `${item.value}%` }} /></div>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section className="card">
+          <div className="card-header-clean"><h4>Önerilen Aksiyonlar</h4></div>
+          <div className="signal-list">
+            {(readiness.recommendedActions ?? []).map((action) => (
+              <div key={action} className="signal-note action">
+                <i aria-hidden="true" className="fa-solid fa-check" /><span>{action}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      {/* Belge modalı Task 6'da */}
+    </div>
+  );
+}

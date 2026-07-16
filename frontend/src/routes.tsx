@@ -9,7 +9,7 @@ import { AttritionDetailPage } from "./features/dashboard/AttritionDetailPage";
 import { BurnoutDetailPage } from "./features/dashboard/BurnoutDetailPage";
 import { ManagerLoadPage } from "./features/dashboard/ManagerLoadPage";
 import { EmployeeVoicePage } from "./features/dashboard/EmployeeVoicePage";
-import { ComplianceRiskPage } from "./features/dashboard/ComplianceRiskPage";
+import { CompliancePage } from "./features/compliance/CompliancePage";
 import { PersonnelPage } from "./features/personnel/PersonnelPage";
 import { RecruitmentPage } from "./features/recruitment/RecruitmentPage";
 import { LeavesPage } from "./features/leaves/LeavesPage";
@@ -78,7 +78,7 @@ const pageFor: Record<string, () => JSX.Element> = {
   "burnout-risk": BurnoutDetailPage,
   "manager-load": ManagerLoadPage,
   "employee-voice": EmployeeVoicePage,
-  "compliance-risk": ComplianceRiskPage,
+  "compliance-risk": CompliancePage,
   personnel: PersonnelPage,
   recruitment: RecruitmentPage,
   leaves: LeavesPage,

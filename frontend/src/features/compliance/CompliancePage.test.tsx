@@ -1,0 +1,73 @@
+import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { stubApi } from "../../test/apiStub";
+import { renderPage } from "../../test/renderPage";
+import { AuthProvider } from "../../auth/AuthContext";
+import { ToastProvider } from "../../layout/ToastProvider";
+import { SESSION_KEY } from "../../api/session";
+import { CompliancePage } from "./CompliancePage";
+
+const documents = [
+  { id: 1, employeeId: 3, employee: "Ahmet Yılmaz", dept: "Yazılım", document: "İş Sözleşmesi", owner: "Ayşe Demir", dueDate: "2026-07-20", dueLabel: "4 gün", status: "Süresi Yaklaşıyor", level: "high" },
+  { id: 2, employeeId: 4, employee: "Ece Arslan", dept: "Yazılım", document: "SGK Girişi", owner: null, dueDate: null, dueLabel: "-", status: "Eksik", level: "medium" },
+];
+const readiness = {
+  totalCount: 12, completedCount: 7, missingCount: 3, dueSoonCount: 2, inReviewCount: 1, ownedCount: 9,
+  documentComplianceScore: 82, readinessScore: 74, readinessRisk: "Orta",
+  auditChecklist: [{ label: "Zorunlu evrak tamamlama", value: 78, level: "medium" }],
+  recommendedActions: ["Eksik evraklar için sorumlu atayın."],
+};
+
+const setRole = (role: string) =>
+  localStorage.setItem(SESSION_KEY, JSON.stringify({
+    token: "T", refreshToken: "R",
+    user: { id: "u", name: "X", email: "x@x", role, roleLabel: "X", initials: "XX", employeeId: 5 },
+  }));
+
+beforeEach(() => {
+  localStorage.clear();
+  setRole("hr-admin");
+  stubApi({
+    "/api/compliance/documents": documents,
+    "/api/compliance/readiness": readiness,
+  });
+});
+afterEach(() => vi.unstubAllGlobals());
+
+const renderShell = () =>
+  renderPage(
+    <AuthProvider>
+      <ToastProvider>
+        <CompliancePage />
+      </ToastProvider>
+    </AuthProvider>,
+  );
+
+// "İş Sözleşmesi" ve "4 gün" hem tabloda hem Yaklaşan Son Tarihler panelinde
+// geçer → tekil getByText çoklu eşleşmeyle düşer; getAllByText/findAllByText kullanılır.
+test("KPI'lar readiness'tan, tablo belgelerden dolar", async () => {
+  renderShell();
+  expect(await screen.findByText("Uyum, Evrak ve Denetim Risk Merkezi")).toBeInTheDocument();
+  expect((await screen.findAllByText("İş Sözleşmesi")).length).toBeGreaterThan(0);
+  expect(screen.getByText("82")).toBeInTheDocument();
+  expect(screen.getAllByText("Orta").length).toBeGreaterThan(0);
+  expect(screen.getByText("Eksik evraklar için sorumlu atayın.")).toBeInTheDocument();
+});
+
+test("durum filtresi server-side sorgu atar", async () => {
+  renderShell();
+  await screen.findAllByText("İş Sözleşmesi");
+  await userEvent.selectOptions(screen.getByLabelText("Durum filtresi"), "Eksik");
+  await waitFor(() => {
+    const hit = vi.mocked(fetch).mock.calls.some(([u]) => String(u) === "/api/compliance/documents?status=Eksik");
+    expect(hit).toBe(true);
+  });
+});
+
+test("yaklaşan son tarihler paneli dueDate'li belgelerden türetilir", async () => {
+  renderShell();
+  await screen.findAllByText("İş Sözleşmesi");
+  expect(screen.getByText("Yaklaşan Son Tarihler")).toBeInTheDocument();
+  expect(screen.getAllByText("4 gün").length).toBeGreaterThan(1);
+});
