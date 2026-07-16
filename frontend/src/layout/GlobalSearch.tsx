@@ -1,9 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "../api/client";
+import type { components } from "../api/schema";
 import { useAuth } from "../auth/AuthContext";
 import { appRoutes, navIcons, type Role } from "../routes";
 
+type SearchResultDto = components["schemas"]["SearchResultDto"];
+
 type Item = { label: string; hint: string; icon: string; path: string };
+
+const TYPE_ICONS: Record<string, string> = {
+  personnel: "fa-user", action: "fa-list-check", candidate: "fa-briefcase",
+};
 
 export function GlobalSearch() {
   const { user } = useAuth();
@@ -14,12 +23,35 @@ export function GlobalSearch() {
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  const items: Item[] = !query.trim() || query.trim().length < 2
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  // API araması düşerse sayfa sonuçları çalışmaya devam eder (retry yok, hata yutulur).
+  const apiResults = useQuery({
+    queryKey: ["search", debouncedQuery],
+    queryFn: () => apiFetch<SearchResultDto[]>(`/search?q=${encodeURIComponent(debouncedQuery)}`),
+    enabled: debouncedQuery.length >= 2,
+    retry: false,
+  });
+
+  const pageItems: Item[] = !query.trim() || query.trim().length < 2
     ? []
     : appRoutes
         .filter((r) => r.navKey === r.key && r.roles.includes((user?.role ?? "employee") as Role))
         .filter((r) => r.title.toLocaleLowerCase("tr-TR").includes(query.trim().toLocaleLowerCase("tr-TR")))
         .map((r) => ({ label: r.title, hint: "Sayfaya git", icon: navIcons[r.key] || "fa-compass", path: r.path }));
+
+  const apiItems: Item[] = (apiResults.data ?? []).map((result) => ({
+    label: result.label ?? "",
+    hint: result.hint ?? "",
+    icon: TYPE_ICONS[result.type ?? ""] ?? "fa-compass",
+    path: appRoutes.find((r) => r.key === result.routeKey)?.path ?? "/overview",
+  }));
+
+  const items: Item[] = [...pageItems, ...apiItems];
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -76,7 +108,7 @@ export function GlobalSearch() {
       <div id="global-search-results" className="search-results" role="listbox" aria-label="Arama sonuçları" hidden={!open || items.length === 0}>
         {items.map((item, index) => (
           <button
-            key={item.path}
+            key={`${item.path}-${item.label}`}
             type="button"
             className={`search-result ${index === activeIndex ? "active" : ""}`}
             role="option"
