@@ -7,6 +7,7 @@ import { PageError, PageLoading } from "../shared/PageState";
 import { CalculatorTab } from "./CalculatorTab";
 import { MyPayslipsView } from "./MyPayslipsView";
 import { PeriodTab } from "./PeriodTab";
+import { SettingsTab } from "./SettingsTab";
 import { useCreatePayrollPeriod, usePayrollPeriods, useSubmitPayrollPeriod } from "./queries";
 
 const TABS = [
@@ -115,7 +116,7 @@ function PayrollAdminShell({ tab }: { tab: "period" | "calculator" | "settings" 
         <section id="payroll-calculator" className="payroll-tab-content active"><CalculatorTab /></section>
       )}
       {tab === "settings" && (
-        <section id="payroll-settings" className="payroll-tab-content active">{null}</section>
+        <section id="payroll-settings" className="payroll-tab-content active"><SettingsTab /></section>
       )}
 
       {createOpen && (
