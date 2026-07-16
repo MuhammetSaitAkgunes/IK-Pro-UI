@@ -17,6 +17,7 @@ import { SettingsPage } from "./features/settings/SettingsPage";
 import { LeavesPage } from "./features/leaves/LeavesPage";
 import { AttendancePage } from "./features/attendance/AttendancePage";
 import { PayrollPeriodPage, PayrollCalculatorPage, PayrollSettingsPage } from "./features/payroll/PayrollPage";
+import { ManagerPage } from "./features/manager/ManagerPage";
 
 export type Role = "hr-admin" | "manager" | "employee";
 
@@ -91,6 +92,7 @@ const pageFor: Record<string, () => JSX.Element> = {
   "payroll-calculator": PayrollCalculatorPage,
   "payroll-settings": PayrollSettingsPage,
   settings: SettingsPage,
+  manager: ManagerPage,
 };
 
 // Component JSX olarak render edilir (düz fonksiyon çağrısı hook kurallarını bozar).
