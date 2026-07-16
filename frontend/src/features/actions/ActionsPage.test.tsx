@@ -84,3 +84,24 @@ test("employee rolünde Denetim İzi sekmesi görünmez", async () => {
   await screen.findByText("SGK matrah kontrolü");
   expect(screen.queryByRole("button", { name: "Denetim İzi" })).not.toBeInTheDocument();
 });
+
+test("durum ilerletme PATCH status atar", async () => {
+  renderShell();
+  await screen.findByText("SGK matrah kontrolü");
+  await userEvent.click(screen.getByRole("button", { name: "Bu haftaya al" }));
+  await waitFor(() => {
+    const patched = vi.mocked(fetch).mock.calls.find(
+      ([u, i]) => String(u) === "/api/actions/1/status" && i?.method === "PATCH",
+    );
+    expect(patched).toBeTruthy();
+    expect(JSON.parse(String(patched![1]?.body))).toMatchObject({ status: "week" });
+  });
+});
+
+test("employee kartlarda ilerletme/silme görmez", async () => {
+  setRole("employee");
+  renderShell();
+  await screen.findByText("SGK matrah kontrolü");
+  expect(screen.queryByRole("button", { name: "Bu haftaya al" })).not.toBeInTheDocument();
+  expect(screen.queryByLabelText(/aksiyonunu sil/)).not.toBeInTheDocument();
+});

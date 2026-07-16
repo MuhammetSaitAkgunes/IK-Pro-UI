@@ -1,11 +1,18 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ApiError } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
+import { useToast } from "../../layout/ToastProvider";
 import { PageError, PageLoading } from "../shared/PageState";
 import { formatTimeAgo } from "../recruitment/format";
 import { appRoutes } from "../../routes";
-import { actionLevelText, actionPillClass, actionStatusText } from "./format";
-import { useAuditLogs, useGlobalActions, type GlobalActionDto } from "./queries";
+import { ActionModal } from "./ActionModal";
+import {
+  actionLevelText, actionPillClass, actionStatusText, nextActionStatus, nextActionStatusLabel,
+} from "./format";
+import {
+  useAuditLogs, useDeleteGlobalAction, useGlobalActions, useSetActionStatus, type GlobalActionDto,
+} from "./queries";
 
 const TABS: [string, string][] = [["open", "Açık"], ["week", "Bu Hafta"], ["done", "Tamamlanan"]];
 
@@ -15,7 +22,11 @@ const routePathFor = (routeKey?: string | null): string | null =>
 export function ActionsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const isMgmt = user?.role === "hr-admin" || user?.role === "manager";
+  const isAdmin = user?.role === "hr-admin";
+  const setStatus = useSetActionStatus();
+  const deleteAction = useDeleteGlobalAction();
   const [tab, setTab] = useState("open");
   const [filters, setFilters] = useState({ priority: "", source: "", owner: "" });
   const [createOpen, setCreateOpen] = useState(false);
@@ -43,6 +54,26 @@ export function ActionsPage() {
     (e: React.ChangeEvent<HTMLSelectElement>) =>
       setFilters((f) => ({ ...f, [key]: e.target.value }));
 
+  const advance = async (action: GlobalActionDto) => {
+    const next = nextActionStatus(action.status);
+    if (!next) return;
+    try {
+      await setStatus.mutateAsync({ id: action.id!, status: next });
+      showToast(`"${action.title}" durumu güncellendi.`, "success");
+    } catch (e) {
+      showToast(e instanceof ApiError ? e.message : "Durum güncellenemedi.", "error");
+    }
+  };
+
+  const remove = async (action: GlobalActionDto) => {
+    try {
+      await deleteAction.mutateAsync(action.id!);
+      showToast(`"${action.title}" silindi.`, "info");
+    } catch (e) {
+      showToast(e instanceof ApiError ? e.message : "Aksiyon silinemedi.", "error");
+    }
+  };
+
   const renderCard = (action: GlobalActionDto) => {
     const sourcePath = routePathFor(action.sourceRoute);
     return (
@@ -60,9 +91,23 @@ export function ActionsPage() {
         <div className="global-action-footer">
           <span className="status-pill info">{actionStatusText(action.status)}</span>
           <div className="toolbar-actions">
-            {/* Durum ilerletme + silme Task 3'te */}
+            {isMgmt && nextActionStatusLabel(action.status) && (
+              <button className="btn btn-primary btn-sm" onClick={() => advance(action)}>
+                {nextActionStatusLabel(action.status)}
+              </button>
+            )}
             {sourcePath && (
               <button className="btn btn-secondary btn-sm" onClick={() => navigate(sourcePath)}>Kaynağa git</button>
+            )}
+            {isAdmin && (
+              <button
+                className="btn-icon-sm"
+                title="Sil"
+                aria-label={`${action.title} aksiyonunu sil`}
+                onClick={() => remove(action)}
+              >
+                <i aria-hidden="true" className="fa-solid fa-trash" />
+              </button>
             )}
           </div>
         </div>
@@ -77,7 +122,11 @@ export function ActionsPage() {
           <h2>Global Aksiyon Merkezi</h2>
           <p>Risk, bordro, uyum ve çalışan deneyimi aksiyonlarını tek operasyon merkezinde takip edin.</p>
         </div>
-        {/* Yeni Aksiyon butonu Task 3'te (yalnız hr-admin) */}
+        {isAdmin && (
+          <button className="btn btn-primary" onClick={() => setCreateOpen(true)}>
+            <i aria-hidden="true" className="fa-solid fa-plus" /> Yeni Aksiyon
+          </button>
+        )}
       </div>
 
       <div className="actions-kpi-grid">
@@ -156,8 +205,7 @@ export function ActionsPage() {
         </section>
       )}
 
-      {/* Yeni Aksiyon modalı Task 3'te */}
-      {createOpen && null}
+      {createOpen && <ActionModal onClose={() => setCreateOpen(false)} />}
     </div>
   );
 }
