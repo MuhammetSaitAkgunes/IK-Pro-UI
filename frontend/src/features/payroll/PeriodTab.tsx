@@ -6,6 +6,7 @@ import {
   CONTROL_META, PERIOD_STATUS_TEXT, derivePayrollSteps, formatPayrollMoney,
   formatPayrollNumber, payrollStatusClass,
 } from "./format";
+import { PayrollDetailPanel } from "./PayrollDetailPanel";
 import { usePayrollPeriod, usePayrollSettings, useRunPayrollCheck, type PayrollRowDto } from "./queries";
 
 export function PeriodTab({ periodId }: { periodId: number | null }) {
@@ -200,9 +201,15 @@ export function PeriodTab({ periodId }: { periodId: number | null }) {
         </table>
       </section>
 
-      {/* Detay paneli Task 4'te */}
       <div id="payroll-detail-overlay" className={`payroll-detail-overlay ${detailRow ? "active" : ""}`}>
-        {detailRow && null}
+        {detailRow && (
+          <PayrollDetailPanel
+            periodId={periodId}
+            periodName={detail.name ?? ""}
+            row={detailRow}
+            onClose={() => setDetailRow(null)}
+          />
+        )}
       </div>
     </>
   );
