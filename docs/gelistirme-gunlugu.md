@@ -6,14 +6,16 @@
 
 ## Şu an neredeyiz
 
-- **Aktif iş:** React portu — **Dilim 6 tamamlandı**; dal `feature/react-port-dilim-6`
+- **Aktif iş:** React portu — **Dilim 7 tamamlandı**; dal `feature/react-port-dilim-7`
   main'e merge kararı bekliyor.
-- **Son tamamlanan:** Dilim 6 (İşe Alım + Uyum) — 7 görev, 107 birim test,
-  11 kontrollük duman testi (aday oluştur→not→pipeline→işe al→personel kaydı,
-  uyum belge CRUD + durum akışı + rol kısıtları) ve parite kontrolü geçti.
-- **Sıradaki adım:** Dilim 6'yı main'e merge et; sonra Dilim 7
-  (Aksiyonlar + Global Arama + Ayarlar) planını yeni dalda yaz
-  (`docs/superpowers/plans/`).
+- **Son tamamlanan:** Dilim 7 (Aksiyon Merkezi + Global Arama + Ayarlar +
+  Yönetici Konsolu) — 7 görev, 128 birim test, 10 kontrollük duman testi
+  (aksiyon CRUD + ileri yönlü durum akışı, gerçek denetim izi, birleşik arama,
+  ayarlarda kalıcılık + şifre değişikliği, manager onay paneli + CSV) ve
+  parite kontrolü geçti.
+- **Sıradaki adım:** Dilim 7'yi main'e merge et; sonra Dilim 8 (Kapanış:
+  eski dosyalar `legacy-frontend/`e, README/dokümantasyon güncellemesi)
+  planını yeni dalda yaz (`docs/superpowers/plans/`).
 - **Referanslar:**
   - Tasarım dokümanı: `docs/superpowers/specs/2026-07-13-react-frontend-port-design.md`
   - Dilim 1 planı (tamamlandı): `docs/superpowers/plans/2026-07-13-react-port-dilim-1-iskelet.md`
@@ -22,6 +24,7 @@
   - Dilim 4 planı (tamamlandı): `docs/superpowers/plans/2026-07-14-react-port-dilim-4-izin-puantaj.md`
   - Dilim 5 planı (tamamlandı): `docs/superpowers/plans/2026-07-14-react-port-dilim-5-bordro.md`
   - Dilim 6 planı (tamamlandı): `docs/superpowers/plans/2026-07-16-react-port-dilim-6-isealim-uyum.md`
+  - Dilim 7 planı (tamamlandı): `docs/superpowers/plans/2026-07-16-react-port-dilim-7-aksiyonlar-arama-ayarlar.md`
   - Backend faz planı: `raporlar/backend-development-plan.md`
 - **Çalıştırma komutları:**
   - Backend: `cd backend && dotnet run --project src/IKPro.API --launch-profile http` → `http://localhost:5053`
@@ -32,6 +35,39 @@
 ---
 
 ## Kayıtlar (yeni → eski)
+
+### 2026-07-16 — Dilim 7: Aksiyon Merkezi + Global Arama + Ayarlar + Yönetici Konsolu
+
+- 7 görev TDD ile tamamlandı; 128 birim test + build yeşil.
+- `src/features/actions/`: `format.ts` (öncelik/durum etiketleri + ileri yönlü
+  `open→week→done` geçiş yardımcıları) + `queries.ts` (liste/audit/CRUD/status),
+  `ActionsPage` (KPI'lar listeden, server-side öncelik/kaynak/sahip filtreleri,
+  Açık/Bu Hafta/Tamamlanan sekmeleri, Denetim İzi gerçek `audit-logs` verisiyle
+  yalnız hr-admin+manager; kartlarda durum ilerletme MGMT + silme hr-admin,
+  "Kaynağa git" `sourceRoute`tan), `ActionModal` (Yeni Aksiyon, hr-admin);
+  `/risk/action-center` aynı sayfaya bağlandı (eski routes.js paritesi).
+- `layout/GlobalSearch`: 300ms debounce ile gerçek `GET /search` sonuçları
+  (personel rol kapsamlı + aksiyon + aday) sayfa sonuçlarının altına eklenir;
+  API hatası sessizce yutulur.
+- `src/features/settings/`: `SettingsPage` — şirket profili (PUT + header
+  "Değişiklikleri Kaydet"), logo yükleme (FormData) + korumalı logo
+  `apiDownload`→blob URL ile gösterim (`<img src>` Bearer gönderemez),
+  bildirim toggle'ları değişimde anında PUT, şifre değişikliği gerçek
+  `POST /auth/change-password` (yanlış mevcut şifre → backend mesajı),
+  2FA toggle, abonelik salt-okur.
+- `src/features/manager/`: `ManagerPage` — "Şu An İzinli" (`overview.onLeaveToday`)
+  ve "Onay Bekliyor" gerçek; Onay Bekleyenler paneli `usePendingLeaves` +
+  `useDecideLeave`; trend grafiği/ısı haritası/departman tablosu ve 2 KPI
+  **demo** (backend'de izin-analitik ucu yok, Demo pill'li); CSV dışa aktarım
+  gerçek (`downloadCsv` uzantıyı kendisi ekler — çift `.csv.csv` düzeltildi).
+- **Kararlar / bilinçli farklar:** aksiyon mutasyonları + "Yeni Aksiyon" eskide
+  yoktu; Denetim İzi employee'ye kapalı (uç Management); manager'daki işlevsiz
+  ay/departman seçicileri kaldırıldı; ayarlar gerçek kalıcı (eskide sahte).
+- Duman: 10 kontrol geçti. Playwright notları: gizli switch checkbox'ları
+  (`.switch` CSS) `force`/`evaluate(el.click())` ister; dilim 1 rota testi
+  settings placeholder beklentisi gerçek sayfaya güncellendi.
+- Parite: `#/actions`, `#/settings`, `#/manager` eskiyle yan yana birebir;
+  tüm farklar plandaki bilinçli farklar. Kod düzeltmesi gerekmedi.
 
 ### 2026-07-16 — Dilim 6: İşe Alım (ATS) + Uyum
 

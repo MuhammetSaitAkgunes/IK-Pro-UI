@@ -63,7 +63,7 @@ Mevcut yardımcılar: `formatTimeAgo` (`features/recruitment/format`), `tableToC
   - `useAuditLogs(enabled: boolean)` — `GET /audit-logs`
   - `useCreateGlobalAction()`, `useSetActionStatus()` (`{id,status}`), `useDeleteGlobalAction()` (`id`) — hepsi `["actions"]` invalidate eder (AppShell rozeti de `["actions","badge"]` altında olduğundan tazelenir)
 
-- [ ] **Step 1: Başarısız testleri yaz** — `format.test.ts`:
+- [x] **Step 1: Başarısız testleri yaz** — `format.test.ts`:
 
 ```ts
 import { expect, test } from "vitest";
@@ -100,7 +100,7 @@ test("ileri yönlü durum geçişi", () => {
 
 Run: `npm test -- --run src/features/actions/format.test.ts` → FAIL.
 
-- [ ] **Step 2: `format.ts` yaz**
+- [x] **Step 2: `format.ts` yaz**
 
 ```ts
 export const actionLevelText = (level?: string | null): string =>
@@ -119,7 +119,7 @@ export const nextActionStatusLabel = (status?: string | null): string | null =>
   status === "open" ? "Bu haftaya al" : status === "week" ? "Tamamlandı işaretle" : null;
 ```
 
-- [ ] **Step 3: `queries.ts` yaz**
+- [x] **Step 3: `queries.ts` yaz**
 
 ```ts
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -190,9 +190,9 @@ export const useDeleteGlobalAction = () => {
 
 Not: `apiFetch<void>` 204'te gövde parse etmemeli — `src/api/client.ts`'e bak; 204 desteği yoksa (JSON parse hatası atarsa) `apiFetch` içinde `response.status === 204 ? undefined : ...` düzeltmesini bu görevde yap ve mevcut testlerin geçtiğini doğrula.
 
-- [ ] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
+- [x] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/features/actions/ frontend/src/api/client.ts
@@ -214,7 +214,7 @@ git commit -m "feat(frontend): aksiyon format yardımcıları ve query katmanı"
 
 Davranış: eski `ActionsCenter()` DOM'u (`#actions-screen`). KPI'lar listeden türetilir (eski formüller): Bugün=`due==="Bugün"`, Geciken=`due==="Gecikti"`, Yüksek=`priority==="high" && status!=="done"`, Tamamlanan=`status==="done"`. Filtreler server-side (`priority/source/owner`); kaynak/sahip seçenekleri filtresiz listeden türetilir. Bilinçli farklar: filtreler server-side (eskide DOM gizleme), Denetim İzi sekmesi yalnız hr-admin+manager (uç Management; eskide herkese görünürdü), denetim izi gerçek `audit-logs` verisi (`formatTimeAgo` ile), "Kaynağa git" `sourceRoute` yoksa gizlenir.
 
-- [ ] **Step 1: Başarısız testleri yaz** — `ActionsPage.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `ActionsPage.test.tsx`:
 
 ```tsx
 import { screen, waitFor } from "@testing-library/react";
@@ -303,7 +303,7 @@ test("employee rolünde Denetim İzi sekmesi görünmez", async () => {
 
 Run: `npm test -- --run src/features/actions/ActionsPage.test.tsx` → FAIL.
 
-- [ ] **Step 2: `ActionsPage.tsx` yaz** (kart eylemleri + Yeni Aksiyon Task 3'te)
+- [x] **Step 2: `ActionsPage.tsx` yaz** (kart eylemleri + Yeni Aksiyon Task 3'te)
 
 ```tsx
 import { useState } from "react";
@@ -472,7 +472,7 @@ export function ActionsPage() {
 }
 ```
 
-- [ ] **Step 3: `routes.tsx` `pageFor`'a ekle**
+- [x] **Step 3: `routes.tsx` `pageFor`'a ekle**
 
 ```tsx
 // import bloğuna:
@@ -484,9 +484,9 @@ import { ActionsPage } from "./features/actions/ActionsPage";
 
 (Eski `routes.js`te `/risk/action-center` da `ActionsCenter()` render eder — birebir.)
 
-- [ ] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
+- [x] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/features/actions/ frontend/src/routes.tsx
@@ -508,7 +508,7 @@ git commit -m "feat(frontend): aksiyon merkezi kabuğu — KPI, filtreler, sekme
 
 Davranış (bilinçli farklar; eskide mutasyon yoktu): kartta durum ilerletme butonu (hr-admin+manager; `open→week→done`, `done`'da gizli), silme ikonu (yalnız hr-admin), header'da "Yeni Aksiyon" (yalnız hr-admin). 409 (geri dönüş) → toast error.
 
-- [ ] **Step 1: Başarısız testleri yaz** — `ActionModal.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `ActionModal.test.tsx`:
 
 ```tsx
 import { screen, waitFor } from "@testing-library/react";
@@ -590,7 +590,7 @@ test("employee kartlarda ilerletme/silme görmez", async () => {
 
 Run: `npm test -- --run src/features/actions/` → FAIL.
 
-- [ ] **Step 2: `ActionModal.tsx` yaz**
+- [x] **Step 2: `ActionModal.tsx` yaz**
 
 ```tsx
 import { useState } from "react";
@@ -694,7 +694,7 @@ export function ActionModal({ onClose }: { onClose: () => void }) {
 }
 ```
 
-- [ ] **Step 3: `ActionsPage.tsx`'e mutasyon UI'larını ekle**
+- [x] **Step 3: `ActionsPage.tsx`'e mutasyon UI'larını ekle**
 
 İçe aktarımlar + hook'lar:
 
@@ -771,9 +771,9 @@ Sayfa sonundaki placeholder:
 {createOpen && <ActionModal onClose={() => setCreateOpen(false)} />}
 ```
 
-- [ ] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
+- [x] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/features/actions/
@@ -794,7 +794,7 @@ git commit -m "feat(frontend): aksiyon mutasyonları — oluşturma, ileri yönl
 
 Davranış: sayfa sonuçları anlık (mevcut), API sonuçları debounce'lu eklenir; `hint` alanı gösterilir. API hatası sessizce yutulur (arama düşerse sayfa sonuçları çalışmaya devam eder).
 
-- [ ] **Step 1: Başarısız testleri yaz** — `GlobalSearch.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `GlobalSearch.test.tsx`:
 
 ```tsx
 import { screen, waitFor } from "@testing-library/react";
@@ -850,7 +850,7 @@ test("iki karakterden kısa sorguda API çağrısı yapılmaz", async () => {
 
 Run: `npm test -- --run src/layout/GlobalSearch.test.tsx` → FAIL.
 
-- [ ] **Step 2: `GlobalSearch.tsx`'i genişlet**
+- [x] **Step 2: `GlobalSearch.tsx`'i genişlet**
 
 Mevcut dosyada şu değişiklikler yapılır (tam parçalar):
 
@@ -906,9 +906,9 @@ const items: Item[] = [...pageItems, ...apiItems];
 
 Sonuç butonu `key`'i çakışmasın diye `key={`${item.path}-${item.label}`}` yapılır.
 
-- [ ] **Step 3: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS (AppShell testleri de etkilenmemeli).
+- [x] **Step 3: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS (AppShell testleri de etkilenmemeli).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add frontend/src/layout/
@@ -931,7 +931,7 @@ git commit -m "feat(frontend): global arama — birleşik /search sonuçları (p
 
 Davranış: eski `Settings()` DOM'u. Header "Değişiklikleri Kaydet" şirket formunu `PUT company` ile kaydeder. Bildirim toggle'ları değişimde anında `PUT notifications` (bilinçli fark: eskide sahte kaydetme). Güvenlik: şifre değişikliği gerçek `POST /auth/change-password` (yanlış mevcut şifre → ApiError mesajı), 2FA toggle `PUT security`. Abonelik salt-okur (`subscription`). Logo yükleme gerçek `POST company/logo` (FormData); mevcut logo `logoPath` doluysa `GET /api/settings/company/logo` `<img>` ile gösterilir.
 
-- [ ] **Step 1: Başarısız testleri yaz** — `SettingsPage.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `SettingsPage.test.tsx`:
 
 ```tsx
 import { screen, waitFor } from "@testing-library/react";
@@ -1028,7 +1028,7 @@ test("abonelik bölümü salt-okur plan bilgisi gösterir", async () => {
 
 Run: `npm test -- --run src/features/settings/SettingsPage.test.tsx` → FAIL.
 
-- [ ] **Step 2: `queries.ts` yaz**
+- [x] **Step 2: `queries.ts` yaz**
 
 ```ts
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -1104,7 +1104,7 @@ export const useChangePassword = () =>
   });
 ```
 
-- [ ] **Step 3: `SettingsPage.tsx` yaz** (eski `Settings()` DOM paritesi; toggle'lar `<label className="switch">` yapısıyla, erişilebilirlik için checkbox'lara `aria-label`)
+- [x] **Step 3: `SettingsPage.tsx` yaz** (eski `Settings()` DOM paritesi; toggle'lar `<label className="switch">` yapısıyla, erişilebilirlik için checkbox'lara `aria-label`)
 
 ```tsx
 import { useEffect, useRef, useState } from "react";
@@ -1426,7 +1426,7 @@ export function SettingsPage() {
 }
 ```
 
-- [ ] **Step 4: `routes.tsx` `pageFor`'a ekle**
+- [x] **Step 4: `routes.tsx` `pageFor`'a ekle**
 
 ```tsx
 import { SettingsPage } from "./features/settings/SettingsPage";
@@ -1434,9 +1434,9 @@ import { SettingsPage } from "./features/settings/SettingsPage";
   settings: SettingsPage,
 ```
 
-- [ ] **Step 5: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
+- [x] **Step 5: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/features/settings/ frontend/src/routes.tsx
@@ -1458,7 +1458,7 @@ git commit -m "feat(frontend): sistem ayarları — şirket profili, logo, bildi
 
 Davranış: eski `ManagerDashboard()` DOM'u. Gerçek veri: "Şu An İzinli" ← `overview.onLeaveToday`, "Onay Bekliyor" ← `pending.length`, Onay Bekleyenler paneli ← `usePendingLeaves(true)` + `useDecideLeave` (Onayla/Reddet). Bilinçli farklar: trend grafiği, yoğunluk haritası, departman kullanım tablosu ve "Planlanan İzin"/"Kullanım Oranı" KPI'ları **demo statik** (backend'de izin-analitik ucu yok; kartlara `Demo` pill eklenir — bordro pusulası önizleme deseni); header ay/departman seçicileri kaldırıldı (işlevsizdi), CSV butonu gerçek `mini-table` dışa aktarımı.
 
-- [ ] **Step 1: Başarısız testleri yaz** — `ManagerPage.test.tsx`:
+- [x] **Step 1: Başarısız testleri yaz** — `ManagerPage.test.tsx`:
 
 ```tsx
 import { screen, waitFor } from "@testing-library/react";
@@ -1523,7 +1523,7 @@ test("bekleyen yoksa panel boş durumu gösterir", async () => {
 
 Run: `npm test -- --run src/features/manager/ManagerPage.test.tsx` → FAIL.
 
-- [ ] **Step 2: `ManagerPage.tsx` yaz**
+- [x] **Step 2: `ManagerPage.tsx` yaz**
 
 ```tsx
 import { Line } from "react-chartjs-2";
@@ -1734,7 +1734,7 @@ export function ManagerPage() {
 }
 ```
 
-- [ ] **Step 3: `routes.tsx` `pageFor`'a ekle**
+- [x] **Step 3: `routes.tsx` `pageFor`'a ekle**
 
 ```tsx
 import { ManagerPage } from "./features/manager/ManagerPage";
@@ -1742,9 +1742,9 @@ import { ManagerPage } from "./features/manager/ManagerPage";
   manager: ManagerPage,
 ```
 
-- [ ] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS. `npm run build` → hatasız.
+- [x] **Step 4: Testleri doğrula** — Run: `npm test -- --run` → tümü PASS. `npm run build` → hatasız.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/features/manager/ frontend/src/routes.tsx
@@ -1758,9 +1758,9 @@ git commit -m "feat(frontend): yönetici konsolu — gerçek KPI/onay paneli, de
 **Files:**
 - Modify: `docs/gelistirme-gunlugu.md`; gerekirse küçük düzeltmeler.
 
-- [ ] **Step 1: Backend + frontend'i başlat** (`cd backend && dotnet run --project src/IKPro.API --launch-profile http` + `cd frontend && npm run dev`)
+- [x] **Step 1: Backend + frontend'i başlat** (`cd backend && dotnet run --project src/IKPro.API --launch-profile http` + `cd frontend && npm run dev`)
 
-- [ ] **Step 2: Duman testi** (Playwright, scratchpad script'i; giriş `demo123`; **tab tıklamalarında `exact: true`** — dilim 6'daki `has-text` alt dizgi tuzağını hatırla)
+- [x] **Step 2: Duman testi** (Playwright, scratchpad script'i; giriş `demo123`; **tab tıklamalarında `exact: true`** — dilim 6'daki `has-text` alt dizgi tuzağını hatırla)
 
 1. hr-admin → `#/actions`: KPI'lar + kartlar; öncelik/kaynak/sahip filtreleri listeyi daraltır; sekmeler (Açık/Bu Hafta/Tamamlanan) doğru kartları gösterir.
 2. "Yeni Aksiyon" → form → kaydet → kartlarda görünür; sidebar rozeti artar.
@@ -1773,9 +1773,9 @@ git commit -m "feat(frontend): yönetici konsolu — gerçek KPI/onay paneli, de
 9. manager (`ece.arslan@hrmaster.local`) → `#/manager`: KPI'lar dolu, bekleyen talep varsa Onayla/Reddet çalışır (yoksa çalışan tarafında talep oluşturup dön), "Raporu İndir" CSV indirir.
 10. Çalışan → `#/actions`: kartlar salt-okur (ilerletme/silme/Yeni Aksiyon yok, Denetim İzi sekmesi yok).
 
-- [ ] **Step 3: Görsel parite** — eski/yeni `#/actions`, `#/settings`, `#/manager` yan yana. Bilinçli farklar: aksiyon kartlarında ilerletme/silme + "Yeni Aksiyon", denetim izinin gerçek veri/rol kısıtı, ayarlarda gerçek kalıcılık + toggle'ların anında kaydı, manager'da ay/departman seçicilerinin kaldırılması + Demo pill'leri + gerçek onay paneli. Diğer farklar DOM/class düzeltmesiyle giderilir.
+- [x] **Step 3: Görsel parite** — eski/yeni `#/actions`, `#/settings`, `#/manager` yan yana. Bilinçli farklar: aksiyon kartlarında ilerletme/silme + "Yeni Aksiyon", denetim izinin gerçek veri/rol kısıtı, ayarlarda gerçek kalıcılık + toggle'ların anında kaydı, manager'da ay/departman seçicilerinin kaldırılması + Demo pill'leri + gerçek onay paneli. Diğer farklar DOM/class düzeltmesiyle giderilir.
 
-- [ ] **Step 4: Günlük + kapanış commit** — "Şu an neredeyiz" → Dilim 8 (Kapanış: legacy taşıma + README); Dilim 7 kaydı; plan kutuları işaretlenir.
+- [x] **Step 4: Günlük + kapanış commit** — "Şu an neredeyiz" → Dilim 8 (Kapanış: legacy taşıma + README); Dilim 7 kaydı; plan kutuları işaretlenir.
 
 ```bash
 git add frontend/ docs/

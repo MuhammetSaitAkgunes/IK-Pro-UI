@@ -59,7 +59,7 @@ export function ManagerPage() {
   const exportReport = () => {
     const table = document.querySelector<HTMLTableElement>(".mini-table");
     if (!table) return;
-    downloadCsv(tableToCsvLines(table), "departman-kullanim-raporu.csv");
+    downloadCsv(tableToCsvLines(table), "departman-kullanim-raporu");
     showToast("Rapor indirildi.", "success");
   };
 
