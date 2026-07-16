@@ -30,6 +30,7 @@ beforeEach(() => {
   setRole("hr-admin");
   stubApi({
     "/api/compliance/documents": documents,
+    "/api/compliance/documents/1/status": documents[0],
     "/api/compliance/readiness": readiness,
   });
 });
@@ -70,4 +71,25 @@ test("yaklaşan son tarihler paneli dueDate'li belgelerden türetilir", async ()
   await screen.findAllByText("İş Sözleşmesi");
   expect(screen.getByText("Yaklaşan Son Tarihler")).toBeInTheDocument();
   expect(screen.getAllByText("4 gün").length).toBeGreaterThan(1);
+});
+
+test("hr-admin durum select'i PATCH status atar", async () => {
+  renderShell();
+  await screen.findAllByText("İş Sözleşmesi");
+  await userEvent.selectOptions(screen.getAllByLabelText("Belge durumu")[0], "Tamamlandı");
+  await waitFor(() => {
+    const patched = vi.mocked(fetch).mock.calls.find(
+      ([u, i]) => String(u) === "/api/compliance/documents/1/status" && i?.method === "PATCH",
+    );
+    expect(patched).toBeTruthy();
+    expect(JSON.parse(String(patched![1]?.body))).toMatchObject({ status: "Tamamlandı" });
+  });
+});
+
+test("manager salt-okur: Yeni Belge ve durum select'i yok", async () => {
+  setRole("manager");
+  renderShell();
+  await screen.findAllByText("İş Sözleşmesi");
+  expect(screen.queryByRole("button", { name: /Yeni Belge/ })).not.toBeInTheDocument();
+  expect(screen.queryAllByLabelText("Belge durumu")).toHaveLength(0);
 });

@@ -1512,7 +1512,9 @@ const renderModal = (doc: typeof existing | null) =>
 
 test("oluşturma modu POST documents ucuna tam gövdeyle gider", async () => {
   renderModal(null);
-  await userEvent.selectOptions(await screen.findByLabelText("Personel"), "3");
+  // Personel seçenekleri async yüklenir; select'e dokunmadan önce option beklenir.
+  await screen.findByRole("option", { name: "Ahmet Yılmaz" });
+  await userEvent.selectOptions(screen.getByLabelText("Personel"), "3");
   await userEvent.type(screen.getByLabelText("Belge adı"), "Sağlık Raporu");
   await userEvent.type(screen.getByLabelText("Sorumlu"), "Ayşe Demir");
   await userEvent.click(screen.getByRole("button", { name: /Kaydet/ }));

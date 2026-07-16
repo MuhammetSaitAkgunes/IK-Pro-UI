@@ -1,19 +1,31 @@
 import { useEffect, useState } from "react";
+import { ApiError } from "../../api/client";
+import { useAuth } from "../../auth/AuthContext";
+import { useToast } from "../../layout/ToastProvider";
 import { PageError, PageLoading } from "../shared/PageState";
 import { BackToRisk } from "../dashboard/BackToRisk";
 import { getLevelText } from "../dashboard/format";
+import { DocumentModal } from "./DocumentModal";
 import {
   COMPLIANCE_STATUSES, RISK_LEVELS, useComplianceDocuments, useComplianceReadiness,
+  useSetComplianceStatus, type ComplianceDocumentDto,
 } from "./queries";
 
 export const compliancePillClass = (status?: string | null): string =>
   status === "Tamamlandı" ? "approved" : status === "Eksik" ? "rejected" : "pending";
 
 export function CompliancePage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "hr-admin";
+  const { showToast } = useToast();
+  const setDocumentStatus = useSetComplianceStatus();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [levelFilter, setLevelFilter] = useState("");
+  const [documentModal, setDocumentModal] = useState<
+    { mode: "create" } | { mode: "edit"; document: ComplianceDocumentDto } | null
+  >(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -29,6 +41,16 @@ export function CompliancePage() {
 
   const documents = documentsQ.data;
   const readiness = readinessQ.data;
+
+  const changeStatus = async (doc: ComplianceDocumentDto, status: string) => {
+    try {
+      await setDocumentStatus.mutateAsync({ id: doc.id!, status });
+      showToast(`${doc.document} durumu "${status}" yapıldı.`, "success");
+    } catch (e) {
+      showToast(e instanceof ApiError ? e.message : "Durum güncellenemedi.", "error");
+    }
+  };
+
   const deadlines = documents
     .filter((doc) => doc.status !== "Tamamlandı" && doc.dueDate)
     .sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)))
@@ -73,14 +95,18 @@ export function CompliancePage() {
           <option value="">Tüm riskler</option>
           {RISK_LEVELS.map((level) => <option key={level} value={level}>{getLevelText(level)}</option>)}
         </select>
-        {/* "Yeni Belge" butonu Task 6'da (yalnız hr-admin) */}
+        {isAdmin && (
+          <button className="btn btn-primary" onClick={() => setDocumentModal({ mode: "create" })}>
+            <i aria-hidden="true" className="fa-solid fa-plus" /> Yeni Belge
+          </button>
+        )}
       </div>
 
       <div className="compliance-layout">
         <div className="table-container">
           <table className="detail-table data-table">
             <thead>
-              <tr><th>Personel</th><th>Departman</th><th>Evrak</th><th>Sorumlu</th><th>Son Tarih</th><th>Durum</th><th>Risk</th></tr>
+              <tr><th>Personel</th><th>Departman</th><th>Evrak</th><th>Sorumlu</th><th>Son Tarih</th><th>Durum</th><th>Risk</th>{isAdmin && <th>İşlem</th>}</tr>
             </thead>
             <tbody>
               {documents.map((doc) => (
@@ -90,12 +116,40 @@ export function CompliancePage() {
                   <td>{doc.document}</td>
                   <td>{doc.owner || "-"}</td>
                   <td>{doc.dueLabel}</td>
-                  <td><span className={`status-pill ${compliancePillClass(doc.status)}`}>{doc.status}</span></td>
+                  <td>
+                    {isAdmin ? (
+                      <>
+                        <label className="sr-only" htmlFor={`doc-status-${doc.id}`}>Belge durumu</label>
+                        <select
+                          id={`doc-status-${doc.id}`}
+                          className="input-control input-sm"
+                          value={doc.status ?? "Eksik"}
+                          onChange={(e) => changeStatus(doc, e.target.value)}
+                        >
+                          {COMPLIANCE_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
+                        </select>
+                      </>
+                    ) : (
+                      <span className={`status-pill ${compliancePillClass(doc.status)}`}>{doc.status}</span>
+                    )}
+                  </td>
                   <td><span className={`risk-badge ${doc.level ?? ""}`}>{getLevelText(doc.level)}</span></td>
+                  {isAdmin && (
+                    <td>
+                      <button
+                        className="btn-icon-sm"
+                        title="Düzenle"
+                        aria-label={`${doc.document} belgesini düzenle`}
+                        onClick={() => setDocumentModal({ mode: "edit", document: doc })}
+                      >
+                        <i aria-hidden="true" className="fa-solid fa-pen" />
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
               {documents.length === 0 && (
-                <tr><td colSpan={7}><p className="pending-desc">Filtreye uyan belge yok.</p></td></tr>
+                <tr><td colSpan={isAdmin ? 8 : 7}><p className="pending-desc">Filtreye uyan belge yok.</p></td></tr>
               )}
             </tbody>
           </table>
@@ -147,7 +201,12 @@ export function CompliancePage() {
         </section>
       </div>
 
-      {/* Belge modalı Task 6'da */}
+      {documentModal && (
+        <DocumentModal
+          document={documentModal.mode === "edit" ? documentModal.document : null}
+          onClose={() => setDocumentModal(null)}
+        />
+      )}
     </div>
   );
 }
