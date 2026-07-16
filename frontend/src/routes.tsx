@@ -11,6 +11,7 @@ import { ManagerLoadPage } from "./features/dashboard/ManagerLoadPage";
 import { EmployeeVoicePage } from "./features/dashboard/EmployeeVoicePage";
 import { ComplianceRiskPage } from "./features/dashboard/ComplianceRiskPage";
 import { PersonnelPage } from "./features/personnel/PersonnelPage";
+import { RecruitmentPage } from "./features/recruitment/RecruitmentPage";
 import { LeavesPage } from "./features/leaves/LeavesPage";
 import { AttendancePage } from "./features/attendance/AttendancePage";
 import { PayrollPeriodPage, PayrollCalculatorPage, PayrollSettingsPage } from "./features/payroll/PayrollPage";
@@ -79,6 +80,7 @@ const pageFor: Record<string, () => JSX.Element> = {
   "employee-voice": EmployeeVoicePage,
   "compliance-risk": ComplianceRiskPage,
   personnel: PersonnelPage,
+  recruitment: RecruitmentPage,
   leaves: LeavesPage,
   attendance: AttendancePage,
   payroll: PayrollPeriodPage,
