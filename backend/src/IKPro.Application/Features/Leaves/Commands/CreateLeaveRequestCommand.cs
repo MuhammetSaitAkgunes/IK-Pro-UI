@@ -74,14 +74,9 @@ public sealed class CreateLeaveRequestCommandHandler(
 
         if (leaveType.DeductsFromAnnualBalance)
         {
-            var summary = await context.LeaveBalanceSummaries.FirstOrDefaultAsync(
-                s => s.EmployeeId == employeeId && s.Year == request.StartDate.Year, cancellationToken);
-            var remaining = summary?.RemainingDays ?? 0;
-            if (days > remaining)
-            {
-                throw new ConflictException(
-                    $"Yetersiz izin bakiyesi: talep {days} gün, kalan {remaining} gün.");
-            }
+            // Bekleyen düşümlü talepleri de hesaba katar (view yalnız onaylıyı sayar).
+            await LeaveGuards.EnsureBalanceAsync(
+                context, employeeId, request.StartDate.Year, days, excludeRequestId: null, cancellationToken);
         }
 
         var leaveRequest = new LeaveRequest

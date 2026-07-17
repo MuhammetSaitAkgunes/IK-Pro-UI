@@ -31,6 +31,7 @@ public sealed class DecideLeaveRequestCommandHandler(IApplicationDbContext conte
         DecideLeaveRequestCommand request, CancellationToken cancellationToken)
     {
         var leaveRequest = await context.LeaveRequests
+            .Include(r => r.LeaveType)
             .FirstOrDefaultAsync(r => r.Id == request.Id, cancellationToken)
             ?? throw new NotFoundException("İzin talebi", request.Id);
 
@@ -51,6 +52,16 @@ public sealed class DecideLeaveRequestCommandHandler(IApplicationDbContext conte
         if (leaveRequest.Status != LeaveStatus.Pending)
         {
             throw new ConflictException("Yalnız bekleyen talepler karara bağlanabilir.");
+        }
+
+        // Onayda bakiyeyi yeniden doğrula: oluşturmadan bu yana başka onaylar bakiyeyi
+        // tüketmiş olabilir (özellikle eşzamanlı onaylarda) — bu talebin kendisi bekleyen
+        // toplamdan hariç tutulur. Düşümsüz tipler ve red kararları etkilenmez.
+        if (request.Approve && (leaveRequest.LeaveType?.DeductsFromAnnualBalance ?? false))
+        {
+            await LeaveGuards.EnsureBalanceAsync(
+                context, leaveRequest.EmployeeId, leaveRequest.StartDate.Year, leaveRequest.Days,
+                excludeRequestId: leaveRequest.Id, cancellationToken);
         }
 
         leaveRequest.Status = request.Approve ? LeaveStatus.Approved : LeaveStatus.Rejected;

@@ -124,6 +124,57 @@ public sealed class LeavesTests(IKProApiFactory factory)
     }
 
     [Fact]
+    public async Task CreateRequest_PendingRequestsCannotCollectivelyExceedBalance()
+    {
+        // vw_LeaveBalanceSummary yalnız onaylı talepleri sayar; bekleyen düşümlü talepler
+        // toplamda bakiyeyi aşamamalı. Bakiye/onay durumu koşuya göre değişebildiğinden
+        // sayı sabitlenmez: art arda ayrık tekil-gün yıllık talepler oluşturulur; bir
+        // noktada bakiye 409'u gelmeli ve oluşan bekleyen gün toplamı kalanı aşmamalı.
+        var client = await AuthedClientAsync("ahmet.yilmaz@hrmaster.local");
+        var yillik = await GetTypeAsync(client, "Yıllık");
+        // Seed bakiyesi içinde bulunulan yıla (2026) yazılır; ilk yarı ayları başka
+        // testlerin aralıklarıyla çakışmaz.
+        var balance = await GetAsync<LeaveBalanceDto>(client, "/api/leaves/balance?year=2026");
+
+        var day = new DateOnly(2026, 1, 6); // Salı
+        var createdIds = new List<int>();
+        var hitBalance409 = false;
+        try
+        {
+            for (var i = 0; i < balance.RemainingDays + 5; i++, day = day.AddDays(7))
+            {
+                var iso = day.ToString("yyyy-MM-dd");
+                var response = await CreateAsync(client, yillik.Id, iso, iso);
+                if (response.StatusCode == HttpStatusCode.Created)
+                {
+                    createdIds.Add((await response.Content.ReadFromJsonAsync<LeaveRequestDto>())!.Id);
+                    continue;
+                }
+                response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+                var body = await response.Content.ReadAsStringAsync();
+                if (body.Contains("bakiye", StringComparison.OrdinalIgnoreCase))
+                {
+                    hitBalance409 = true;
+                    break;
+                }
+                // Tatil/iş-günü yok (ör. resmi tatile denk gelen Salı) → say ve devam et.
+            }
+
+            hitBalance409.Should().BeTrue("bekleyen talepler kalan bakiyeye ulaşınca bakiye 409'u gelmeli");
+            createdIds.Count.Should().BeLessThanOrEqualTo(balance.RemainingDays,
+                "oluşan bekleyen gün toplamı kalan bakiyeyi aşmamalı");
+        }
+        finally
+        {
+            // Paylaşımlı DB'yi kirletmemek için oluşturulan bekleyen talepleri geri al.
+            foreach (var id in createdIds)
+            {
+                await client.PostAsync($"/api/leaves/{id}/cancel", null);
+            }
+        }
+    }
+
+    [Fact]
     public async Task CreateRequest_NonApprovalType_IsAutoApproved()
     {
         var client = await AuthedClientAsync("ahmet.yilmaz@hrmaster.local");
