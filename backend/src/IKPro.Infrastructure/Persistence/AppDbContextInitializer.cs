@@ -63,6 +63,7 @@ public class AppDbContextInitializer(
             await SeedComplianceAsync();
             await SeedActionsAsync();
             await SeedSettingsAsync();
+            await SeedSecondDemoTenantAsync();
         }
         catch (Exception ex)
         {
@@ -163,6 +164,120 @@ public class AppDbContextInitializer(
         }
 
         currentTenant.Impersonate(tenant.Id);
+    }
+
+    /// <summary>
+    /// Multi-tenancy'yi çalışan demo'da görünür kılmak için ikinci, bağımsız bir kiracı
+    /// (Globex Bilişim). Üç rolle giriş yapılabilir; verisi varsayılan kiracıdan tamamen
+    /// izoledir. İdempotent: kiracı zaten varsa atlanır.
+    /// </summary>
+    private async Task SeedSecondDemoTenantAsync()
+    {
+        const string slug = "globex";
+        if (await context.Tenants.AnyAsync(t => t.Slug == slug)) return;
+
+        var tenant = new Tenant
+        {
+            Name = "Globex Bilişim A.Ş.",
+            Slug = slug,
+            IsActive = true,
+            CreatedAtUtc = DateTime.UtcNow,
+        };
+        context.Tenants.Add(tenant);
+        await context.SaveChangesAsync();
+
+        // Bundan sonra tüm yazımlar Globex'e damgalanır (interceptor + global filtre).
+        currentTenant.Impersonate(tenant.Id);
+
+        var urun = new Department { Name = "Ürün" };
+        var operasyon = new Department { Name = "Operasyon" };
+        context.Departments.AddRange(urun, operasyon);
+        await context.SaveChangesAsync();
+
+        var deniz = new Employee
+        {
+            FirstName = "Deniz", LastName = "Kaya", Title = "Operasyon Yöneticisi",
+            DepartmentId = operasyon.Id, HireDate = new DateOnly(2024, 3, 1),
+            Status = EmployeeStatus.Active, Profile = new EmployeeProfile(),
+        };
+        context.Employees.Add(deniz);
+        await context.SaveChangesAsync();
+
+        var cem = new Employee
+        {
+            FirstName = "Cem", LastName = "Öz", Title = "Operasyon Uzmanı",
+            DepartmentId = operasyon.Id, HireDate = new DateOnly(2025, 6, 1),
+            Status = EmployeeStatus.Active, ManagerId = deniz.Id, Profile = new EmployeeProfile(),
+        };
+        context.Employees.Add(cem);
+        await context.SaveChangesAsync();
+
+        var year = DateTime.UtcNow.Year;
+        context.LeaveBalances.AddRange(
+            new LeaveBalance { EmployeeId = deniz.Id, Year = year, EntitledDays = 24, CarriedOverDays = 0 },
+            new LeaveBalance { EmployeeId = cem.Id, Year = year, EntitledDays = 24, CarriedOverDays = 0 });
+
+        context.CompanyProfiles.Add(new CompanyProfile
+        {
+            Name = "Globex Bilişim A.Ş.", Website = "www.globex.local",
+            SystemEmail = "info@globex.local", Phone = "+90 216 000 00 00",
+            HeadquartersAddress = "Ataşehir/İstanbul",
+        });
+        context.NotificationSettings.Add(new NotificationSettings
+        {
+            NewPersonnelEmail = true, LeaveRequestEmail = true,
+            WeeklyReportEmail = false, TwoFactorSmsEnabled = false,
+        });
+        context.Subscriptions.Add(new Subscription
+        {
+            Plan = "STANDART", PlanName = "Globex Başlangıç", BillingCycle = "Aylık",
+            Price = 900m, RenewalDate = new DateOnly(year, 12, 1),
+            PaymentMethodMasked = "•••• •••• •••• 1000",
+        });
+        await context.SaveChangesAsync();
+
+        var demoPassword = configuration["Seed:DemoPassword"] ?? "demo123";
+        var users = new (ApplicationUser User, string Role, Employee? Employee)[]
+        {
+            (new ApplicationUser
+            {
+                UserName = "globex-admin@globex.local", Email = "globex-admin@globex.local",
+                EmailConfirmed = true, DisplayName = "Globex Yöneticisi", Initials = "GY",
+                TenantId = tenant.Id,
+            }, Roles.HrAdmin, null),
+            (new ApplicationUser
+            {
+                UserName = "deniz.kaya@globex.local", Email = "deniz.kaya@globex.local",
+                EmailConfirmed = true, DisplayName = "Deniz Kaya", Initials = "DK",
+                TenantId = tenant.Id,
+            }, Roles.Manager, deniz),
+            (new ApplicationUser
+            {
+                UserName = "cem.oz@globex.local", Email = "cem.oz@globex.local",
+                EmailConfirmed = true, DisplayName = "Cem Öz", Initials = "CÖ",
+                TenantId = tenant.Id,
+            }, Roles.Employee, cem),
+        };
+
+        foreach (var (user, role, employee) in users)
+        {
+            user.EmployeeId = employee?.Id;
+            var result = await userManager.CreateAsync(user, demoPassword);
+            if (!result.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    $"Globex demo kullanıcı oluşturulamadı ({user.Email}): " +
+                    string.Join(", ", result.Errors.Select(e => e.Description)));
+            }
+
+            await userManager.AddToRoleAsync(user, role);
+            if (employee is not null)
+            {
+                employee.UserId = user.Id;
+            }
+        }
+
+        await context.SaveChangesAsync();
     }
 
     private async Task SeedDemoUsersAsync()
