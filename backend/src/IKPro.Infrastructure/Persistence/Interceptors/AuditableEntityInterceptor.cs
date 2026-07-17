@@ -10,7 +10,8 @@ namespace IKPro.Infrastructure.Persistence.Interceptors;
 /// Kritik tablolardaki SQL audit trigger'ları (AuditTriggers migration) aktörü
 /// buradaki CreatedBy/UpdatedBy kolonlarından okur.
 /// </summary>
-public sealed class AuditableEntityInterceptor(ICurrentUser currentUser) : SaveChangesInterceptor
+public sealed class AuditableEntityInterceptor(ICurrentUser currentUser, ICurrentTenant currentTenant)
+    : SaveChangesInterceptor
 {
     public override InterceptionResult<int> SavingChanges(
         DbContextEventData eventData, InterceptionResult<int> result)
@@ -45,6 +46,20 @@ public sealed class AuditableEntityInterceptor(ICurrentUser currentUser) : SaveC
             {
                 entry.Entity.UpdatedAtUtc = now;
                 entry.Entity.UpdatedBy = actor;
+            }
+        }
+
+        // Multi-tenant: eklenen her kiracı-kapsamlı kayıt aktif kiracıyla damgalanır.
+        // TenantId önceden atanmışsa (ör. platform işlemi) korunur.
+        var tenantId = currentTenant.TenantId;
+        if (tenantId is { } tid)
+        {
+            foreach (var entry in context.ChangeTracker.Entries<BaseEntity>())
+            {
+                if (entry.State == EntityState.Added && entry.Entity.TenantId == 0)
+                {
+                    entry.Entity.TenantId = tid;
+                }
             }
         }
     }

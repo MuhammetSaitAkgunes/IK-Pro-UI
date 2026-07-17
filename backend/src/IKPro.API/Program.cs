@@ -31,6 +31,7 @@ try
     // İstek bağlamındaki kullanıcı (audit + yetki kapsamı).
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+    builder.Services.AddScoped<ICurrentTenant, CurrentTenant>();
 
     // Rol policy'leri — frontend routes.js roles[] matrisiyle birebir.
     builder.Services.AddAuthorization(options =>

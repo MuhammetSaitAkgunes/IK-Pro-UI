@@ -5,7 +5,9 @@ using IKPro.Domain.Entities.Compliance;
 using IKPro.Domain.Entities.Leaves;
 using IKPro.Domain.Entities.Organization;
 using IKPro.Domain.Entities.Payroll;
+using IKPro.Application.Common.Interfaces;
 using IKPro.Domain.Entities.Settings;
+using IKPro.Domain.Entities.Tenancy;
 using IKPro.Domain.Enums;
 using IKPro.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
@@ -26,6 +28,7 @@ public class AppDbContextInitializer(
     AppDbContext context,
     UserManager<ApplicationUser> userManager,
     RoleManager<IdentityRole> roleManager,
+    ICurrentTenant currentTenant,
     IConfiguration configuration)
 {
     public async Task InitialiseAsync()
@@ -45,6 +48,10 @@ public class AppDbContextInitializer(
     {
         try
         {
+            // Multi-tenant: demo verisi tek bir "Demo" kiracıya yazılır. Kiracı impersone
+            // edilince interceptor tüm yazımları o kiracıyla damgalar ve global filtre
+            // guard'ları doğru kiracıya çalışır (Faz 3'te çok-kiracılı demo'ya genişler).
+            await SeedDefaultTenantAsync();
             await SeedRolesAsync();
             await SeedOrganizationAsync();
             await SeedDemoUsersAsync();
@@ -137,9 +144,32 @@ public class AppDbContextInitializer(
         await context.SaveChangesAsync();
     }
 
+    private async Task SeedDefaultTenantAsync()
+    {
+        // Migration backfill zaten bir varsayılan kiracı oluşturur; taze/farklı yolda
+        // yoksa burada güvence altına al. Sonra impersone et.
+        var tenant = await context.Tenants.OrderBy(t => t.Id).FirstOrDefaultAsync();
+        if (tenant is null)
+        {
+            tenant = new Tenant
+            {
+                Name = "Demo Şirket",
+                Slug = "demo",
+                IsActive = true,
+                CreatedAtUtc = DateTime.UtcNow,
+            };
+            context.Tenants.Add(tenant);
+            await context.SaveChangesAsync();
+        }
+
+        currentTenant.Impersonate(tenant.Id);
+    }
+
     private async Task SeedDemoUsersAsync()
     {
         if (await userManager.Users.AnyAsync()) return;
+
+        var tenantId = currentTenant.TenantIdOrThrow();
 
         // Frontend login formu bu şifreyi öndolu getirir (auth.js); üretimde geçersizdir.
         var demoPassword = configuration["Seed:DemoPassword"] ?? "demo123";
@@ -179,6 +209,7 @@ public class AppDbContextInitializer(
         foreach (var (user, role, employee) in users)
         {
             user.EmployeeId = employee?.Id;
+            user.TenantId = tenantId;
 
             var result = await userManager.CreateAsync(user, demoPassword);
             if (!result.Succeeded)

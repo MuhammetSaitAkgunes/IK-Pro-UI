@@ -19,6 +19,7 @@ public sealed class IdentityService(
     UserManager<ApplicationUser> userManager,
     SignInManager<ApplicationUser> signInManager,
     JwtTokenService tokenService,
+    ICurrentTenant currentTenant,
     AppDbContext context) : IIdentityService
 {
     private const string InvalidCredentialsMessage = "E-posta veya şifre hatalı.";
@@ -62,6 +63,10 @@ public sealed class IdentityService(
             EmailConfirmed = true,
             DisplayName = name,
             Initials = DeriveInitials(name),
+            // Faz 0/1: anonim self-servis kayıt henüz kiracı bağlamı taşımaz → aktif
+            // kiracı yoksa varsayılan (ilk) kiracıya bağlanır. Faz 1 (self-servis) bunu
+            // gerçek kiracı seçimi/davetiyle değiştirecek.
+            TenantId = currentTenant.TenantId ?? await DefaultTenantIdAsync(cancellationToken),
         };
 
         var createResult = await userManager.CreateAsync(user, password);
@@ -96,6 +101,9 @@ public sealed class IdentityService(
             DisplayName = name,
             Initials = DeriveInitials(name),
             EmployeeId = employeeId,
+            // İşe alım her zaman kimliği doğrulanmış bir hr-admin tarafından yapılır →
+            // yeni personel login'i o admin'in kiracısına bağlanır.
+            TenantId = currentTenant.TenantIdOrThrow(),
         };
 
         // Demo geçici şifre (parite: demo123). Üretimde davet/sıfırlama akışıyla değiştirilmeli.
@@ -173,6 +181,7 @@ public sealed class IdentityService(
         var roles = await userManager.GetRolesAsync(user);
         var (accessToken, expiresAtUtc) = tokenService.CreateAccessToken(user, roles);
         var (rawRefreshToken, refreshEntity) = tokenService.CreateRefreshToken(user.Id);
+        refreshEntity.TenantId = user.TenantId;
 
         context.RefreshTokens.Add(refreshEntity);
         await context.SaveChangesAsync(cancellationToken);
@@ -196,6 +205,13 @@ public sealed class IdentityService(
             user.Initials ?? DeriveInitials(user.DisplayName),
             user.EmployeeId);
     }
+
+    /// <summary>Varsayılan (ilk) kiracı — anonim kayıtta kullanılır (Faz 1'de değişecek).</summary>
+    private async Task<int> DefaultTenantIdAsync(CancellationToken cancellationToken) =>
+        await context.Tenants
+            .OrderBy(t => t.Id)
+            .Select(t => t.Id)
+            .FirstAsync(cancellationToken);
 
     /// <summary>Ad soyaddan baş harfler, ör. "Ahmet Yılmaz" → "AY" (frontend initials paritesi).</summary>
     private static string DeriveInitials(string name)
