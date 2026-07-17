@@ -5,8 +5,12 @@ using MediatR;
 
 namespace IKPro.Application.Features.Auth.Register;
 
-/// <summary>Rol verilmezse en düşük yetkili rol (employee) atanır.</summary>
-public sealed record RegisterCommand(string Name, string Email, string Password, string? Role)
+/// <summary>
+/// Anonim (self-servis) kayıt. Güvenlik: istemci rol seçemez — her zaman en düşük
+/// yetkili rol (employee) atanır. Yükseltilmiş roller yalnız seed veya yetkili
+/// yönetim akışıyla verilir (bu uç kimlik doğrulaması istemez).
+/// </summary>
+public sealed record RegisterCommand(string Name, string Email, string Password)
     : IRequest<AuthResponse>;
 
 public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand>
@@ -16,9 +20,6 @@ public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand
         RuleFor(x => x.Name).NotEmpty().MaximumLength(128);
         RuleFor(x => x.Email).NotEmpty().EmailAddress().MaximumLength(256);
         RuleFor(x => x.Password).NotEmpty().MinimumLength(6);
-        RuleFor(x => x.Role)
-            .Must(role => role is null || Roles.All.Contains(role))
-            .WithMessage($"Rol şunlardan biri olmalı: {string.Join(", ", Roles.All)}");
     }
 }
 
@@ -27,5 +28,5 @@ public sealed class RegisterCommandHandler(IIdentityService identityService)
 {
     public Task<AuthResponse> Handle(RegisterCommand request, CancellationToken cancellationToken)
         => identityService.RegisterAsync(
-            request.Name, request.Email, request.Password, request.Role ?? Roles.Employee, cancellationToken);
+            request.Name, request.Email, request.Password, Roles.Employee, cancellationToken);
 }

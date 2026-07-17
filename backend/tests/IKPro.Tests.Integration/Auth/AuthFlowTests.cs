@@ -166,12 +166,15 @@ public sealed class AuthFlowTests(IKProApiFactory factory)
     }
 
     [Fact]
-    public async Task Register_WithInvalidRole_Returns400()
+    public async Task Register_IgnoresClientRole_AlwaysEmployee()
     {
+        // Güvenlik: anonim kayıt ucu istemci rolünü YOK SAYAR (yetki yükseltmesi engeli).
         var response = await _client.PostAsJsonAsync("/api/auth/register",
-            new { name = "Rolsüz", email = $"rol-{Guid.NewGuid():N}@test.local", password = "sifre123", role = "super-admin" });
+            new { name = "Sızma Denemesi", email = $"rol-{Guid.NewGuid():N}@test.local", password = "sifre123", role = "hr-admin" });
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var auth = (await response.Content.ReadFromJsonAsync<AuthResponse>())!;
+        auth.User.Role.Should().Be("employee", "istemciden gelen rol yok sayılmalı");
     }
 
     // --- change-password ---
