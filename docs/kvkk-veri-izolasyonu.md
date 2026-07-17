@@ -1,0 +1,215 @@
+# KVKK & Kiracı Veri İzolasyonu
+
+> **Amaç:** İK Pro çok-kiracılı (multi-tenant) SaaS mimarisinde her müşteri
+> şirketinin (kiracının) verisinin nasıl ayrıştırıldığını, erişimin nasıl
+> denetlendiğini ve KVKK yükümlülüklerinin teknik karşılıklarını **tek yerde**
+> belgelemek. Bu doküman hem geliştirici hem de veri sorumlusu/DPO içindir.
+>
+> **Kapsam durumu:** Mimari izolasyon (veri ayrımı + erişim denetimi) üretime
+> hazır ve testlerle kanıtlıdır. Veri **silme/anonimleştirme** ve **ilgili kişi
+> hakları** akışları için bugün elle işletilen prosedürler tanımlıdır;
+> otomasyon [Bilinen boşluklar](#7-bilinen-boşluklar--yapılacaklar) bölümünde
+> yol haritasıyla listelenmiştir. Bu dosya "yapıldı" iddiası değil, mevcut
+> durumun dürüst bir haritasıdır.
+
+---
+
+## 1. İzolasyon modeli — ortak DB + `TenantId` ayraç
+
+İK Pro **paylaşımlı veritabanı, paylaşımlı şema** modeli kullanır: tüm kiracılar
+aynı MSSQL veritabanını paylaşır, her satır bir `TenantId` sütunuyla sahibine
+bağlanır. Kiracılar arası ayrım tek bir çekirdek garantiye dayanır:
+
+> **Global sorgu filtresi:** EF Core, kiracı-kapsamlı her varlığa otomatik olarak
+> `WHERE TenantId = @currentTenant` ekler. Uygulama kodu bu filtreyi elle yazmaz;
+> dolayısıyla "filtre eklemeyi unutma" sızıntısı yapısal olarak imkânsızdır.
+
+Neden bu model (DB-per-tenant yerine): MVP ölçeğinde operasyonel basitlik
+(tek migration, tek yedekleme), maliyet ve hız. Mimari, ileride kurumsal
+müşteri için **DB-per-tenant** seçeneğine kapatılmadı (bkz. `ICurrentTenant`
+soyutlaması) — büyüdükçe kritik kiracılar ayrı veritabanına taşınabilir.
+
+### Nasıl çalışır
+
+- `ITenantScoped` işaretleyici arayüzü (`int TenantId { get; set; }`) izolasyona
+  tabi tüm tipleri işaretler.
+- `AppDbContext`, model kurulumunda **reflection** ile `ITenantScoped` uygulayan
+  her varlık tipini bulur ve her birine `HasQueryFilter(e => e.TenantId == CurrentTenantId)`
+  uygular. Yeni bir varlık `BaseEntity`'den türediği an filtreye otomatik dahil olur.
+- Aktif kiracı `ICurrentTenant.TenantId` üzerinden gelir; HTTP isteğinde JWT
+  `tenant` claim'inden okunur (bkz. [Bölüm 3](#3-erişim-denetimi)).
+- Yeni kayıtlar `AuditableEntityInterceptor` tarafından **kaydetme anında**
+  otomatik olarak aktif `TenantId` ile damgalanır (uygulama kodu set etmek
+  zorunda değildir).
+
+Kaynak: `IKPro.Domain/Common/ITenantScoped.cs`,
+`IKPro.Infrastructure/Persistence/AppDbContext.cs`,
+`.../Interceptors/AuditableEntityInterceptor.cs`.
+
+---
+
+## 2. Katman katman izolasyon
+
+İzolasyon yalnız EF varlıklarında değil, veriye erişen **her yolda** uygulanır.
+Bir katmanın atlanması sessiz sızıntı demektir; bu yüzden her biri ayrı ele alındı:
+
+| Katman | Mekanizma | Not |
+|---|---|---|
+| **Yazılabilir varlıklar** | `BaseEntity : ITenantScoped` + global filtre | Personel, izin, bordro, departman, evrak metadatası vb. |
+| **Okuma modelleri / SQL view** | 6 read-model `ITenantScoped`; view'ler `TenantId` taşır | View'ler EF global filtresini **baypas eder**, bu yüzden `TenantId` sütununu kendileri taşır ve keyless entity olarak yine filtrelenir |
+| **SQL fonksiyonu** | `fn_WorkingDays(@start, @end, @tenantId)` | Kiracı parametresi zorunlu; tatil günleri kiracıya göre |
+| **Audit trigger'ları** | Tetikleyiciler etkilenen satırın `TenantId`'sini `COALESCE(i.TenantId, d.TenantId, 0)` ile kopyalar | Ham SQL EF'i baypas ettiği için trigger'lar `TenantId`'yi elle taşır |
+| **Dosya/blob deposu** | **Metadata-kapılı erişim** | Fiziksel dosyalar kategori+GUID ile ortak kökte durur; erişim, dosyaya işaret eden **tenant-scoped DB satırı** üzerinden verilir → yabancı kiracı listeleme/indirme denemesinde **404** alır |
+| **Kimlik/kullanıcı** | `ApplicationUser.TenantId`, `RefreshToken.TenantId` | Login pasif kiracıyı reddeder; token kiracı claim'i taşır |
+
+**Dosya izolasyonu hakkında önemli ayrıntı:** Fiziksel dosyalar kiracıya özel
+klasörlerde tutulmaz; bunun yerine her indirme/listeleme, tenant-scoped bir
+`EmployeeDocument`/`ComplianceDocument` satırından geçer. Yabancı kiracı satırı
+göremediği için dosyaya da erişemez (404). Bu, blob depolamada fiziksel ayrım
+gerektirmeden mantıksal izolasyon sağlar. (İleride şifreli/kiracı-kapsamlı
+fiziksel depolama bir sertleştirme adımıdır — bkz. Bölüm 7.)
+
+Kaynak: `IKPro.Domain/ReadModels/*`, view/fonksiyon migration'ları
+(`...TenantAwareViews.cs`), `IKPro.Infrastructure/Storage/LocalFileStorage.cs`.
+
+### Kanıt: izolasyon testleri
+
+İzolasyon iddiaları test edilir, varsayılmaz. `IKPro.Tests.Integration/Tenancy/`:
+
+- `TenantIsolationTests` — Kiracı A, Kiracı B'nin departman/personel verisini görmez.
+- `TenantViewIsolationTests` — uyum hazırlık view'i kiracı başına ayrışır (global
+  toplam sızmaz).
+- `TenantFileIsolationTests` — yabancı kiracının evrakı 404.
+- `TenantProvisioningTests` — provizyonlanan admin yalnız kendi kiracısını görür;
+  pasif kiracıya giriş reddedilir.
+
+Bu testler her fazda çalışır; kiracı izolasyonu ürünün **en kritik güvencesidir**.
+
+---
+
+## 3. Erişim denetimi
+
+Kiracı sınırının yanı sıra kiracı **içinde** rol tabanlı yetkilendirme vardır.
+
+### Kiracı çözümü (tenant resolution)
+
+- Kullanıcı giriş yaptığında JWT'ye `tenant` claim'i yazılır.
+- Her istekte `CurrentTenant`, bu claim'den aktif kiracıyı okur ve global filtre
+  bu değere göre çalışır. İstemci `TenantId`'yi gönderemez veya değiştiremez —
+  yalnız sunucunun imzaladığı token'dan gelir.
+- **Pasif kiracı:** `Tenant.IsActive = false` ise login reddedilir (401). Aktif
+  oturumlar refresh anında da doğrulanır.
+
+### Roller (kiracı içi)
+
+`hr-admin`, `manager`, `employee` — ASP.NET Core policy katmanında uygulanır.
+Örn. işe alım yalnız `hr-admin`; manager yalnız kendi ekibinin uyum belgelerini
+ve risk skorlarını görür (`ScopeFor` kapsamı).
+
+### Platform seviyesi (kiracı üstü)
+
+Kiracı oluşturma (`POST /api/tenants`) normal rol sisteminin **dışındadır**; bu
+platform operasyonu `X-Platform-Key` başlığıyla korunur ve `auth` rate-limit
+politikasına tabidir. Platform anahtarı ve JWT sırrı üretimde **ortam
+değişkeninden** gelir; commit'li dev placeholder'lar prod'da fail-fast ile
+reddedilir.
+
+Kaynak: `IKPro.API/Services/CurrentTenant.cs`,
+`IKPro.API/Controllers/TenancyController.cs`, `IKPro.API/Program.cs`.
+
+---
+
+## 4. Kimlik & güvenli onboarding (davet akışı)
+
+Kiracılar arası güvenli hesap kurulumu için geçici paylaşılan şifreler
+kullanılmaz:
+
+- Provizyonlanan `hr-admin` ve işe alınan personel **şifresiz** oluşturulur.
+- Sisteme bir davet e-postası (şu an outbox stub; prod'da SMTP) + şifre-belirleme
+  token'ı gönderilir.
+- Kullanıcı `POST /api/auth/accept-invite` (veya `/#/accept-invite` sayfası) ile
+  kendi şifresini belirler; token geçersiz/süresi geçmişse reddedilir.
+
+Bu, bir kiracının başka bir kiracının kullanıcısı için hesap ele geçirmesini
+önler ve KVKK "uygun güvenlik önlemleri" ilkesine hizmet eder.
+
+Kaynak: `IKPro.Application/Features/Auth/AcceptInvite/`,
+`IKPro.Infrastructure/Identity/IdentityService.cs`, `frontend/src/auth/AcceptInvitePage.tsx`.
+
+---
+
+## 5. Denetim izi (audit) & izlenebilirlik
+
+- Hassas tablolar için veritabanı **audit trigger'ları** değişiklikleri
+  `AuditLogs`'a yazar; her kayıt etkilenen satırın `TenantId`'sini taşır (kiracı
+  başına denetim izi).
+- Denetim kayıtları da `ITenantScoped`/global filtreye tabidir → bir kiracının
+  denetçisi yalnız kendi kiracısının izini görür.
+
+Bu, KVKW ilgili kişi başvurularında "bu veri ne zaman, kim tarafından değişti"
+sorusuna kiracı-kapsamlı yanıt verebilmeyi hedefler.
+
+---
+
+## 6. KVKK ilkeleriyle eşleme
+
+| KVKK ilkesi / yükümlülük | Teknik karşılık (mevcut) |
+|---|---|
+| **Amaçla sınırlılık / erişim denetimi** | Kiracı global filtresi + rol policy'leri + JWT tenant claim. Kiracı ve rol dışına veri gitmez. |
+| **Veri güvenliği (uygun önlemler)** | Şifresiz davet akışı, refresh token rotasyonu, rate limiting, sırların env'den gelmesi, HTTPS (deployment sorumluluğu). |
+| **Veri sorumlusu / veri işleyen ayrımı** | Her müşteri şirketi kendi verisinin **veri sorumlusudur**; İK Pro işletmecisi **veri işleyendir**. Kiracı ayrımı bu sınırın teknik zeminidir. |
+| **Hesap verebilirlik / izlenebilirlik** | Kiracı-kapsamlı audit log (Bölüm 5). |
+| **Saklama süresi / silme** | Kiracı pasifleştirme mevcut; otomatik silme/anonimleştirme **yol haritasında** (Bölüm 7). |
+| **İlgili kişi hakları (erişim, düzeltme, silme, taşınabilirlik)** | Erişim/düzeltme uygulama içinden; toplu dışa aktarma/silme için elle prosedür (Bölüm 7). |
+
+> **Sorumluluk sınırı:** Bu doküman teknik izolasyonu belgeler; bir müşteriyle
+> yapılacak KVKK/veri işleme sözleşmesi (DPA), aydınlatma metni ve VERBİS
+> yükümlülükleri **hukuki** süreçlerdir ve bu dosyanın kapsamı dışındadır.
+
+---
+
+## 7. Bilinen boşluklar & yapılacaklar
+
+Dürüstlük için, bugün **otomatik olmayan** veya eksik olan maddeler:
+
+1. **Kiracı verisi silme/anonimleştirme (otomasyon yok).**
+   Bugün kiracı kapatma `Tenant.IsActive = false` ile *erişimi* keser ama veriyi
+   silmez. Kalıcı silme için **elle prosedür**:
+   - Kiracıyı pasifleştir (girişi durdurur).
+   - Sözleşmesel saklama süresi sonunda, ilgili `TenantId`'ye ait satırları
+     (personel, izin, bordro, evrak metadatası, kullanıcılar, refresh token,
+     audit) ve varsa fiziksel dosyaları hedefli olarak sil/anonimleştir.
+   - **Yapılacak:** bunu tek işlemde yapan `PurgeTenant`/`AnonymizeTenant` bakım
+     komutu + onay/iz kaydı.
+2. **İlgili kişi verisi dışa aktarımı (taşınabilirlik).** Tek çalışanın tüm
+   verisini standart formatta paketleyen uç yok — **yapılacak.**
+3. **Fiziksel dosya şifreleme / kiracı-kapsamlı fiziksel ayrım.** Bugün erişim
+   metadata ile kapılı; blob'lar ortak kökte şifresiz. **Yapılacak:** at-rest
+   şifreleme ve/veya kiracı-önekli depolama.
+4. **Gerçek e-posta (SMTP).** Davet e-postaları bugün dosya outbox'ına yazılır;
+   prod SMTP göndericisi **yapılacak.**
+5. **Yedekleme/geri yükleme kiracı granülaritesi.** Ortak DB yedeği tüm
+   kiracıları kapsar; tek-kiracı geri yükleme prosedürü tanımlı değil.
+
+Bu maddeler `docs/superpowers/plans/2026-07-17-multi-tenant-saas.md` "Sonraki
+adımlar" ve MVP sertleştirme kapsamıyla uyumludur.
+
+---
+
+## 8. Operasyonel kontrol listesi (üretim öncesi)
+
+- [ ] `Jwt:Secret`, connection string ve `Platform:ProvisioningKey` ortam
+      değişkeninden geliyor; dev placeholder yok (prod fail-fast doğrular).
+- [ ] HTTPS zorunlu; token'lar yalnız TLS üzerinden.
+- [ ] Yeni eklenen her veri tablosu `BaseEntity`'den türüyor (otomatik kiracı
+      filtresi) **veya** bilinçli olarak kiracı-üstü ve gözden geçirilmiş.
+- [ ] Yeni SQL view/fonksiyon/trigger `TenantId` taşıyor.
+- [ ] İzolasyon testleri (`Tenancy/`) yeşil; yeni modül için izolasyon testi eklendi.
+- [ ] Müşteriyle DPA imzalı; aydınlatma metni ve VERBİS kaydı tamam (hukuki).
+- [ ] Silme/anonimleştirme prosedürü (Bölüm 7.1) müşteri sözleşmesindeki saklama
+      süresiyle eşleştirildi.
+
+---
+
+*Son güncelleme: 2026-07-17 — Faz 5 / T5.4. Uygulama değiştikçe bu dosya da
+güncellenmelidir; özellikle Bölüm 7'deki maddeler tamamlandıkça Bölüm 6 tablosuna taşınır.*

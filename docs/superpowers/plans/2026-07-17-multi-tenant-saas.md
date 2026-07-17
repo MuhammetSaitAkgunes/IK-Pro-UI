@@ -240,8 +240,10 @@ kılar. Bunlar ayrı ele alınabilir ama multi-tenant'sız anlamsızdır:
   ve işe-alım artık geçici şifre yerine davet e-postası + token ile şifre belirleme
   kullanmalı (kiracılar arası güvenli onboarding).
 - [ ] **T5.3 — Rate limiting** (C3): login/refresh/provizyon uçlarına.
-- [ ] **T5.4 — KVKK/veri izolasyonu belgeleri** (A5): kiracı verisinin ayrımı, silme
+- [x] **T5.4 — KVKK/veri izolasyonu belgeleri** (A5): kiracı verisinin ayrımı, silme
   (kiracı kapatma → veri anonimleştirme/silme), erişim denetimi.
+  → `docs/kvkk-veri-izolasyonu.md` (izolasyon katmanları, erişim denetimi, davet
+  akışı, KVKK eşlemesi, bilinen boşluklar + operasyonel kontrol listesi).
 
 > Not: T5 kalemleri isteğe göre ayrı bir "MVP sertleştirme" planına da bölünebilir.
 > Multi-tenancy çekirdeği Faz 0–3'tür; Faz 4–5 onu satılabilir yapar.

@@ -6,9 +6,9 @@
 
 ## Şu an neredeyiz
 
-- **Aktif iş:** **Multi-tenant SaaS altyapısı (Faz 0–5).** Dal
-  `feature/multi-tenant-saas` main'e merge kararı bekliyor. React portu
-  (8/8 dilim) daha önce tamamlanıp merge edildi.
+- **Aktif iş:** **Multi-tenant SaaS altyapısı (Faz 0–5) tamamlandı ve main'e
+  merge/push edildi** (`feature/multi-tenant-saas` → main, merge `53ce480`).
+  React portu (8/8 dilim) daha önce tamamlanıp merge edilmişti.
 - **Son tamamlanan:** **T5.2 davet/şifre-belirleme akışı.** Provizyonlanan
   hr-admin ve işe alınan personel artık `demo123` yerine **şifresiz** oluşturulur;
   davet e-postası (outbox stub) şifre-belirleme token'ı gönderir. Yeni uçlar:
@@ -22,9 +22,14 @@
   audit trigger'lar TenantId taşır; dosya deposu kiracı-kapsamlı. Provizyon
   `POST /api/tenants` platform anahtarıyla (`X-Platform-Key`) korunur. İzolasyon
   7 tenancy testiyle kanıtlı.
-- **Sıradaki adım:** T5.4 (KVKK/veri-izolasyonu dokümanı) — kalan tek Faz 5
-  maddesi. Ardından `feature/multi-tenant-saas` → main merge kararı. İleride
-  self-servis kayıt (Faz 5 ikinci yarısı) ve SMTP e-posta göndericisi.
+- **Son doküman:** T5.4 — `docs/kvkk-veri-izolasyonu.md` (izolasyon katmanları,
+  erişim denetimi, davet akışı, KVKK ilke eşlemesi, bilinen boşluklar +
+  operasyonel kontrol listesi). Faz 0–5 kapsamı tamam.
+- **Sıradaki adım (bu programdan sonra):** self-servis kiracı kaydı (public
+  "şirketini oluştur" + kötüye kullanım önleme), SMTP e-posta göndericisi,
+  kiracı verisi silme/anonimleştirme otomasyonu (`PurgeTenant`), ilgili kişi
+  verisi dışa aktarımı. Detay: T5.4 dokümanı Bölüm 7 ve multi-tenant planı
+  "Sonraki adımlar".
 - **Referanslar:**
   - Tasarım dokümanı: `docs/superpowers/specs/2026-07-13-react-frontend-port-design.md`
   - Dilim 1 planı (tamamlandı): `docs/superpowers/plans/2026-07-13-react-port-dilim-1-iskelet.md`
@@ -45,6 +50,19 @@
 ---
 
 ## Kayıtlar (yeni → eski)
+
+### 2026-07-17 — Multi-tenancy Faz 5 / T5.4: KVKK & veri izolasyonu dokümanı
+
+- `docs/kvkk-veri-izolasyonu.md` oluşturuldu. Uygulamaya sadık (overclaim yok):
+  ortak DB + `TenantId` + reflection'lı EF global filtre modeli; katman katman
+  izolasyon tablosu (varlık/view/SQL fonksiyon/audit trigger/**metadata-kapılı
+  dosya**/kimlik); izolasyon testleriyle kanıt; erişim denetimi (JWT tenant
+  claim + roller + platform-key); davet akışı; audit izi; **KVKK ilke eşleme
+  tablosu**; bilinen boşluklar (silme/anonimleştirme otomasyonu yok — elle
+  prosedür, veri dışa aktarımı yok, blob şifreleme yok, SMTP yok) + üretim
+  öncesi operasyonel kontrol listesi.
+- Faz 5 (dolayısıyla Faz 0–5 programı) tamam; multi-tenant dalı main'e merge +
+  push edildi (`53ce480`). Kalanlar bu programın "sonraki adımları"dır.
 
 ### 2026-07-17 — Multi-tenancy Faz 5 / T5.2: Davet akışı
 
