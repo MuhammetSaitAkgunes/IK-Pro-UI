@@ -45,6 +45,13 @@ public sealed class IdentityService(
             throw new UnauthorizedException(InvalidCredentialsMessage);
         }
 
+        // Multi-tenant: kullanıcının kiracısı (şirketi) askıya alınmışsa girişe izin verilmez.
+        var tenant = await context.Tenants.FirstOrDefaultAsync(t => t.Id == user.TenantId, cancellationToken);
+        if (tenant is null || !tenant.IsActive)
+        {
+            throw new UnauthorizedException("Şirket hesabı aktif değil. Yöneticinizle iletişime geçin.");
+        }
+
         return await IssueTokensAsync(user, cancellationToken);
     }
 
@@ -84,6 +91,35 @@ public sealed class IdentityService(
 
     public async Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken)
         => await userManager.FindByEmailAsync(email) is not null;
+
+    public async Task CreateTenantAdminAsync(
+        int tenantId, string name, string email, CancellationToken cancellationToken)
+    {
+        if (await userManager.FindByEmailAsync(email) is not null)
+        {
+            throw new ConflictException($"'{email}' e-postasıyla kayıtlı bir hesap zaten var.");
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true,
+            DisplayName = name,
+            Initials = DeriveInitials(name),
+            TenantId = tenantId,
+        };
+
+        // Demo geçici şifre. Faz 5'te davet + şifre-belirleme akışıyla değiştirilecek.
+        var createResult = await userManager.CreateAsync(user, "demo123");
+        if (!createResult.Succeeded)
+        {
+            throw new ValidationException(createResult.Errors
+                .Select(e => new ValidationFailure("email", e.Description)));
+        }
+
+        await userManager.AddToRoleAsync(user, Roles.HrAdmin);
+    }
 
     public async Task CreateEmployeeLoginAsync(
         int employeeId, string name, string email, CancellationToken cancellationToken)

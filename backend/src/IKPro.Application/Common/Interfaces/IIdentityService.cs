@@ -18,6 +18,12 @@ public interface IIdentityService
     Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Kiracı provizyonunda ilk <c>hr-admin</c> login'ini verili kiracıda oluşturur
+    /// (token üretmez). Geçici şifre atanır; e-posta çakışmasında <c>ConflictException</c>.
+    /// </summary>
+    Task CreateTenantAdminAsync(int tenantId, string name, string email, CancellationToken cancellationToken);
+
+    /// <summary>
     /// İşe alınan aday için personel-bağlı <c>employee</c> login'i oluşturur (token üretmez).
     /// Geçici şifre atanır; e-posta çakışmasında <c>ConflictException</c>.
     /// </summary>

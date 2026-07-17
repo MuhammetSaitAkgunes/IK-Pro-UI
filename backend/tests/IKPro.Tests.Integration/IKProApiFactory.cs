@@ -17,12 +17,16 @@ public sealed class IKProApiFactory : WebApplicationFactory<Program>
 {
     private const string TestDatabaseName = "IKProDb_Test";
 
+    /// <summary>Testlerde kiracı provizyon ucunu çağırmak için platform anahtarı.</summary>
+    public const string PlatformKey = "test-platform-key";
+
     private const string TestConnectionString =
         $"Server=localhost;Database={TestDatabaseName};Trusted_Connection=True;TrustServerCertificate=True;Encrypt=False";
 
     public IKProApiFactory()
     {
         Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", TestConnectionString);
+        Environment.SetEnvironmentVariable("Platform__ProvisioningKey", PlatformKey);
         Environment.SetEnvironmentVariable(
             "Storage__Root",
             Path.Combine(Path.GetTempPath(), "ikpro-test-storage", Guid.NewGuid().ToString("N")));
