@@ -6,6 +6,10 @@ namespace IKPro.Infrastructure.Identity;
 public class RefreshToken
 {
     public int Id { get; set; }
+
+    /// <summary>Sahip kiracı (token'ın ait olduğu kullanıcının kiracısı).</summary>
+    public int TenantId { get; set; }
+
     public string Token { get; set; } = string.Empty;
 
     public DateTime ExpiresAtUtc { get; set; }

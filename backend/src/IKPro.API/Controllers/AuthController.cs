@@ -1,4 +1,5 @@
 using IKPro.Application.Features.Auth;
+using IKPro.Application.Features.Auth.AcceptInvite;
 using IKPro.Application.Features.Auth.ChangePassword;
 using IKPro.Application.Features.Auth.Login;
 using IKPro.Application.Features.Auth.Logout;
@@ -7,6 +8,7 @@ using IKPro.Application.Features.Auth.Register;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace IKPro.API.Controllers;
 
@@ -16,6 +18,7 @@ namespace IKPro.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/auth")]
+[EnableRateLimiting("auth")]
 public sealed class AuthController(ISender sender) : ControllerBase
 {
     [HttpPost("login")]
@@ -45,6 +48,17 @@ public sealed class AuthController(ISender sender) : ControllerBase
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Logout(LogoutCommand command, CancellationToken cancellationToken)
+    {
+        await sender.Send(command, cancellationToken);
+        return NoContent();
+    }
+
+    /// <remarks>Davet token'ıyla ilk şifreyi belirler (anonim; kullanıcının henüz oturumu yok).</remarks>
+    [HttpPost("accept-invite")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> AcceptInvite(AcceptInviteCommand command, CancellationToken cancellationToken)
     {
         await sender.Send(command, cancellationToken);
         return NoContent();

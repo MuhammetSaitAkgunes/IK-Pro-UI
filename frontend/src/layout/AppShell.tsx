@@ -55,7 +55,7 @@ export function AppShell() {
           <div className="brand-mark"><i aria-hidden="true" className="fa-solid fa-users-gear" /></div>
           <div>
             <strong>İK Pro</strong>
-            <span>HR MASTER Suite</span>
+            <span>{user?.tenantName || "HR MASTER Suite"}</span>
           </div>
         </div>
         <ul className="nav-links">

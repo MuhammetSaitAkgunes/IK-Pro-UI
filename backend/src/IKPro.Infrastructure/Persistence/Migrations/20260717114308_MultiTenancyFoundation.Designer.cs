@@ -4,6 +4,7 @@ using IKPro.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace IKPro.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260717114308_MultiTenancyFoundation")]
+    partial class MultiTenancyFoundation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -431,7 +434,7 @@ namespace IKPro.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantId", "Date")
+                    b.HasIndex("Date")
                         .IsUnique();
 
                     b.ToTable("Holidays");
@@ -1788,9 +1791,6 @@ namespace IKPro.Infrastructure.Persistence.Migrations
                     b.Property<int>("ReadinessScore")
                         .HasColumnType("int");
 
-                    b.Property<int>("TenantId")
-                        .HasColumnType("int");
-
                     b.Property<int>("TotalCount")
                         .HasColumnType("int");
 
@@ -1818,9 +1818,6 @@ namespace IKPro.Infrastructure.Persistence.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("RiskScore")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TenantId")
                         .HasColumnType("int");
 
                     b.ToTable((string)null);
@@ -1885,9 +1882,6 @@ namespace IKPro.Infrastructure.Persistence.Migrations
                     b.Property<int>("RoleCriticality")
                         .HasColumnType("int");
 
-                    b.Property<int>("TenantId")
-                        .HasColumnType("int");
-
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1915,9 +1909,6 @@ namespace IKPro.Infrastructure.Persistence.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("RemainingDays")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TenantId")
                         .HasColumnType("int");
 
                     b.Property<int>("UsedDays")
@@ -1948,9 +1939,6 @@ namespace IKPro.Infrastructure.Persistence.Migrations
                     b.Property<int>("PresentDays")
                         .HasColumnType("int");
 
-                    b.Property<int>("TenantId")
-                        .HasColumnType("int");
-
                     b.Property<int>("TotalDays")
                         .HasColumnType("int");
 
@@ -1977,9 +1965,6 @@ namespace IKPro.Infrastructure.Persistence.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("PayrollPeriodId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TenantId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("TotalDeductions")

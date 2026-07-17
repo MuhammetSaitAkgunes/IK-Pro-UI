@@ -25,6 +25,8 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options)
             new(JwtRegisteredClaimNames.Sub, user.Id),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
             new(JwtRegisteredClaimNames.Name, user.DisplayName),
+            // Multi-tenant: aktif kiracı token'a gömülür; her istekte ICurrentTenant bunu okur.
+            new("tenant", user.TenantId.ToString()),
         };
 
         if (user.Email is not null)

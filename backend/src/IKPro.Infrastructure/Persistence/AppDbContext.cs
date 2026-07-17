@@ -1,4 +1,5 @@
 using IKPro.Application.Common.Interfaces;
+using IKPro.Domain.Common;
 using IKPro.Domain.Entities.Actions;
 using IKPro.Domain.Entities.Analytics;
 using IKPro.Domain.Entities.Attendance;
@@ -8,6 +9,7 @@ using IKPro.Domain.Entities.Organization;
 using IKPro.Domain.Entities.Payroll;
 using IKPro.Domain.Entities.Recruitment;
 using IKPro.Domain.Entities.Settings;
+using IKPro.Domain.Entities.Tenancy;
 using IKPro.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -20,9 +22,20 @@ namespace IKPro.Infrastructure.Persistence;
 /// Uygulamanın EF Core DbContext'i. Identity tablolarını da barındırır (IdentityDbContext).
 /// Entity konfigürasyonları assembly'den otomatik yüklenir; tüm enum'lar string olarak saklanır.
 /// </summary>
-public class AppDbContext(DbContextOptions<AppDbContext> options)
+public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentTenant? currentTenant = null)
     : IdentityDbContext<ApplicationUser>(options), IApplicationDbContext
 {
+    /// <summary>
+    /// Global query filter'ın her sorguda okuduğu aktif kiracı. HTTP dışı (tasarım
+    /// zamanı/seed başlangıcı) bağlamda <c>currentTenant</c> null olabilir → 0 (hiçbir
+    /// kiracı eşleşmez, güvenli varsayılan). Seed, ICurrentTenant.Impersonate ile
+    /// doğru kiracıyı sabitler.
+    /// </summary>
+    private int CurrentTenantId => currentTenant?.TenantId ?? 0;
+
+    // Tenancy
+    public DbSet<Tenant> Tenants => Set<Tenant>();
+
     // Organization
     public DbSet<Department> Departments => Set<Department>();
     public DbSet<Employee> Employees => Set<Employee>();
@@ -115,6 +128,26 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             }
         }
 
+        // Kiracı: benzersiz slug.
+        builder.Entity<Tenant>().HasIndex(t => t.Slug).IsUnique();
+
+        // Multi-tenant global query filter: kiracı-kapsamlı (ITenantScoped) HER tip —
+        // kalıcı varlıklar VE SQL view read-model'leri — aktif kiracıya otomatik izole
+        // edilir. Reflection ile uygulanır ki yeni bir tip eklendiğinde filtreyi eklemeyi
+        // UNUTMAK imkânsız olsun (sızıntı önlemi). Not: Identity varlıkları
+        // (ApplicationUser/RefreshToken) ITenantScoped DEĞİL — login e-posta araması
+        // kiracı-üstüdür, onlar elle kapsamlanır.
+        foreach (var entityType in builder.Model.GetEntityTypes())
+        {
+            if (typeof(ITenantScoped).IsAssignableFrom(entityType.ClrType))
+            {
+                typeof(AppDbContext)
+                    .GetMethod(nameof(SetTenantFilter), BindingFlags.NonPublic | BindingFlags.Instance)!
+                    .MakeGenericMethod(entityType.ClrType)
+                    .Invoke(this, [builder]);
+            }
+        }
+
         // Kısa Identity tablo adları.
         builder.Entity<ApplicationUser>().ToTable("Users");
         builder.Entity<Microsoft.AspNetCore.Identity.IdentityRole>().ToTable("Roles");
@@ -124,4 +157,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         builder.Entity<Microsoft.AspNetCore.Identity.IdentityUserToken<string>>().ToTable("UserTokens");
         builder.Entity<Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>>().ToTable("RoleClaims");
     }
+
+    /// <summary>Tek bir kiracı-kapsamlı tipe (varlık veya view read-model) TenantId filtresi uygular.</summary>
+    private void SetTenantFilter<T>(ModelBuilder builder) where T : class, ITenantScoped =>
+        builder.Entity<T>().HasQueryFilter(e => e.TenantId == CurrentTenantId);
 }

@@ -3,11 +3,18 @@ using Microsoft.EntityFrameworkCore;
 
 namespace IKPro.Infrastructure.Persistence;
 
-/// <summary>dbo.fn_WorkingDays SQL fonksiyonunu çağırır (tatil tablosu DB'de tek kaynak).</summary>
-public sealed class SqlWorkingDayCalculator(AppDbContext context) : IWorkingDayCalculator
+/// <summary>
+/// dbo.fn_WorkingDays SQL fonksiyonunu çağırır (tatil tablosu DB'de tek kaynak).
+/// Multi-tenant: fonksiyon Holidays'i kiracıya göre filtreler; aktif kiracı param geçilir.
+/// </summary>
+public sealed class SqlWorkingDayCalculator(AppDbContext context, ICurrentTenant currentTenant)
+    : IWorkingDayCalculator
 {
     public async Task<int> GetWorkingDaysAsync(DateOnly start, DateOnly end, CancellationToken cancellationToken)
-        => await context.Database
-            .SqlQuery<int>($"SELECT dbo.fn_WorkingDays({start}, {end}) AS [Value]")
+    {
+        var tenantId = currentTenant.TenantIdOrThrow();
+        return await context.Database
+            .SqlQuery<int>($"SELECT dbo.fn_WorkingDays({start}, {end}, {tenantId}) AS [Value]")
             .SingleAsync(cancellationToken);
+    }
 }
