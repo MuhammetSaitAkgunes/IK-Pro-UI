@@ -222,13 +222,21 @@ public sealed class IdentityService(
         context.RefreshTokens.Add(refreshEntity);
         await context.SaveChangesAsync(cancellationToken);
 
-        return new AuthResponse(accessToken, rawRefreshToken, expiresAtUtc, ToUserDto(user, roles));
+        var tenantName = await TenantNameAsync(user.TenantId, cancellationToken);
+        return new AuthResponse(accessToken, rawRefreshToken, expiresAtUtc, ToUserDto(user, roles, tenantName));
     }
 
     private async Task<UserDto> BuildUserDtoAsync(ApplicationUser user)
-        => ToUserDto(user, await userManager.GetRolesAsync(user));
+        => ToUserDto(user, await userManager.GetRolesAsync(user), await TenantNameAsync(user.TenantId, default));
 
-    private static UserDto ToUserDto(ApplicationUser user, IEnumerable<string> roles)
+    /// <summary>Kiracının görünen adı — /me ve auth yanıtlarında şirket bağlamı için.</summary>
+    private async Task<string> TenantNameAsync(int tenantId, CancellationToken cancellationToken) =>
+        await context.Tenants
+            .Where(t => t.Id == tenantId)
+            .Select(t => t.Name)
+            .FirstOrDefaultAsync(cancellationToken) ?? string.Empty;
+
+    private static UserDto ToUserDto(ApplicationUser user, IEnumerable<string> roles, string tenantName)
     {
         var role = roles.FirstOrDefault() ?? Roles.Employee;
 
@@ -239,7 +247,9 @@ public sealed class IdentityService(
             role,
             Roles.LabelOf(role),
             user.Initials ?? DeriveInitials(user.DisplayName),
-            user.EmployeeId);
+            user.EmployeeId,
+            user.TenantId,
+            tenantName);
     }
 
     /// <summary>Varsayılan (ilk) kiracı — anonim kayıtta kullanılır (Faz 1'de değişecek).</summary>

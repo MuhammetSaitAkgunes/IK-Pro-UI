@@ -1,6 +1,6 @@
 using FluentAssertions;
+using IKPro.Application.Features.Auth;
 using IKPro.Application.Features.Departments;
-using IKPro.Application.Features.Tenancy.Commands;
 using IKPro.Infrastructure.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
@@ -25,6 +25,25 @@ public sealed class TenantProvisioningTests(IKProApiFactory factory) : TenancyTe
         var admin = await AuthedClientAsync(adminEmail);
         var depts = await GetAsync<List<DepartmentDto>>(admin, "/api/departments");
         depts.Should().BeEmpty("yeni kiracıda henüz veri yok ve başka kiracının verisi görünmemeli");
+    }
+
+    [Fact]
+    public async Task LoggedInUser_CarriesTenantName()
+    {
+        // Frontend header'ının aktif şirketi göstermesi için /auth ve /me kiracı adını taşır.
+        var adminEmail = $"admin-{Guid.NewGuid():N}@initech.local";
+        await ProvisionTenantAsync("Initech A.Ş.", adminEmail);
+
+        var anon = Factory.CreateClient();
+        var provisioned = await anon.PostAsJsonAsync("/api/auth/login",
+            new { email = adminEmail, password = "demo123" });
+        (await provisioned.Content.ReadFromJsonAsync<AuthResponse>())!.User.TenantName
+            .Should().Be("Initech A.Ş.");
+
+        var demo = await anon.PostAsJsonAsync("/api/auth/login",
+            new { email = "ik@hrmaster.local", password = "demo123" });
+        (await demo.Content.ReadFromJsonAsync<AuthResponse>())!.User.TenantName
+            .Should().Be("Demo Şirket");
     }
 
     [Fact]

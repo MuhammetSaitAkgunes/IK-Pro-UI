@@ -3794,6 +3794,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ProvisionTenantCommand"];
+                    "text/json": components["schemas"]["ProvisionTenantCommand"];
+                    "application/*+json": components["schemas"]["ProvisionTenantCommand"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProvisionTenantResult"];
+                        "application/json": components["schemas"]["ProvisionTenantResult"];
+                        "text/json": components["schemas"]["ProvisionTenantResult"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4544,6 +4609,8 @@ export interface components {
         };
         PayrollPeriodSummary: {
             /** Format: int32 */
+            tenantId?: number;
+            /** Format: int32 */
             payrollPeriodId?: number;
             /** Format: int32 */
             employeeCount?: number;
@@ -4730,6 +4797,18 @@ export interface components {
             instance?: string | null;
         } & {
             [key: string]: unknown;
+        };
+        ProvisionTenantCommand: {
+            companyName?: string | null;
+            slug?: string | null;
+            adminName?: string | null;
+            adminEmail?: string | null;
+        };
+        ProvisionTenantResult: {
+            /** Format: int32 */
+            tenantId?: number;
+            slug?: string | null;
+            adminEmail?: string | null;
         };
         RecruitmentFunnelDto: {
             /** Format: int32 */
@@ -4963,6 +5042,9 @@ export interface components {
             initials?: string | null;
             /** Format: int32 */
             employeeId?: number | null;
+            /** Format: int32 */
+            tenantId?: number;
+            tenantName?: string | null;
         };
         VoiceDepartmentDto: {
             /** Format: int32 */

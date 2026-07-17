@@ -11,7 +11,9 @@ public sealed record UserDto(
     string Role,
     string RoleLabel,
     string Initials,
-    int? EmployeeId);
+    int? EmployeeId,
+    int TenantId,
+    string TenantName);
 
 /// <summary>Login/register/refresh yanıtı: erişim + yenileme token'ları ve kullanıcı.</summary>
 public sealed record AuthResponse(
