@@ -1,3 +1,5 @@
+using IKPro.Domain.Common;
+
 namespace IKPro.Domain.ReadModels;
 
 /// <summary>
@@ -9,8 +11,11 @@ namespace IKPro.Domain.ReadModels;
 ///   attrition: pulse&lt;55 veya kritiklik&gt;85 → high; pulse&lt;65 veya kritiklik&gt;75 → medium
 ///   burnout:   mesai&gt;65 VE izin&gt;65 → high; mesai&gt;55 veya izin&gt;65 → medium
 /// </summary>
-public class EmployeeRiskMetric
+public class EmployeeRiskMetric : ITenantScoped
 {
+    /// <summary>Sahip kiracı (view TenantId kolonundan; global filtre bununla izole eder).</summary>
+    public int TenantId { get; set; }
+
     public int EmployeeId { get; set; }
     public string FullName { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;

@@ -39,7 +39,8 @@ public class HolidayConfiguration : IEntityTypeConfiguration<Holiday>
     public void Configure(EntityTypeBuilder<Holiday> b)
     {
         b.Property(h => h.Name).IsRequired().HasMaxLength(200);
-        b.HasIndex(h => h.Date).IsUnique();
+        // Multi-tenant: tatil benzersizliği kiracı başına (iki şirket aynı tarihi tutabilir).
+        b.HasIndex(h => new { h.TenantId, h.Date }).IsUnique();
     }
 }
 

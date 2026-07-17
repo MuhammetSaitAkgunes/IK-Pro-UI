@@ -131,15 +131,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentTenant
         // Kiracı: benzersiz slug.
         builder.Entity<Tenant>().HasIndex(t => t.Slug).IsUnique();
 
-        // Multi-tenant global query filter: kiracı-kapsamlı (BaseEntity) HER varlık,
-        // aktif kiracıya otomatik izole edilir. Reflection ile uygulanır ki yeni bir
-        // varlık eklendiğinde filtreyi eklemeyi UNUTMAK imkânsız olsun (sızıntı önlemi).
-        // Not: Identity varlıkları (ApplicationUser/RefreshToken) ve SQL view read-model'leri
-        // BaseEntity DEĞİL — onlar elle kapsamlanır (login e-posta araması kiracı-üstüdür;
-        // view'lar Faz 2'de izole edilir).
+        // Multi-tenant global query filter: kiracı-kapsamlı (ITenantScoped) HER tip —
+        // kalıcı varlıklar VE SQL view read-model'leri — aktif kiracıya otomatik izole
+        // edilir. Reflection ile uygulanır ki yeni bir tip eklendiğinde filtreyi eklemeyi
+        // UNUTMAK imkânsız olsun (sızıntı önlemi). Not: Identity varlıkları
+        // (ApplicationUser/RefreshToken) ITenantScoped DEĞİL — login e-posta araması
+        // kiracı-üstüdür, onlar elle kapsamlanır.
         foreach (var entityType in builder.Model.GetEntityTypes())
         {
-            if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
+            if (typeof(ITenantScoped).IsAssignableFrom(entityType.ClrType))
             {
                 typeof(AppDbContext)
                     .GetMethod(nameof(SetTenantFilter), BindingFlags.NonPublic | BindingFlags.Instance)!
@@ -158,7 +158,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentTenant
         builder.Entity<Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>>().ToTable("RoleClaims");
     }
 
-    /// <summary>Tek bir kiracı-kapsamlı varlığa TenantId global query filter'ı uygular.</summary>
-    private void SetTenantFilter<T>(ModelBuilder builder) where T : BaseEntity =>
+    /// <summary>Tek bir kiracı-kapsamlı tipe (varlık veya view read-model) TenantId filtresi uygular.</summary>
+    private void SetTenantFilter<T>(ModelBuilder builder) where T : class, ITenantScoped =>
         builder.Entity<T>().HasQueryFilter(e => e.TenantId == CurrentTenantId);
 }

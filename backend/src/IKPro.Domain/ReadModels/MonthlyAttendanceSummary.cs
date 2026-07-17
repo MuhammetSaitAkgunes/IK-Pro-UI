@@ -1,11 +1,16 @@
+using IKPro.Domain.Common;
+
 namespace IKPro.Domain.ReadModels;
 
 /// <summary>
 /// Aylık puantaj özeti okuma modeli — vw_MonthlyAttendanceSummary SQL view'ına eşlenir.
 /// Fazla mesai toplamı bordro motoruna (Faz 6) girdi olur.
 /// </summary>
-public class MonthlyAttendanceSummary
+public class MonthlyAttendanceSummary : ITenantScoped
 {
+    /// <summary>Sahip kiracı (view TenantId kolonundan; global filtre bununla izole eder).</summary>
+    public int TenantId { get; set; }
+
     public int EmployeeId { get; set; }
     public int Year { get; set; }
     public int Month { get; set; }

@@ -10,7 +10,7 @@ namespace IKPro.Domain.Common;
 /// kiracının verisini göremez.
 /// </para>
 /// </summary>
-public abstract class BaseEntity
+public abstract class BaseEntity : ITenantScoped
 {
     public int Id { get; set; }
 

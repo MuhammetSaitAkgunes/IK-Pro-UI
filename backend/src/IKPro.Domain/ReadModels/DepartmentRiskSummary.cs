@@ -1,3 +1,5 @@
+using IKPro.Domain.Common;
+
 namespace IKPro.Domain.ReadModels;
 
 /// <summary>
@@ -5,8 +7,11 @@ namespace IKPro.Domain.ReadModels;
 /// vw_EmployeeRiskMetric üzerinden ortalama risk skoru ve yüksek riskli sayıları toplar
 /// (dashboard.js departmentRisk kaynağı).
 /// </summary>
-public class DepartmentRiskSummary
+public class DepartmentRiskSummary : ITenantScoped
 {
+    /// <summary>Sahip kiracı (view TenantId kolonundan; global filtre bununla izole eder).</summary>
+    public int TenantId { get; set; }
+
     public int DepartmentId { get; set; }
     public string DepartmentName { get; set; } = string.Empty;
     public int EmployeeCount { get; set; }
