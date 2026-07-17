@@ -32,8 +32,9 @@ public sealed class IKProApiFactory : WebApplicationFactory<Program>
 
         Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", TestConnectionString);
         Environment.SetEnvironmentVariable("Platform__ProvisioningKey", PlatformKey);
-        // Testler çok sayıda login/provizyon yapar → rate limit'i etkisiz kıl.
+        // Testler çok sayıda login/provizyon/kayıt yapar → rate limit'leri etkisiz kıl.
         Environment.SetEnvironmentVariable("RateLimiting__AuthPermitPerMinute", "1000000");
+        Environment.SetEnvironmentVariable("RateLimiting__SignupPermitPerHour", "1000000");
         Environment.SetEnvironmentVariable("Storage__Root", StorageRoot);
 
         DropTestDatabase();

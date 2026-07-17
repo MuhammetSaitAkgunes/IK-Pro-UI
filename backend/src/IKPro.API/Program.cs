@@ -56,6 +56,18 @@ try
                     Window = TimeSpan.FromMinutes(1),
                     QueueLimit = 0,
                 }));
+
+        // Self-servis kayıt daha nadir ve ağırdır → saatlik, daha sıkı ayrı politika (kötüye kullanım önleme).
+        var signupPermitPerHour = builder.Configuration.GetValue("RateLimiting:SignupPermitPerHour", 10);
+        options.AddPolicy("signup", httpContext =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = signupPermitPerHour,
+                    Window = TimeSpan.FromHours(1),
+                    QueueLimit = 0,
+                }));
     });
 
     // İstek bağlamındaki kullanıcı (audit + yetki kapsamı).
