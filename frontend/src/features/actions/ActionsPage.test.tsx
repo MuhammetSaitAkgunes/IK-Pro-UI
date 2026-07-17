@@ -52,14 +52,31 @@ test("KPI'lar listeden türetilir, açık sekme kartları gösterir", async () =
   expect(screen.getByText("Tavana yaklaşan kayıtları incele.")).toBeInTheDocument();
 });
 
-test("öncelik filtresi server-side sorgu atar", async () => {
+test("öncelik filtresi client-side uygulanır; ek ağ isteği yapılmaz", async () => {
   renderShell();
   await screen.findByText("SGK matrah kontrolü");
-  await userEvent.selectOptions(screen.getByLabelText("Öncelik filtresi"), "high");
-  await waitFor(() => {
-    const hit = vi.mocked(fetch).mock.calls.some(([u]) => String(u) === "/api/actions?priority=high");
-    expect(hit).toBe(true);
-  });
+  const actionsCallsBefore = vi.mocked(fetch).mock.calls.filter(
+    ([u]) => String(u).startsWith("/api/actions") && !String(u).includes("/audit"),
+  ).length;
+
+  // Açık sekmedeki tek kart "high"; "medium" seçilince client-side gizlenir.
+  await userEvent.selectOptions(screen.getByLabelText("Öncelik filtresi"), "medium");
+  expect(screen.queryByText("SGK matrah kontrolü")).not.toBeInTheDocument();
+  expect(screen.getByText("Bu filtrede aksiyon yok.")).toBeInTheDocument();
+
+  const actionsCallsAfter = vi.mocked(fetch).mock.calls.filter(
+    ([u]) => String(u).startsWith("/api/actions") && !String(u).includes("/audit"),
+  ).length;
+  expect(actionsCallsAfter).toBe(actionsCallsBefore);
+});
+
+test("aksiyon listesi tek /api/actions isteğiyle çekilir (çift sorgu yok)", async () => {
+  renderShell();
+  await screen.findByText("SGK matrah kontrolü");
+  const listCalls = vi.mocked(fetch).mock.calls.filter(
+    ([u]) => String(u) === "/api/actions",
+  );
+  expect(listCalls).toHaveLength(1);
 });
 
 test("Bu Hafta sekmesi week kartlarını gösterir", async () => {

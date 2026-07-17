@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
@@ -31,24 +31,31 @@ export function ActionsPage() {
   const [filters, setFilters] = useState({ priority: "", source: "", owner: "" });
   const [createOpen, setCreateOpen] = useState(false);
 
-  const actionsQ = useGlobalActions(filters);
-  const optionsQ = useGlobalActions({ priority: "", source: "", owner: "" });
+  // Aksiyon kümesi küçük; tek (filtresiz) sorgu çekilip filtreleme client-side yapılır.
+  // Böylece filtre değişiminde ağ isteği olmaz ve seçenek listeleri (kaynak/sahip) stabil kalır.
+  const actionsQ = useGlobalActions({ priority: "", source: "", owner: "" });
   const auditQ = useAuditLogs(isMgmt && tab === "audit");
 
-  if (actionsQ.isPending) return <PageLoading />;
-  if (actionsQ.isError) return <PageError error={actionsQ.error} />;
-
-  const actions = actionsQ.data;
-  const allActions = optionsQ.data ?? actions;
+  const actions = useMemo(() => actionsQ.data ?? [], [actionsQ.data]);
   const kpis = {
     today: actions.filter((item) => item.due === "Bugün").length,
     overdue: actions.filter((item) => item.due === "Gecikti").length,
     high: actions.filter((item) => item.priority === "high" && item.status !== "done").length,
     done: actions.filter((item) => item.status === "done").length,
   };
-  const sources = [...new Set(allActions.map((item) => item.source ?? ""))].filter(Boolean);
-  const owners = [...new Set(allActions.map((item) => item.owner ?? ""))].filter(Boolean);
-  const visible = tab === "audit" ? [] : actions.filter((item) => item.status === tab);
+  const sources = [...new Set(actions.map((item) => item.source ?? ""))].filter(Boolean);
+  const owners = [...new Set(actions.map((item) => item.owner ?? ""))].filter(Boolean);
+  const visible = useMemo(
+    () => (tab === "audit" ? [] : actions.filter((item) =>
+      item.status === tab &&
+      (!filters.priority || item.priority === filters.priority) &&
+      (!filters.source || item.source === filters.source) &&
+      (!filters.owner || item.owner === filters.owner))),
+    [actions, tab, filters],
+  );
+
+  if (actionsQ.isPending) return <PageLoading />;
+  if (actionsQ.isError) return <PageError error={actionsQ.error} />;
 
   const setFilter = (key: "priority" | "source" | "owner") =>
     (e: React.ChangeEvent<HTMLSelectElement>) =>
