@@ -2,6 +2,7 @@ using IKPro.Application.Features.Tenancy.Commands;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace IKPro.API.Controllers;
 
@@ -14,6 +15,7 @@ namespace IKPro.API.Controllers;
 [ApiController]
 [Route("api/tenants")]
 [AllowAnonymous]
+[EnableRateLimiting("auth")]
 public sealed class TenancyController(ISender sender, IConfiguration configuration) : ControllerBase
 {
     private const string PlatformKeyHeader = "X-Platform-Key";

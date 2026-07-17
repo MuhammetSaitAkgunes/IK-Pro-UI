@@ -7,6 +7,7 @@ using IKPro.Domain.Constants;
 using IKPro.Infrastructure;
 using Microsoft.OpenApi.Models;
 using Serilog;
+using System.Threading.RateLimiting;
 
 // Bootstrap logger — captures failures during startup before the host is built.
 Log.Logger = new LoggerConfiguration()
@@ -27,6 +28,35 @@ try
     // Infrastructure (EF Core + MSSQL + audit interceptor + Identity/JWT).
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
+
+    // Güvenlik sertleştirme: üretimde dev placeholder sır kabul edilmez — güçlü bir
+    // Jwt:Secret ortam değişkeninden gelmelidir. (DI ayrıca uzunluk kontrolü yapar.)
+    if (!builder.Environment.IsDevelopment())
+    {
+        var jwtSecret = builder.Configuration["Jwt:Secret"] ?? string.Empty;
+        if (jwtSecret.Contains("do-not-use-in-prod", StringComparison.OrdinalIgnoreCase) || jwtSecret.Length < 32)
+        {
+            throw new InvalidOperationException(
+                "Üretimde Jwt:Secret güçlü bir değerle (ortam değişkeni/secret store) sağlanmalı; dev placeholder reddedilir.");
+        }
+    }
+
+    // Rate limiting: kimlik/provizyon uçlarında brute-force/kötüye kullanımı sınırlar.
+    // Limit yapılandırmadan gelir; testler yüksek bir değerle bunu etkisiz kılar.
+    var authPermitPerMinute = builder.Configuration.GetValue("RateLimiting:AuthPermitPerMinute", 30);
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        options.AddPolicy("auth", httpContext =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = authPermitPerMinute,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                }));
+    });
 
     // İstek bağlamındaki kullanıcı (audit + yetki kapsamı).
     builder.Services.AddHttpContextAccessor();
@@ -125,6 +155,7 @@ try
 
     app.UseHttpsRedirection();
     app.UseCors(frontendCors);
+    app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();
 
