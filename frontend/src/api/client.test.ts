@@ -59,6 +59,36 @@ test("refresh de düşerse oturum silinir ve login'e yönlenir", async () => {
   expect(window.location.hash).toBe("#/login");
 });
 
+test("401 sonrası retry'de FormData gövdesi alanlarıyla korunur", async () => {
+  setSession({ token: "ESKI", refreshToken: "R1", user });
+  vi.mocked(fetch)
+    .mockResolvedValueOnce(json(401, { title: "Yetkisiz" }))
+    .mockResolvedValueOnce(json(200, { token: "YENI", refreshToken: "R2", expiresAtUtc: "2026-07-13T12:00:00Z", user }))
+    .mockResolvedValueOnce(json(200, { ok: true }));
+
+  const form = new FormData();
+  form.append("file", new Blob(["içerik"]), "belge.pdf");
+  const result = await apiFetch<{ ok: boolean }>("/employees/1/documents", { method: "POST", body: form });
+
+  expect(result.ok).toBe(true);
+  // Üçüncü çağrı retry'dir; gövdesi hâlâ FormData ve "file" alanını taşımalı.
+  const retryBody = vi.mocked(fetch).mock.calls[2][1]?.body as FormData;
+  expect(retryBody).toBeInstanceOf(FormData);
+  expect(retryBody.get("file")).toBeInstanceOf(Blob);
+});
+
+test("refresh başarılı ama retry de 401 dönerse oturum silinir", async () => {
+  setSession({ token: "ESKI", refreshToken: "R1", user });
+  vi.mocked(fetch)
+    .mockResolvedValueOnce(json(401, { title: "Yetkisiz" }))
+    .mockResolvedValueOnce(json(200, { token: "YENI", refreshToken: "R2", expiresAtUtc: "2026-07-13T12:00:00Z", user }))
+    .mockResolvedValueOnce(json(401, { title: "Hâlâ yetkisiz" }));
+
+  await expect(apiFetch("/me")).rejects.toMatchObject({ status: 401 });
+  expect(localStorage.getItem(SESSION_KEY)).toBeNull();
+  expect(window.location.hash).toBe("#/login");
+});
+
 test("FormData gövdesinde Content-Type başlığı eklenmez", async () => {
   setSession({ token: "T1", refreshToken: "R1", user });
   vi.mocked(fetch).mockResolvedValueOnce(json(200, { ok: true }));

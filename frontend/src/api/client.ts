@@ -65,17 +65,29 @@ const toError = async (response: Response): Promise<ApiError> => {
   return new ApiError(response.status, problem?.title || `İstek başarısız (${response.status})`, problem);
 };
 
+// 401 → tek-uçuş refresh → tek retry. Refresh düşerse VEYA retry de 401 dönerse
+// (yeni token'la bile hâlâ yetkisiz) oturumu temizleyip login'e yönlendir.
+// Not: string ve FormData gövdeleri fetch'te her çağrıda yeniden serileştirilir,
+// bu yüzden aynı init retry'de güvenle kullanılabilir.
+const handleUnauthorized = async (
+  path: string,
+  response: Response,
+  reissue: () => Promise<Response>,
+): Promise<Response> => {
+  if (response.status !== 401 || path.startsWith("/auth/")) return response;
+
+  const refreshed = await tryRefresh();
+  if (refreshed) response = await reissue();
+  if (!refreshed || response.status === 401) {
+    clearSession();
+    window.location.hash = "/login";
+  }
+  return response;
+};
+
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   let response = await rawFetch(path, init);
-
-  if (response.status === 401 && !path.startsWith("/auth/")) {
-    if (await tryRefresh()) {
-      response = await rawFetch(path, init);
-    } else {
-      clearSession();
-      window.location.hash = "/login";
-    }
-  }
+  response = await handleUnauthorized(path, response, () => rawFetch(path, init));
 
   if (!response.ok) throw await toError(response);
   if (response.status === 204) return null as T;
@@ -93,15 +105,7 @@ const fileNameFrom = (disposition: string | null): string | null => {
 /** İkili indirme (evrak/pusula): Bearer + 401-refresh apiFetch ile aynı. */
 export async function apiDownload(path: string): Promise<{ blob: Blob; fileName: string | null }> {
   let response = await rawFetch(path);
-
-  if (response.status === 401 && !path.startsWith("/auth/")) {
-    if (await tryRefresh()) {
-      response = await rawFetch(path);
-    } else {
-      clearSession();
-      window.location.hash = "/login";
-    }
-  }
+  response = await handleUnauthorized(path, response, () => rawFetch(path));
 
   if (!response.ok) throw await toError(response);
   return { blob: await response.blob(), fileName: fileNameFrom(response.headers.get("Content-Disposition")) };
