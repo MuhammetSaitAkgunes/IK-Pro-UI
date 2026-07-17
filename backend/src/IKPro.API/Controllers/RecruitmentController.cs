@@ -72,7 +72,7 @@ public sealed class RecruitmentController(ISender sender) : ControllerBase
     public async Task<ActionResult<HireResultDto>> Hire(
         int id, CandidateHireBody body, CancellationToken cancellationToken)
         => Ok(await sender.Send(
-            new HireCandidateCommand(id, body.DepartmentId, body.Title, body.HireDate), cancellationToken));
+            new HireCandidateCommand(id, body.DepartmentId, body.Email, body.Title, body.HireDate), cancellationToken));
 
     // --- pozisyonlar & funnel ---
 
@@ -98,5 +98,5 @@ public sealed class RecruitmentController(ISender sender) : ControllerBase
     public sealed record CandidateStatusBody(string Status);
     public sealed record CandidateNoteBody(string NoteType, string Text);
     public sealed record CandidateEvaluationBody(string Criterion, int Score, int MaxScore = 5);
-    public sealed record CandidateHireBody(int DepartmentId, string? Title = null, DateOnly? HireDate = null);
+    public sealed record CandidateHireBody(int DepartmentId, string Email, string? Title = null, DateOnly? HireDate = null);
 }

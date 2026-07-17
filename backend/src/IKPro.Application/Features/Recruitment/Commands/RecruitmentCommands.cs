@@ -284,6 +284,7 @@ public sealed class AddCandidateEvaluationCommandHandler(IApplicationDbContext c
 public sealed record HireCandidateCommand(
     int CandidateId,
     int DepartmentId,
+    string Email,
     string? Title = null,
     DateOnly? HireDate = null) : IRequest<HireResultDto>;
 
@@ -294,11 +295,12 @@ public sealed class HireCandidateCommandValidator : AbstractValidator<HireCandid
     public HireCandidateCommandValidator()
     {
         RuleFor(x => x.DepartmentId).GreaterThan(0);
+        RuleFor(x => x.Email).NotEmpty().EmailAddress().MaximumLength(256);
         RuleFor(x => x.Title).MaximumLength(128);
     }
 }
 
-public sealed class HireCandidateCommandHandler(IApplicationDbContext context)
+public sealed class HireCandidateCommandHandler(IApplicationDbContext context, IIdentityService identityService)
     : IRequestHandler<HireCandidateCommand, HireResultDto>
 {
     public async Task<HireResultDto> Handle(HireCandidateCommand request, CancellationToken cancellationToken)
@@ -323,21 +325,37 @@ public sealed class HireCandidateCommandHandler(IApplicationDbContext context)
             throw new NotFoundException("Departman", request.DepartmentId);
         }
 
+        // Login e-postasını önce doğrula — yazımlar başlamadan çakışmayı yakala (orphan önlenir).
+        if (await identityService.EmailExistsAsync(request.Email, cancellationToken))
+        {
+            throw new ConflictException($"'{request.Email}' e-postasıyla kayıtlı bir hesap zaten var.");
+        }
+
         var nameParts = candidate.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var firstName = nameParts.Length > 1 ? string.Join(' ', nameParts[..^1]) : nameParts[0];
         var lastName = nameParts.Length > 1 ? nameParts[^1] : string.Empty;
 
+        var hireDate = request.HireDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
         var employee = new Domain.Entities.Organization.Employee
         {
             FirstName = firstName,
             LastName = lastName,
             Title = request.Title ?? candidate.AppliedRole,
             DepartmentId = request.DepartmentId,
-            HireDate = request.HireDate ?? DateOnly.FromDateTime(DateTime.UtcNow),
+            HireDate = hireDate,
             Status = EmployeeStatus.Active,
             Profile = new Domain.Entities.Organization.EmployeeProfile(),
         };
         context.Employees.Add(employee);
+
+        // İşe giriş yılı için yıllık izin hak edişi (seed varsayılanıyla tutarlı: 24 gün).
+        context.LeaveBalances.Add(new Domain.Entities.Leaves.LeaveBalance
+        {
+            Employee = employee,
+            Year = hireDate.Year,
+            EntitledDays = 24,
+            CarriedOverDays = 0,
+        });
 
         candidate.Status = CandidateStatus.Hired;
         candidate.History.Add(new CandidateHistory
@@ -354,6 +372,11 @@ public sealed class HireCandidateCommandHandler(IApplicationDbContext context)
         }
 
         await context.SaveChangesAsync(cancellationToken);
+
+        // Personel-bağlı login (employee Id kaydedildikten sonra). Tekil transaction
+        // ideali için not: erken e-posta kontrolü orphan riskini pratikte kapatır.
+        await identityService.CreateEmployeeLoginAsync(
+            employee.Id, candidate.Name, request.Email, cancellationToken);
 
         return new HireResultDto(candidate.Id, employee.Id, employee.FullName);
     }

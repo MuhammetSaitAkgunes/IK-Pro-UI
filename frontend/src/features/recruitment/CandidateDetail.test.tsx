@@ -80,13 +80,16 @@ test("İşe Al modalı departmanla hire ucuna gider", async () => {
   await screen.findByRole("heading", { name: "Burak Yılmaz" });
   await userEvent.click(screen.getByRole("button", { name: /İşe Al/ }));
   await userEvent.selectOptions(await screen.findByLabelText("Departman"), "1");
+  await userEvent.type(screen.getByLabelText("İş e-postası"), "burak.yilmaz@hrmaster.local");
   await userEvent.click(screen.getByRole("button", { name: /Onayla/ }));
   await waitFor(() => {
     const posted = vi.mocked(fetch).mock.calls.find(
       ([u, i]) => String(u) === "/api/candidates/5/hire" && i?.method === "POST",
     );
     expect(posted).toBeTruthy();
-    expect(JSON.parse(String(posted![1]?.body))).toMatchObject({ departmentId: 1 });
+    expect(JSON.parse(String(posted![1]?.body))).toMatchObject({
+      departmentId: 1, email: "burak.yilmaz@hrmaster.local",
+    });
   });
 });
 

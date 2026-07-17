@@ -231,6 +231,7 @@ function HireModal({ candidateId, candidateName, appliedRole, onClose }: {
   const hire = useHireCandidate();
   const departmentsQ = useDepartments();
   const [departmentId, setDepartmentId] = useState("");
+  const [email, setEmail] = useState("");
   const [title, setTitle] = useState(appliedRole);
   const [hireDate, setHireDate] = useState(new Date().toISOString().slice(0, 10));
   const [error, setError] = useState<string | null>(null);
@@ -241,10 +242,15 @@ function HireModal({ candidateId, candidateName, appliedRole, onClose }: {
       setError("Departman seçin.");
       return;
     }
+    if (!email.trim()) {
+      setError("İş e-postası girin (personel giriş hesabı bununla açılır).");
+      return;
+    }
     try {
       const result = await hire.mutateAsync({
         id: candidateId,
         departmentId: Number(departmentId),
+        email: email.trim(),
         title: title.trim() || null,
         hireDate: hireDate || null,
       });
@@ -283,6 +289,10 @@ function HireModal({ candidateId, candidateName, appliedRole, onClose }: {
                   <option key={department.id} value={department.id}>{department.name}</option>
                 ))}
               </select>
+            </div>
+            <div className="input-group">
+              <label className="input-label" htmlFor="hire-email">İş e-postası</label>
+              <input id="hire-email" type="email" className="input-control" value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="input-group">
               <label className="input-label" htmlFor="hire-title">Ünvan</label>

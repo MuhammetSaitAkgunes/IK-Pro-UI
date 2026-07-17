@@ -3929,6 +3929,7 @@ export interface components {
         CandidateHireBody: {
             /** Format: int32 */
             departmentId?: number;
+            email?: string | null;
             title?: string | null;
             /** Format: date */
             hireDate?: string | null;
@@ -4765,7 +4766,6 @@ export interface components {
             name?: string | null;
             email?: string | null;
             password?: string | null;
-            role?: string | null;
         };
         RiskDetailDto: {
             /** Format: int32 */

@@ -77,6 +77,38 @@ public sealed class IdentityService(
         return await IssueTokensAsync(user, cancellationToken);
     }
 
+    public async Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken)
+        => await userManager.FindByEmailAsync(email) is not null;
+
+    public async Task CreateEmployeeLoginAsync(
+        int employeeId, string name, string email, CancellationToken cancellationToken)
+    {
+        if (await userManager.FindByEmailAsync(email) is not null)
+        {
+            throw new ConflictException($"'{email}' e-postasıyla kayıtlı bir hesap zaten var.");
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true,
+            DisplayName = name,
+            Initials = DeriveInitials(name),
+            EmployeeId = employeeId,
+        };
+
+        // Demo geçici şifre (parite: demo123). Üretimde davet/sıfırlama akışıyla değiştirilmeli.
+        var createResult = await userManager.CreateAsync(user, "demo123");
+        if (!createResult.Succeeded)
+        {
+            throw new ValidationException(createResult.Errors
+                .Select(e => new ValidationFailure("email", e.Description)));
+        }
+
+        await userManager.AddToRoleAsync(user, Roles.Employee);
+    }
+
     public async Task<AuthResponse> RefreshAsync(string refreshToken, CancellationToken cancellationToken)
     {
         var hash = JwtTokenService.Hash(refreshToken);

@@ -14,6 +14,15 @@ public interface IIdentityService
     /// <summary>Yeni kullanıcı kaydı; e-posta çakışmasında <c>ConflictException</c>.</summary>
     Task<AuthResponse> RegisterAsync(string name, string email, string password, string role, CancellationToken cancellationToken);
 
+    /// <summary>E-posta ile kayıtlı bir hesap var mı (işe alım öncesi erken doğrulama).</summary>
+    Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// İşe alınan aday için personel-bağlı <c>employee</c> login'i oluşturur (token üretmez).
+    /// Geçici şifre atanır; e-posta çakışmasında <c>ConflictException</c>.
+    /// </summary>
+    Task CreateEmployeeLoginAsync(int employeeId, string name, string email, CancellationToken cancellationToken);
+
     /// <summary>Refresh token rotasyonu: eskisini iptal eder, yeni çift üretir.</summary>
     Task<AuthResponse> RefreshAsync(string refreshToken, CancellationToken cancellationToken);
 

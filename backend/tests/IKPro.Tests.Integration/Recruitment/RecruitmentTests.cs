@@ -3,6 +3,7 @@ using IKPro.Application.Common.Models;
 using IKPro.Application.Features.Auth;
 using IKPro.Application.Features.Departments;
 using IKPro.Application.Features.Employees;
+using IKPro.Application.Features.Leaves;
 using IKPro.Application.Features.Recruitment;
 using IKPro.Application.Features.Recruitment.Commands;
 using System.Net;
@@ -86,14 +87,22 @@ public sealed class RecruitmentTests(IKProApiFactory factory)
 
         await PatchStatusAsync(admin, candidate.Id, "Teklif");
 
-        // --- hire → Employee dönüşümü ---
+        // --- hire → Employee dönüşümü (tam provizyon: login + izin bakiyesi) ---
+        var hireEmail = $"burak.yilmaz-{Guid.NewGuid():N}@hrmaster.local";
         var hireResponse = await admin.PostAsJsonAsync($"/api/candidates/{candidate.Id}/hire", new
         {
             departmentId = yazilim.Id,
+            email = hireEmail,
         });
         hireResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var hired = (await hireResponse.Content.ReadFromJsonAsync<HireResultDto>())!;
         hired.EmployeeName.Should().Be("Burak Yılmaz");
+
+        // İşe alınan kişi login olabilir ve yıllık izin bakiyesi (24) kurulmuştur.
+        var hiredClient = await AuthedClientAsync(hireEmail);
+        var hiredBalance = await GetAsync<LeaveBalanceDto>(
+            hiredClient, $"/api/leaves/balance?year={DateTime.UtcNow.Year}");
+        hiredBalance.EntitledDays.Should().Be(24);
 
         // Personel kartı directory'de görünür.
         var directory = await GetAsync<PagedResult<EmployeeListItemDto>>(
@@ -107,7 +116,8 @@ public sealed class RecruitmentTests(IKProApiFactory factory)
 
         (await admin.PatchAsJsonAsync($"/api/candidates/{candidate.Id}/status", new { status = "Yeni" }))
             .StatusCode.Should().Be(HttpStatusCode.Conflict);
-        (await admin.PostAsJsonAsync($"/api/candidates/{candidate.Id}/hire", new { departmentId = yazilim.Id }))
+        (await admin.PostAsJsonAsync($"/api/candidates/{candidate.Id}/hire",
+                new { departmentId = yazilim.Id, email = $"tekrar-{Guid.NewGuid():N}@hrmaster.local" }))
             .StatusCode.Should().Be(HttpStatusCode.Conflict);
 
         var positions = await GetAsync<List<PositionDto>>(admin, "/api/positions");
@@ -133,7 +143,7 @@ public sealed class RecruitmentTests(IKProApiFactory factory)
         await PatchStatusAsync(admin, candidate.Id, "Red");
 
         (await admin.PostAsJsonAsync($"/api/candidates/{candidate.Id}/hire",
-                new { departmentId = departments[0].Id }))
+                new { departmentId = departments[0].Id, email = $"red-{Guid.NewGuid():N}@hrmaster.local" }))
             .StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
