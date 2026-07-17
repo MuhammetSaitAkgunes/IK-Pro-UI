@@ -1,4 +1,6 @@
 using IKPro.Application.Common.Interfaces;
+using IKPro.Domain.Constants;
+using IKPro.Domain.Enums;
 using IKPro.Domain.ReadModels;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -55,20 +57,68 @@ public sealed class GetComplianceDocumentsQueryHandler(
     }
 }
 
-/// <summary>Denetim hazırlık özeti: vw_ComplianceReadiness + türetilmiş kontrol listesi.</summary>
+/// <summary>
+/// Denetim hazırlık özeti. hr-admin → şirket geneli <c>vw_ComplianceReadiness</c> (hızlı yol);
+/// manager → belge tablosuyla aynı kapsam (yalnız ekibi) — KPI'lar tabloyla tutarlı olur.
+/// </summary>
 public sealed record GetComplianceReadinessQuery : IRequest<ComplianceReadinessDto>;
 
-public sealed class GetComplianceReadinessQueryHandler(IApplicationDbContext context)
+public sealed class GetComplianceReadinessQueryHandler(IApplicationDbContext context, ICurrentUser currentUser)
     : IRequestHandler<GetComplianceReadinessQuery, ComplianceReadinessDto>
 {
     public async Task<ComplianceReadinessDto> Handle(
         GetComplianceReadinessQuery request, CancellationToken cancellationToken)
     {
-        var readiness = await context.ComplianceReadiness
-            .FirstOrDefaultAsync(cancellationToken)
-            ?? new ComplianceReadiness { DocumentComplianceScore = 100, ReadinessScore = 100 };
+        if (currentUser.Roles.Contains(Roles.HrAdmin))
+        {
+            var global = await context.ComplianceReadiness
+                .FirstOrDefaultAsync(cancellationToken)
+                ?? new ComplianceReadiness { DocumentComplianceScore = 100, ReadinessScore = 100 };
+            return global.ToDto();
+        }
 
-        return readiness.ToDto();
+        var scoped = await context.ComplianceDocuments
+            .ScopeFor(currentUser)
+            .Select(d => new { d.Status, HasOwner = d.OwnerName != null && d.OwnerName != "" })
+            .ToListAsync(cancellationToken);
+
+        return ComplianceReadinessAggregator
+            .From(scoped.Select(x => (x.Status, x.HasOwner)))
+            .ToDto();
+    }
+}
+
+/// <summary>
+/// <c>vw_ComplianceReadiness</c> sayım/skor formülünün uygulama karşılığı — rol kapsamlı
+/// (manager) hesaplarda kullanılır. View SQL'iyle birebir tutulmalıdır.
+/// </summary>
+public static class ComplianceReadinessAggregator
+{
+    public static ComplianceReadiness From(IEnumerable<(ComplianceStatus Status, bool HasOwner)> documents)
+    {
+        var items = documents.ToList();
+        var total = items.Count;
+        var completed = items.Count(d => d.Status == ComplianceStatus.Completed);
+        var missing = items.Count(d => d.Status == ComplianceStatus.Missing);
+        var dueSoon = items.Count(d => d.Status == ComplianceStatus.DueSoon);
+        var inReview = items.Count(d => d.Status == ComplianceStatus.InReview);
+        var owned = items.Count(d => d.HasOwner);
+
+        return new ComplianceReadiness
+        {
+            TotalCount = total,
+            CompletedCount = completed,
+            MissingCount = missing,
+            DueSoonCount = dueSoon,
+            InReviewCount = inReview,
+            OwnedCount = owned,
+            DocumentComplianceScore = total == 0
+                ? 100
+                : (int)Math.Round(100.0 * completed / total, MidpointRounding.AwayFromZero),
+            ReadinessScore = total == 0
+                ? 100
+                : Math.Clamp(100 - missing * 6 - dueSoon * 3 - inReview * 2, 0, 100),
+        };
     }
 }
 

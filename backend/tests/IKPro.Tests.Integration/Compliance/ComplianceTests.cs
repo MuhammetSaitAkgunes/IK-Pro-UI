@@ -151,6 +151,24 @@ public sealed class ComplianceTests(IKProApiFactory factory)
         readiness.RecommendedActions.Should().NotBeEmpty();
     }
 
+    [Fact]
+    public async Task Readiness_IsScopedForManager()
+    {
+        // Hazırlık KPI'ları da belge tablosuyla aynı kapsamda olmalı (manager yalnız ekibi).
+        var admin = await AuthedClientAsync("ik@hrmaster.local");
+        var manager = await AuthedClientAsync("ece.arslan@hrmaster.local");
+
+        var adminReadiness = await GetAsync<ComplianceReadinessDto>(admin, "/api/compliance/readiness");
+        var managerDocs = await GetAsync<List<ComplianceDocumentDto>>(manager, "/api/compliance/documents");
+        var managerReadiness = await GetAsync<ComplianceReadinessDto>(manager, "/api/compliance/readiness");
+
+        managerReadiness.TotalCount.Should().Be(managerDocs.Count,
+            "manager hazırlık sayımı yalnız kendi kapsamındaki belgeleri yansıtmalı");
+        managerReadiness.TotalCount.Should().BeLessThan(adminReadiness.TotalCount,
+            "manager kapsamı şirket genelinden dar olmalı");
+        managerReadiness.CompletedCount.Should().Be(managerDocs.Count(d => d.Status == "Tamamlandı"));
+    }
+
     // --- yardımcılar ---
 
     private async Task<HttpClient> AuthedClientAsync(string email)
