@@ -7,16 +7,23 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace IKPro.Tests.Integration.Tenancy;
 
 /// <summary>
 /// Multi-tenant testleri için ortak yardımcılar: kiracı provizyonu, kiracı-kapsamlı
-/// doğrudan tohumlama ve authed istemci. Provizyonlanan admin geçici şifre "demo123" alır.
+/// doğrudan tohumlama ve authed istemci. Provizyonlanan admin ŞİFRESİZ oluşturulur;
+/// davet e-postasındaki token ile <see cref="AcceptInviteAsync"/> çağrılarak
+/// (veya kısayol <see cref="ProvisionAndActivateAsync"/>) şifre belirlenir.
 /// </summary>
 public abstract class TenancyTestBase(IKProApiFactory factory)
 {
     protected IKProApiFactory Factory { get; } = factory;
+
+    /// <summary>Davet akışında belirlenen varsayılan şifre (login için de kullanılır).</summary>
+    protected const string DefaultPassword = "demo123";
 
     /// <summary>Platform anahtarıyla yeni kiracı + ilk hr-admin provizyonlar.</summary>
     protected async Task<ProvisionTenantResult> ProvisionTenantAsync(string companyName, string adminEmail)
@@ -73,6 +80,53 @@ public abstract class TenancyTestBase(IKProApiFactory factory)
         var response = await client.GetAsync(url);
         response.StatusCode.Should().Be(HttpStatusCode.OK, $"GET {url}");
         return (await response.Content.ReadFromJsonAsync<T>())!;
+    }
+
+    /// <summary>Provizyon + davet kabul (şifre belirleme) — çoğu test için tek adımlık kurulum.</summary>
+    protected async Task<ProvisionTenantResult> ProvisionAndActivateAsync(
+        string companyName, string adminEmail, string password = DefaultPassword)
+    {
+        var result = await ProvisionTenantAsync(companyName, adminEmail);
+        await AcceptInviteAsync(adminEmail, password);
+        return result;
+    }
+
+    /// <summary>Davet e-postasındaki token'ı okuyup <c>accept-invite</c> ile şifre belirler.</summary>
+    protected async Task AcceptInviteAsync(string email, string password = DefaultPassword)
+    {
+        var token = await ReadInviteTokenAsync(email);
+        var client = Factory.CreateClient();
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/accept-invite", new { email, token, newPassword = password });
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent, $"davet kabulü başarısız: {email}");
+    }
+
+    // Outbox'a bırakılan davet e-postasından ilgili adrese ait en yeni token'ı çıkarır.
+    private async Task<string> ReadInviteTokenAsync(string email)
+    {
+        var outbox = Path.Combine(Factory.StorageRoot, "outbox");
+        Directory.Exists(outbox).Should().BeTrue($"outbox klasörü yok: {outbox}");
+
+        // En yeni dosyadan geriye tara — aynı adrese birden çok davet gitmiş olabilir.
+        foreach (var file in Directory.EnumerateFiles(outbox, "*.json")
+                     .OrderByDescending(File.GetCreationTimeUtc))
+        {
+            using var doc = JsonDocument.Parse(await File.ReadAllTextAsync(file));
+            var root = doc.RootElement;
+            if (!string.Equals(root.GetProperty("to").GetString(), email, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var body = root.GetProperty("body").GetString() ?? string.Empty;
+            var match = Regex.Match(body, @"DAVET-KODU:\s*(?<token>.+)");
+            if (match.Success)
+            {
+                return match.Groups["token"].Value.Trim();
+            }
+        }
+
+        throw new InvalidOperationException($"'{email}' için davet e-postası outbox'ta bulunamadı.");
     }
 
     // Slug yalnız ASCII [a-z0-9] olmalı (validator kuralı) — Türkçe/aksanlı harfler atılır.

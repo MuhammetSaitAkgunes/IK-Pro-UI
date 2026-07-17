@@ -19,7 +19,7 @@ public sealed class TenantFileIsolationTests(IKProApiFactory factory) : TenancyT
     public async Task Documents_AreNotAccessibleAcrossTenants()
     {
         var adminEmail = $"admin-{Guid.NewGuid():N}@files.local";
-        var tenant = await ProvisionTenantAsync("Files A.Ş.", adminEmail);
+        var tenant = await ProvisionAndActivateAsync("Files A.Ş.", adminEmail);
 
         // Globex kiracısında bir personel + evrak (fiziksel dosya gerekmez; erişim kontrolü test edilir).
         var dept = new Department { Name = "Files Ekibi" };

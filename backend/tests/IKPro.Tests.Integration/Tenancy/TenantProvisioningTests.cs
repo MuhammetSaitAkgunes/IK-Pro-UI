@@ -20,7 +20,7 @@ public sealed class TenantProvisioningTests(IKProApiFactory factory) : TenancyTe
     public async Task Provision_CreatesTenantAndAdmin_WhoSeesOnlyOwnTenant()
     {
         var adminEmail = $"admin-{Guid.NewGuid():N}@acme.local";
-        await ProvisionTenantAsync("Acme A.Ş.", adminEmail);
+        await ProvisionAndActivateAsync("Acme A.Ş.", adminEmail);
 
         var admin = await AuthedClientAsync(adminEmail);
         var depts = await GetAsync<List<DepartmentDto>>(admin, "/api/departments");
@@ -32,7 +32,7 @@ public sealed class TenantProvisioningTests(IKProApiFactory factory) : TenancyTe
     {
         // Frontend header'ının aktif şirketi göstermesi için /auth ve /me kiracı adını taşır.
         var adminEmail = $"admin-{Guid.NewGuid():N}@initech.local";
-        await ProvisionTenantAsync("Initech A.Ş.", adminEmail);
+        await ProvisionAndActivateAsync("Initech A.Ş.", adminEmail);
 
         var anon = Factory.CreateClient();
         var provisioned = await anon.PostAsJsonAsync("/api/auth/login",
@@ -80,7 +80,7 @@ public sealed class TenantProvisioningTests(IKProApiFactory factory) : TenancyTe
     public async Task Login_InactiveTenant_Rejected()
     {
         var adminEmail = $"admin-{Guid.NewGuid():N}@pasif.local";
-        var tenant = await ProvisionTenantAsync("Pasif A.Ş.", adminEmail);
+        var tenant = await ProvisionAndActivateAsync("Pasif A.Ş.", adminEmail);
 
         // Kiracıyı doğrudan pasife al.
         using (var scope = Factory.Services.CreateScope())

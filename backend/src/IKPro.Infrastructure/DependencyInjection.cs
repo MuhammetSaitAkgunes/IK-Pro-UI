@@ -49,7 +49,8 @@ public static class DependencyInjection
             })
             .AddRoles<IdentityRole>()
             .AddSignInManager()
-            .AddEntityFrameworkStores<AppDbContext>();
+            .AddEntityFrameworkStores<AppDbContext>()
+            .AddDefaultTokenProviders(); // davet/şifre-belirleme token'ları (GeneratePasswordResetTokenAsync) için
 
         // JWT ayarları + Bearer kimlik doğrulama.
         var jwtSection = configuration.GetSection(JwtOptions.SectionName);

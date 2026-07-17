@@ -9,6 +9,8 @@ using IKPro.Application.Features.Recruitment.Commands;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace IKPro.Tests.Integration.Recruitment;
 
@@ -98,7 +100,9 @@ public sealed class RecruitmentTests(IKProApiFactory factory)
         var hired = (await hireResponse.Content.ReadFromJsonAsync<HireResultDto>())!;
         hired.EmployeeName.Should().Be("Burak Yılmaz");
 
-        // İşe alınan kişi login olabilir ve yıllık izin bakiyesi (24) kurulmuştur.
+        // İşe alınan kişi davetini kabul eder (şifre belirler), login olur ve
+        // yıllık izin bakiyesi (24) kurulmuştur.
+        await AcceptInviteAsync(hireEmail);
         var hiredClient = await AuthedClientAsync(hireEmail);
         var hiredBalance = await GetAsync<LeaveBalanceDto>(
             hiredClient, $"/api/leaves/balance?year={DateTime.UtcNow.Year}");
@@ -187,6 +191,34 @@ public sealed class RecruitmentTests(IKProApiFactory factory)
     // --- yardımcılar ---
 
     private sealed record FunnelDto(int Total, int New, int Interview, int Offer, int Rejected, int Hired);
+
+    // İşe alınan personel şifresiz oluşur; davet e-postasındaki token ile şifre belirler.
+    private async Task AcceptInviteAsync(string email)
+    {
+        var outbox = Path.Combine(factory.StorageRoot, "outbox");
+        string? token = null;
+        foreach (var file in Directory.EnumerateFiles(outbox, "*.json")
+                     .OrderByDescending(File.GetCreationTimeUtc))
+        {
+            using var doc = JsonDocument.Parse(await File.ReadAllTextAsync(file));
+            var root = doc.RootElement;
+            if (!string.Equals(root.GetProperty("to").GetString(), email, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+            var match = Regex.Match(root.GetProperty("body").GetString() ?? "", @"DAVET-KODU:\s*(?<token>.+)");
+            if (match.Success)
+            {
+                token = match.Groups["token"].Value.Trim();
+                break;
+            }
+        }
+        token.Should().NotBeNull($"'{email}' için davet e-postası outbox'ta bulunmalı");
+
+        var response = await factory.CreateClient().PostAsJsonAsync(
+            "/api/auth/accept-invite", new { email, token, newPassword = DemoPassword });
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent, $"davet kabulü başarısız: {email}");
+    }
 
     private async Task<HttpClient> AuthedClientAsync(string email)
     {

@@ -63,7 +63,7 @@ public sealed class ProvisionTenantCommandHandler(IApplicationDbContext context,
         await context.SaveChangesAsync(cancellationToken);
 
         await identityService.CreateTenantAdminAsync(
-            tenant.Id, request.AdminName.Trim(), request.AdminEmail.Trim(), cancellationToken);
+            tenant.Id, request.AdminName.Trim(), request.AdminEmail.Trim(), tenant.Name, cancellationToken);
 
         return new ProvisionTenantResult(tenant.Id, tenant.Slug, request.AdminEmail.Trim());
     }

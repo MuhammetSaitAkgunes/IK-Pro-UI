@@ -7,6 +7,7 @@ using IKPro.Domain.Constants;
 using IKPro.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace IKPro.Infrastructure.Identity;
 
@@ -20,6 +21,8 @@ public sealed class IdentityService(
     SignInManager<ApplicationUser> signInManager,
     JwtTokenService tokenService,
     ICurrentTenant currentTenant,
+    IEmailSender emailSender,
+    IConfiguration configuration,
     AppDbContext context) : IIdentityService
 {
     private const string InvalidCredentialsMessage = "E-posta veya şifre hatalı.";
@@ -93,13 +96,8 @@ public sealed class IdentityService(
         => await userManager.FindByEmailAsync(email) is not null;
 
     public async Task CreateTenantAdminAsync(
-        int tenantId, string name, string email, CancellationToken cancellationToken)
+        int tenantId, string name, string email, string companyName, CancellationToken cancellationToken)
     {
-        if (await userManager.FindByEmailAsync(email) is not null)
-        {
-            throw new ConflictException($"'{email}' e-postasıyla kayıtlı bir hesap zaten var.");
-        }
-
         var user = new ApplicationUser
         {
             UserName = email,
@@ -109,25 +107,16 @@ public sealed class IdentityService(
             Initials = DeriveInitials(name),
             TenantId = tenantId,
         };
-
-        // Demo geçici şifre. Faz 5'te davet + şifre-belirleme akışıyla değiştirilecek.
-        var createResult = await userManager.CreateAsync(user, "demo123");
-        if (!createResult.Succeeded)
-        {
-            throw new ValidationException(createResult.Errors
-                .Select(e => new ValidationFailure("email", e.Description)));
-        }
-
-        await userManager.AddToRoleAsync(user, Roles.HrAdmin);
+        await CreateInvitedUserAsync(user, Roles.HrAdmin, companyName, cancellationToken);
     }
 
     public async Task CreateEmployeeLoginAsync(
         int employeeId, string name, string email, CancellationToken cancellationToken)
     {
-        if (await userManager.FindByEmailAsync(email) is not null)
-        {
-            throw new ConflictException($"'{email}' e-postasıyla kayıtlı bir hesap zaten var.");
-        }
+        // İşe alım her zaman kimliği doğrulanmış bir hr-admin tarafından yapılır →
+        // yeni personel login'i o admin'in kiracısına bağlanır.
+        var tenantId = currentTenant.TenantIdOrThrow();
+        var companyName = await TenantNameAsync(tenantId, cancellationToken);
 
         var user = new ApplicationUser
         {
@@ -137,20 +126,61 @@ public sealed class IdentityService(
             DisplayName = name,
             Initials = DeriveInitials(name),
             EmployeeId = employeeId,
-            // İşe alım her zaman kimliği doğrulanmış bir hr-admin tarafından yapılır →
-            // yeni personel login'i o admin'in kiracısına bağlanır.
-            TenantId = currentTenant.TenantIdOrThrow(),
+            TenantId = tenantId,
         };
+        await CreateInvitedUserAsync(user, Roles.Employee, companyName, cancellationToken);
+    }
 
-        // Demo geçici şifre (parite: demo123). Üretimde davet/sıfırlama akışıyla değiştirilmeli.
-        var createResult = await userManager.CreateAsync(user, "demo123");
+    public async Task AcceptInviteAsync(
+        string email, string token, string newPassword, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByEmailAsync(email)
+            ?? throw new ValidationException([new ValidationFailure("email", "Davet bulunamadı.")]);
+
+        // Şifresiz oluşturulan hesabın ilk şifresini davet (reset) token'ıyla belirler.
+        var result = await userManager.ResetPasswordAsync(user, token, newPassword);
+        if (!result.Succeeded)
+        {
+            throw new ValidationException(result.Errors
+                .Select(e => new ValidationFailure("token", e.Description)));
+        }
+    }
+
+    /// <summary>
+    /// Kullanıcıyı ŞİFRESİZ oluşturur, rol atar ve şifre-belirleme (davet) token'ını
+    /// e-postayla gönderir. Kullanıcı <c>accept-invite</c> ile hesabını etkinleştirir.
+    /// </summary>
+    private async Task CreateInvitedUserAsync(
+        ApplicationUser user, string role, string companyName, CancellationToken cancellationToken)
+    {
+        if (await userManager.FindByEmailAsync(user.Email!) is not null)
+        {
+            throw new ConflictException($"'{user.Email}' e-postasıyla kayıtlı bir hesap zaten var.");
+        }
+
+        var createResult = await userManager.CreateAsync(user); // şifresiz → davet gerektirir
         if (!createResult.Succeeded)
         {
             throw new ValidationException(createResult.Errors
                 .Select(e => new ValidationFailure("email", e.Description)));
         }
 
-        await userManager.AddToRoleAsync(user, Roles.Employee);
+        await userManager.AddToRoleAsync(user, role);
+
+        var token = await userManager.GeneratePasswordResetTokenAsync(user);
+        await SendInviteEmailAsync(user.DisplayName, user.Email!, companyName, token, cancellationToken);
+    }
+
+    private async Task SendInviteEmailAsync(
+        string name, string email, string companyName, string token, CancellationToken cancellationToken)
+    {
+        var appUrl = (configuration["App:BaseUrl"] ?? "http://localhost:5173").TrimEnd('/');
+        var link = $"{appUrl}/#/accept-invite?email={Uri.EscapeDataString(email)}&token={Uri.EscapeDataString(token)}";
+        var body =
+            $"Merhaba {name},\n\n{companyName} için İK Pro hesabınız oluşturuldu. " +
+            $"Şifrenizi belirleyip hesabınızı etkinleştirmek için:\n{link}\n\n" +
+            $"Bağlantı çalışmazsa e-postanız ve şu davet kodunu kullanın:\nDAVET-KODU: {token}\n";
+        await emailSender.SendAsync(new EmailMessage(email, "İK Pro hesap daveti", body), cancellationToken);
     }
 
     public async Task<AuthResponse> RefreshAsync(string refreshToken, CancellationToken cancellationToken)

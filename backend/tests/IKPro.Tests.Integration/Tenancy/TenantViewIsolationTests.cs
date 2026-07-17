@@ -16,7 +16,7 @@ public sealed class TenantViewIsolationTests(IKProApiFactory factory) : TenancyT
     {
         // Yeni (boş) bir kiracı: hiç uyum belgesi yok.
         var adminEmail = $"admin-{Guid.NewGuid():N}@readiness.local";
-        await ProvisionTenantAsync("Readiness A.Ş.", adminEmail);
+        await ProvisionAndActivateAsync("Readiness A.Ş.", adminEmail);
 
         // Yeni kiracının hazırlık özeti YALNIZ kendi (sıfır) belgesini yansıtmalı.
         // View izole değilse, varsayılan kiracının seed belgelerinin toplamı sızardı.

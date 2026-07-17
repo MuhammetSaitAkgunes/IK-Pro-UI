@@ -6,15 +6,25 @@
 
 ## Şu an neredeyiz
 
-- **Aktif iş:** **React portu tamamlandı (8/8 dilim).** Dal
-  `feature/react-port-dilim-8` main'e merge kararı bekliyor.
-- **Son tamamlanan:** Dilim 8 (Kapanış) — eski mock uygulama
-  `legacy-frontend/` altına taşındı, kök README monorepo gerçeğine göre
-  yeniden yazıldı, `App_Data` ignore edildi; 128 birim test + build + duman
-  (yeni uygulama 3 sayfa + legacy yeni konumdan) yeşil.
-- **Sıradaki adım:** Dilim 8'i main'e merge et. Port sonrası olası ayrı işler
-  (spec YAGNI listesi): Playwright E2E paketi, i18n, Storybook, Tailwind —
-  istenirse yeni spec/plan ile.
+- **Aktif iş:** **Multi-tenant SaaS altyapısı (Faz 0–5).** Dal
+  `feature/multi-tenant-saas` main'e merge kararı bekliyor. React portu
+  (8/8 dilim) daha önce tamamlanıp merge edildi.
+- **Son tamamlanan:** **T5.2 davet/şifre-belirleme akışı.** Provizyonlanan
+  hr-admin ve işe alınan personel artık `demo123` yerine **şifresiz** oluşturulur;
+  davet e-postası (outbox stub) şifre-belirleme token'ı gönderir. Yeni uçlar:
+  `POST /api/auth/accept-invite` (anonim) + frontend `/#/accept-invite` sayfası
+  (token'la şifre belirle → otomatik giriş). Identity'ye `AddDefaultTokenProviders()`
+  eklendi (reset-token üretimi için). 79 entegrasyon + 9 birim (backend) ve 134
+  birim (frontend) test + her iki build yeşil.
+- **Multi-tenancy özeti:** Ortak DB + `TenantId` ayraç + EF global sorgu filtresi
+  (`ITenantScoped` üzerinden reflection'la, "filtre unutma" sızıntısı imkânsız);
+  kiracı JWT `tenant` claim'inden çözülür; SQL view'ler + `fn_WorkingDays` +
+  audit trigger'lar TenantId taşır; dosya deposu kiracı-kapsamlı. Provizyon
+  `POST /api/tenants` platform anahtarıyla (`X-Platform-Key`) korunur. İzolasyon
+  7 tenancy testiyle kanıtlı.
+- **Sıradaki adım:** T5.4 (KVKK/veri-izolasyonu dokümanı) — kalan tek Faz 5
+  maddesi. Ardından `feature/multi-tenant-saas` → main merge kararı. İleride
+  self-servis kayıt (Faz 5 ikinci yarısı) ve SMTP e-posta göndericisi.
 - **Referanslar:**
   - Tasarım dokümanı: `docs/superpowers/specs/2026-07-13-react-frontend-port-design.md`
   - Dilim 1 planı (tamamlandı): `docs/superpowers/plans/2026-07-13-react-port-dilim-1-iskelet.md`
@@ -35,6 +45,34 @@
 ---
 
 ## Kayıtlar (yeni → eski)
+
+### 2026-07-17 — Multi-tenancy Faz 5 / T5.2: Davet akışı
+
+- **Davet/şifre-belirleme akışı** geçici `demo123` şifresinin yerini aldı.
+  `IdentityService.CreateInvitedUserAsync` kullanıcıyı **şifresiz** oluşturur,
+  rol atar, `GeneratePasswordResetTokenAsync` ile davet token'ı üretir ve
+  `SendInviteEmailAsync` ile outbox'a (FileOutboxEmailSender) davet e-postası
+  bırakır. `CreateTenantAdminAsync` (companyName parametresi eklendi) ve
+  `CreateEmployeeLoginAsync` bu yardımcıyı çağırır.
+- **Yeni uç:** `AcceptInviteCommand` (+validator +handler) →
+  `POST /api/auth/accept-invite` (anonim, rate-limit "auth"). Token'la
+  `ResetPasswordAsync` çağırıp ilk şifreyi belirler; geçersiz token →
+  `ValidationException`.
+- **Frontend:** `AcceptInvitePage` (`/#/accept-invite?email=&token=`) —
+  şifre belirle → `accept-invite` → otomatik `login` → rol ana sayfası. Route
+  `PublicOnly` altında. Eksik/geçersiz bağlantıda uyarı.
+- **Kritik düzeltme:** `AddIdentityCore` zincirine `.AddDefaultTokenProviders()`
+  eklendi — yoksa `GeneratePasswordResetTokenAsync` "no token provider" ile
+  patlıyordu (provizyon/hire 500 dönüyordu).
+- **Test altyapısı:** `IKProApiFactory.StorageRoot` dışa açıldı;
+  `TenancyTestBase`e davet yardımcıları eklendi (`ReadInviteTokenAsync` outbox
+  JSON'undan `DAVET-KODU:` token'ını çeker, `AcceptInviteAsync`,
+  `ProvisionAndActivateAsync`). Provizyon/hire sonrası login yapan testler
+  (TenantProvisioning/Isolation/View/File + Recruitment) davet→kabul→giriş
+  akışına güncellendi.
+- **Doğrulama:** 79 entegrasyon + 9 birim (backend), 134 birim (frontend),
+  her iki build yeşil. AcceptInvitePage için 3 birim test (token eksik,
+  başarılı akış, şifre uyuşmazlığı).
 
 ### 2026-07-16 — Dilim 8: Kapanış
 

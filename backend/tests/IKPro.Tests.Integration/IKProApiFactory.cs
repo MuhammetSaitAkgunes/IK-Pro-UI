@@ -20,18 +20,21 @@ public sealed class IKProApiFactory : WebApplicationFactory<Program>
     /// <summary>Testlerde kiracı provizyon ucunu çağırmak için platform anahtarı.</summary>
     public const string PlatformKey = "test-platform-key";
 
+    /// <summary>Davet e-postalarının (outbox) yazıldığı kök — davet token'ını okumak için.</summary>
+    public string StorageRoot { get; }
+
     private const string TestConnectionString =
         $"Server=localhost;Database={TestDatabaseName};Trusted_Connection=True;TrustServerCertificate=True;Encrypt=False";
 
     public IKProApiFactory()
     {
+        StorageRoot = Path.Combine(Path.GetTempPath(), "ikpro-test-storage", Guid.NewGuid().ToString("N"));
+
         Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", TestConnectionString);
         Environment.SetEnvironmentVariable("Platform__ProvisioningKey", PlatformKey);
         // Testler çok sayıda login/provizyon yapar → rate limit'i etkisiz kıl.
         Environment.SetEnvironmentVariable("RateLimiting__AuthPermitPerMinute", "1000000");
-        Environment.SetEnvironmentVariable(
-            "Storage__Root",
-            Path.Combine(Path.GetTempPath(), "ikpro-test-storage", Guid.NewGuid().ToString("N")));
+        Environment.SetEnvironmentVariable("Storage__Root", StorageRoot);
 
         DropTestDatabase();
     }

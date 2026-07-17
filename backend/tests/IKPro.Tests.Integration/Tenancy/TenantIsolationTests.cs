@@ -16,7 +16,7 @@ public sealed class TenantIsolationTests(IKProApiFactory factory) : TenancyTestB
     {
         const string globexDept = "Globex Yazılım Ekibi";
         var adminEmail = $"admin-{Guid.NewGuid():N}@globex.local";
-        var tenant = await ProvisionTenantAsync("Globex Holding", adminEmail);
+        var tenant = await ProvisionAndActivateAsync("Globex Holding", adminEmail);
         await SeedInTenantAsync(tenant.TenantId, db =>
         {
             db.Departments.Add(new Department { Name = globexDept });
