@@ -62,6 +62,10 @@ yalnız kendini görür.
 
 ## Dokümantasyon
 
-- Kaldığımız yer + dilim geçmişi: `docs/gelistirme-gunlugu.md`
+- **Yeni başlayanlar için geliştirici rehberleri (A–Z):** `docs/rehberler/` —
+  genel bakış, kurulum, mimari, backend/frontend, kimlik, multi-tenancy, veritabanı,
+  testler, adım adım yeni özellik ekleme, sözlük/SSS.
+- KVKK & veri izolasyonu (derin): `docs/kvkk-veri-izolasyonu.md`
+- Kaldığımız yer + geçmiş: `docs/gelistirme-gunlugu.md`
 - React port tasarım kararları: `docs/superpowers/specs/2026-07-13-react-frontend-port-design.md`
-- Dilim planları (1–8): `docs/superpowers/plans/`
+- Planlar (dilim + SaaS/KVKK): `docs/superpowers/plans/`

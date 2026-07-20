@@ -1,0 +1,87 @@
+# 05 — Kimlik & Yetkilendirme
+
+Kullanıcı nasıl giriş yapar, oturum nasıl korunur, roller nasıl uygulanır ve yeni
+kullanıcılar nasıl güvenli kurulur — hepsi burada.
+
+## JWT + Refresh Token
+
+Giriş başarılı olunca backend iki token üretir:
+
+- **Access token (JWT):** Kısa ömürlü (varsayılan 60 dk). Her istekte
+  `Authorization: Bearer <token>` başlığında gider. İçinde **claim'ler** taşır:
+  `sub` (kullanıcı id), `name`, `email`, `role`, `employeeId`, **`tenant`** (kiracı id).
+- **Refresh token:** Uzun ömürlü (varsayılan 7 gün). Access token süresi dolunca
+  yenisini almak için kullanılır. DB'de **hash'lenmiş** saklanır.
+
+```mermaid
+sequenceDiagram
+    participant FE as Frontend
+    participant API as /api/auth
+    FE->>API: POST /login (email, şifre)
+    API-->>FE: access + refresh token
+    Note over FE: Access token süresi doldu (401)
+    FE->>API: POST /refresh (refresh token)
+    API-->>FE: YENİ access + refresh (rotasyon)
+```
+
+**Refresh rotasyonu:** Her refresh'te eski refresh token iptal edilir ve yeni bir
+çift üretilir. Çalınmış bir refresh token'ın tekrar kullanımını sınırlar. Bu mantık
+frontend'de `api/client.ts` (tek-uçuş refresh), backend'de `IdentityService`'tedir.
+
+## Roller ve Policy'ler
+
+Üç rol: `hr-admin`, `manager`, `employee`. Backend'de policy'lerle uygulanır
+(`Program.cs` + `Policies` sabitleri):
+
+```csharp
+[Authorize(Policy = Policies.HrAdminOnly)]   // yalnız hr-admin
+[Authorize(Policy = Policies.Management)]     // hr-admin + manager
+[Authorize(Policy = Policies.PayrollAccess)]  // hr-admin + employee
+```
+
+Ek olarak **kapsam daraltma** vardır: bir `manager` yalnız kendi ekibini, bir
+`employee` yalnız kendini görür. Bu, handler'larda `ICurrentUser.EmployeeId` ile
+sorguları filtreleyerek yapılır (ör. `GetTeamLeavesQuery` yöneticinin ekibiyle sınırlar).
+
+> **Kural:** Yetki iki katmanlıdır — (1) policy rolü kontrol eder, (2) sorgu kapsamı
+> kullanıcının görebileceği satırları daraltır. İkisi birlikte "yatay yetki yükseltme"yi
+> (başka çalışanın verisini görme) engeller.
+
+## Güvenli Kullanıcı Kurulumu: Davet Akışı
+
+Yeni kullanıcılar **paylaşılan geçici şifre almaz.** Bunun yerine:
+
+```mermaid
+flowchart LR
+    A["Kullanıcı ŞİFRESİZ oluşturulur"] --> B["Davet e-postası + token gönderilir"]
+    B --> C["Kullanıcı /accept-invite ile şifre belirler"]
+    C --> D["Hesap etkin, giriş yapabilir"]
+```
+
+Bu akış iki yerde tetiklenir:
+- **Kiracı provizyonu / self-servis kayıt:** ilk `hr-admin` şifresiz oluşur, davet alır.
+- **İşe alım (hire):** aday `employee`'ye dönüşünce şifresiz login + davet alır.
+
+**Uçlar:**
+- `POST /api/auth/accept-invite` — davet token'ıyla ilk şifreyi belirler (anonim).
+- Token geçersiz/süresi geçmişse reddedilir.
+- Frontend sayfası: `/#/accept-invite?email=...&token=...` (`AcceptInvitePage.tsx`).
+
+Davet e-postaları `Email:Mode` ayarına göre gider: `outbox` (dev — dosyaya yazar)
+veya `smtp` (üretim — MailKit). Detay: [06](06-multi-tenancy.md) ve KVKK dokümanı.
+
+## Kayıt Uçları — Kim Ne Yapar?
+
+| Uç | Kim çağırır | Sonuç |
+| --- | --- | --- |
+| `POST /api/auth/register` | Anonim | **Her zaman `employee`** rolüyle kayıt (istemci rol gönderemez — güvenlik) |
+| `POST /api/tenants` | Platform (X-Platform-Key) | Yeni kiracı + ilk hr-admin (provizyon) |
+| `POST /api/tenants/signup` | Anonim (public) | Self-servis: yeni şirket + hr-admin (pasif, doğrulanınca aktif) |
+
+> **Önemli güvenlik notu:** Anonim `register` ucu, gövdede rol gelse bile onu
+> **yok sayar** ve daima `employee` atar. Aksi halde kimliği doğrulanmamış biri
+> admin hesabı açabilirdi.
+
+## Sonraki Adım
+
+Kiracı izolasyonunun tamamı → [06 — Multi-Tenancy](06-multi-tenancy.md).
