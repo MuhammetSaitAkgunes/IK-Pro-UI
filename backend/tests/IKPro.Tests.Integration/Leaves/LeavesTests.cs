@@ -80,7 +80,23 @@ public sealed class LeavesTests(IKProApiFactory factory)
         (await ece.PostAsJsonAsync($"/api/leaves/{created.Id}/reject", new { }))
             .StatusCode.Should().Be(HttpStatusCode.Conflict);
 
-        // Takım widget'ı: bugün 2026-07-12, izin 14 günlük pencere içinde.
+        // Takım widget'ı ileri-bakışlı 14 günlük pencere kullanır (EndDate >= bugün).
+        // Bugüne GÖRELİ, onaylı bir izinle test et — sabit tarihli senaryo takvim
+        // ilerledikçe kırılmasın (yukarıdaki Temmuz izni geçmişte kalabilir).
+        var soonStart = DateOnly.FromDateTime(DateTime.UtcNow);
+        var soonEnd = soonStart.AddDays(4);
+        var soonResponse = await ahmet.PostAsJsonAsync("/api/leaves", new
+        {
+            leaveTypeId = yillik.Id,
+            startDate = soonStart.ToString("yyyy-MM-dd"),
+            endDate = soonEnd.ToString("yyyy-MM-dd"),
+            description = "Yaklaşan izin",
+        });
+        soonResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var soon = (await soonResponse.Content.ReadFromJsonAsync<LeaveRequestDto>())!;
+        (await ece.PostAsJsonAsync($"/api/leaves/{soon.Id}/approve", new { note = "onay" }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
         var team = await GetAsync<List<TeamLeaveDto>>(ece, "/api/leaves/team");
         team.Should().Contain(t => t.EmployeeName == "Ahmet Yılmaz" && t.LeaveTypeName == "Yıllık İzin");
 

@@ -90,6 +90,7 @@ public static class DependencyInjection
         services.AddSingleton<Application.Features.Payroll.Payslips.IPayslipGenerator, Pdf.QuestPdfPayslipGenerator>();
         services.AddScoped<JwtTokenService>();
         services.AddScoped<IIdentityService, IdentityService>();
+        services.AddScoped<ITenantPurger, Persistence.TenantPurger>();
         services.AddSingleton<IFileStorage, Storage.LocalFileStorage>();
         services.AddSingleton<IEmailSender, Email.FileOutboxEmailSender>();
         services.AddScoped<AppDbContextInitializer>();
