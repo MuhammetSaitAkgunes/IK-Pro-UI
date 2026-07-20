@@ -6,10 +6,10 @@
 
 ## Şu an neredeyiz
 
-- **Aktif iş:** **İlgili kişi verisi dışa aktarımı (KVKK taşınabilirlik).**
-  Dal `feature/data-export` main'e merge kararı bekliyor. SMTP göndericisi,
-  kiracı purge, self-servis kayıt, multi-tenant (Faz 0–5) ve React portu (8/8)
-  daha önce merge/push edildi.
+- **Aktif iş:** **Doğrulanmamış kiracı zamanlanmış temizlik** (uygulama-içi
+  `BackgroundService`). Dal `feature/scheduled-cleanup` main'e merge kararı
+  bekliyor. Veri dışa aktarımı, SMTP göndericisi, kiracı purge, self-servis
+  kayıt, multi-tenant (Faz 0–5) ve React portu (8/8) daha önce merge/push edildi.
 - **Son tamamlanan:** **T5.2 davet/şifre-belirleme akışı.** Provizyonlanan
   hr-admin ve işe alınan personel artık `demo123` yerine **şifresiz** oluşturulur;
   davet e-postası (outbox stub) şifre-belirleme token'ı gönderir. Yeni uçlar:
@@ -23,7 +23,15 @@
   audit trigger'lar TenantId taşır; dosya deposu kiracı-kapsamlı. Provizyon
   `POST /api/tenants` platform anahtarıyla (`X-Platform-Key`) korunur. İzolasyon
   7 tenancy testiyle kanıtlı.
-- **Son tamamlanan:** İlgili kişi verisi dışa aktarımı — `GET /api/me/data-export`:
+- **Son tamamlanan:** Doğrulanmamış kiracı zamanlanmış temizlik —
+  `UnverifiedTenantCleanupService` (`BackgroundService`), `cleanup-unverified`'ı
+  uygulama-içi periyodik çalıştırır (dış cron gerektirmez). Mevcut
+  `CleanupUnverifiedTenantsCommand`'i yeniden kullanır (yeni silme mantığı yok);
+  tek geçiş `RunOnceAsync`'e ayrıldı (deterministik test, timer flakiness yok).
+  `Cleanup:UnverifiedTenants` ile yapılandırılır; **varsayılan kapalı** (yıkıcı
+  işlem, opt-in). 19 birim + 91 entegrasyon (+1) yeşil. Plan:
+  `docs/superpowers/plans/2026-07-20-dogrulanmamis-kiraci-zamanlanmis-temizlik.md`.
+- **Önceki tamamlanan:** İlgili kişi verisi dışa aktarımı — `GET /api/me/data-export`:
   oturum açmış herhangi bir kullanıcı kendi verisini tek istekle JSON paketi
   olarak indirir (hesap + varsa bağlı personel/profil + izin + puantaj + uyum
   belgeleri + bordro listesi metadata). Yalnız kendi `EmployeeId`'sine bağlı
@@ -63,9 +71,8 @@
   (frontend), her iki build yeşil. Plan:
   `docs/superpowers/plans/2026-07-17-self-servis-kiraci-kaydi.md`.
 - **Sıradaki adaylar:** kiracı verisi **anonimleştirme** varyantı (silme yerine
-  PII maskeleme), kiracı bazlı yedekleme/geri yükleme, purge/cleanup uçlarının
-  bir cron/scheduler'a bağlanması, fiziksel dosya at-rest şifreleme. Detay:
-  `docs/kvkk-veri-izolasyonu.md` Bölüm 7.
+  PII maskeleme), kiracı bazlı yedekleme/geri yükleme, fiziksel dosya at-rest
+  şifreleme. Detay: `docs/kvkk-veri-izolasyonu.md` Bölüm 7.
 - **Referanslar:**
   - Tasarım dokümanı: `docs/superpowers/specs/2026-07-13-react-frontend-port-design.md`
   - Dilim 1 planı (tamamlandı): `docs/superpowers/plans/2026-07-13-react-port-dilim-1-iskelet.md`
@@ -86,6 +93,26 @@
 ---
 
 ## Kayıtlar (yeni → eski)
+
+### 2026-07-20 — Doğrulanmamış kiracı zamanlanmış temizlik
+
+- **`UnverifiedTenantCleanupService`** (`BackgroundService`, API katmanı):
+  doğrulanmamış (hiç etkinleşmemiş) eski self-servis kiracıların uygulama-içi
+  periyodik temizliği — dış cron/scheduler gerektirmez. `IServiceScopeFactory`
+  ile scope açıp mevcut `CleanupUnverifiedTenantsCommand`'i `ISender` üzerinden
+  çağırır (silme mantığı tekrarlanmadı, DRY). `ExecuteAsync` `PeriodicTimer` ile
+  döngüler; bir geçiş hatası döngüyü öldürmez (loglanıp sonraki tetiklemede
+  yeniden denenir).
+- **Test edilebilirlik:** tek geçiş `RunOnceAsync` metoduna ayrıldı → entegrasyon
+  testi timer'a bağımlı olmadan deterministik (eski doğrulanmamış kiracı silinir,
+  aktif kiracı korunur).
+- **Yapılandırma:** `Cleanup:UnverifiedTenants` (`Enabled`/`IntervalHours`/
+  `OlderThanDays`). Yıkıcı işlem olduğu için **varsayılan `Enabled=false`** —
+  dev/test'te sessiz (mevcut testleri etkilemez), üretimde bilinçli açılır.
+  `appsettings.json`'a açıklamalı örnek blok eklendi.
+- **Doğrulama:** 1 yeni entegrasyon testi; 19 birim + 91 entegrasyon yeşil.
+- KVKK dokümanı Bölüm 7.1 güncellendi ("cron ile tetiklenebilir" → "uygulama-içi
+  zamanlayıcı mevcut").
 
 ### 2026-07-20 — İlgili kişi verisi dışa aktarımı (KVKK taşınabilirlik)
 
