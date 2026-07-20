@@ -125,8 +125,10 @@ Kiracılar arası güvenli hesap kurulumu için geçici paylaşılan şifreler
 kullanılmaz:
 
 - Provizyonlanan `hr-admin` ve işe alınan personel **şifresiz** oluşturulur.
-- Sisteme bir davet e-postası (şu an outbox stub; prod'da SMTP) + şifre-belirleme
-  token'ı gönderilir.
+- Sisteme bir davet e-postası + şifre-belirleme token'ı gönderilir.
+  Gönderim `Email:Mode` yapılandırmasına göre değişir: varsayılan `outbox`
+  (dev/demo, dosyaya yazar); üretimde `smtp` (MailKit, gerçek SMTP — Host/From
+  eksikse startup fail-fast).
 - Kullanıcı `POST /api/auth/accept-invite` (veya `/#/accept-invite` sayfası) ile
   kendi şifresini belirler; token geçersiz/süresi geçmişse reddedilir.
 
@@ -192,8 +194,10 @@ Dürüstlük için, bugün **otomatik olmayan** veya eksik olan maddeler:
 3. **Fiziksel dosya şifreleme / kiracı-kapsamlı fiziksel ayrım.** Bugün erişim
    metadata ile kapılı; blob'lar ortak kökte şifresiz. **Yapılacak:** at-rest
    şifreleme ve/veya kiracı-önekli depolama.
-4. **Gerçek e-posta (SMTP).** Davet e-postaları bugün dosya outbox'ına yazılır;
-   prod SMTP göndericisi **yapılacak.**
+4. **Gerçek e-posta (SMTP) — MEVCUT.** `IEmailSender`'ın MailKit tabanlı SMTP
+   implementasyonu eklendi; `Email:Mode=smtp` + `Smtp:Host`/`Smtp:From` (env'den)
+   ile etkinleşir. Varsayılan hâlâ `outbox` (dev/demo). Üretime geçerken yalnız
+   yapılandırma değişir, kod değişmez.
 5. **Yedekleme/geri yükleme kiracı granülaritesi.** Ortak DB yedeği tüm
    kiracıları kapsar; tek-kiracı geri yükleme prosedürü tanımlı değil.
 
@@ -206,6 +210,8 @@ adımlar" ve MVP sertleştirme kapsamıyla uyumludur.
 
 - [ ] `Jwt:Secret`, connection string ve `Platform:ProvisioningKey` ortam
       değişkeninden geliyor; dev placeholder yok (prod fail-fast doğrular).
+- [ ] `Email:Mode=smtp` + `Smtp:Host`/`Smtp:From` yapılandırılmış; `Smtp:Password`
+      ortam değişkeninden geliyor (appsettings'e yazılmadı).
 - [ ] HTTPS zorunlu; token'lar yalnız TLS üzerinden.
 - [ ] Yeni eklenen her veri tablosu `BaseEntity`'den türüyor (otomatik kiracı
       filtresi) **veya** bilinçli olarak kiracı-üstü ve gözden geçirilmiş.
@@ -217,6 +223,7 @@ adımlar" ve MVP sertleştirme kapsamıyla uyumludur.
 
 ---
 
-*Son güncelleme: 2026-07-20 — kiracı purge & doğrulanmamış temizlik eklendi
-(Bölüm 7.1 otomatikleşti). Uygulama değiştikçe bu dosya da güncellenmelidir;
-özellikle Bölüm 7'deki maddeler tamamlandıkça Bölüm 6 tablosuna taşınır.*
+*Son güncelleme: 2026-07-20 — SMTP gerçek e-posta göndericisi eklendi (Bölüm 7.4
+otomatikleşti); önceki güncelleme aynı gün kiracı purge & doğrulanmamış temizlik
+(Bölüm 7.1). Uygulama değiştikçe bu dosya da güncellenmelidir; özellikle Bölüm 7'deki
+maddeler tamamlandıkça Bölüm 6 tablosuna taşınır.*

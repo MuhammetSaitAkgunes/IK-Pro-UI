@@ -33,6 +33,11 @@
     <PackageVersion Include="QuestPDF" Version="2024.12.3" />
   </ItemGroup>
 
+  <ItemGroup Label="E-posta">
+    <!-- 4.16.0: CVE-2026-41319 (StartTls SASL indirgeme) yaması — daha eski sürüme düşürmeyin. -->
+    <PackageVersion Include="MailKit" Version="4.16.0" />
+  </ItemGroup>
+
   <ItemGroup Label="Logging">
     <PackageVersion Include="Serilog.AspNetCore" Version="8.0.3" />
     <PackageVersion Include="Serilog.Sinks.Console" Version="6.0.0" />

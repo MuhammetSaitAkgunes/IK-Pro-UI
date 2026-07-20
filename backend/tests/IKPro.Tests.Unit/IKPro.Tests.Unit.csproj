@@ -20,6 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\IKPro.Application\IKPro.Application.csproj" />
     <ProjectReference Include="..\..\src\IKPro.Domain\IKPro.Domain.csproj" />
+    <ProjectReference Include="..\..\src\IKPro.Infrastructure\IKPro.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

@@ -92,7 +92,21 @@ public static class DependencyInjection
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<ITenantPurger, Persistence.TenantPurger>();
         services.AddSingleton<IFileStorage, Storage.LocalFileStorage>();
-        services.AddSingleton<IEmailSender, Email.FileOutboxEmailSender>();
+        // E-posta: Email:Mode=smtp → gerçek SMTP (MailKit, fail-fast doğrulamalı);
+        // aksi halde (varsayılan "outbox") dosya stub'ı — dev/test davranışı değişmez.
+        var emailMode = configuration["Email:Mode"] ?? "outbox";
+        if (string.Equals(emailMode, "smtp", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddOptions<Email.SmtpOptions>()
+                .Bind(configuration.GetSection(Email.SmtpOptions.SectionName))
+                .Validate(o => { o.Validate(); return true; })
+                .ValidateOnStart();
+            services.AddSingleton<IEmailSender, Email.MailKitSmtpEmailSender>();
+        }
+        else
+        {
+            services.AddSingleton<IEmailSender, Email.FileOutboxEmailSender>();
+        }
         services.AddScoped<AppDbContextInitializer>();
 
         return services;

@@ -6,10 +6,9 @@
 
 ## Şu an neredeyiz
 
-- **Aktif iş:** **Kiracı purge & doğrulanmamış kiracı temizliği** (KVKK
-  unutulma hakkı otomasyonu). Dal `feature/tenant-purge` main'e merge kararı
-  bekliyor. Self-servis kayıt, multi-tenant (Faz 0–5) ve React portu (8/8)
-  daha önce merge/push edildi.
+- **Aktif iş:** **SMTP gerçek e-posta göndericisi.** Dal `feature/smtp-email`
+  main'e merge kararı bekliyor. Kiracı purge, self-servis kayıt, multi-tenant
+  (Faz 0–5) ve React portu (8/8) daha önce merge/push edildi.
 - **Son tamamlanan:** **T5.2 davet/şifre-belirleme akışı.** Provizyonlanan
   hr-admin ve işe alınan personel artık `demo123` yerine **şifresiz** oluşturulur;
   davet e-postası (outbox stub) şifre-belirleme token'ı gönderir. Yeni uçlar:
@@ -23,7 +22,18 @@
   audit trigger'lar TenantId taşır; dosya deposu kiracı-kapsamlı. Provizyon
   `POST /api/tenants` platform anahtarıyla (`X-Platform-Key`) korunur. İzolasyon
   7 tenancy testiyle kanıtlı.
-- **Son tamamlanan:** Kiracı purge — `ITenantPurger` bir kiracının TÜM verisini
+- **Son tamamlanan:** SMTP gerçek e-posta göndericisi — `IEmailSender`'ın MailKit
+  tabanlı `MailKitSmtpEmailSender` implementasyonu eklendi. Seçim `Email:Mode`
+  yapılandırmasıyla yapılır: varsayılan `outbox` (dev/demo/test — davranış
+  DEĞİŞMEDİ, davet testleri hâlâ dosyadan token okuyor); `smtp` → `SmtpOptions`
+  (Host/Port/User/Password/From/FromName/UseStartTls) bağlanır ve `ValidateOnStart()`
+  ile fail-fast doğrulanır (Host veya From eksikse başlangıçta patlar — JWT sır
+  kontrolüyle aynı ilke). MailKit 4.16.0 seçildi (4.8.0'da CVE-2026-41319 StartTls/SASL
+  indirgeme açığı vardı, restore uyarısıyla yakalandı). `appsettings.json`'a örnek
+  `Email`/`Smtp` bloğu eklendi (şifre boş — env'den gelir). 19 birim (+4 SmtpOptions)
+  + 88 entegrasyon (+1 seçim testi) yeşil. Plan:
+  `docs/superpowers/plans/2026-07-20-smtp-eposta-gonderici.md`.
+- **Önceki tamamlanan:** Kiracı purge — `ITenantPurger` bir kiracının TÜM verisini
   (ITenantScoped tablolar EF metadata'sından FK-güvenli sırada + kullanıcılar +
   refresh token + audit + fiziksel evrak + kiracı satırı) tek transaction'da
   siler. Uçlar: `DELETE /api/tenants/{id}?confirmSlug=` (platform-key + slug
@@ -40,10 +50,10 @@
   sayfası + login bağlantısı. 15 birim + 82 entegrasyon (backend), 136 birim
   (frontend), her iki build yeşil. Plan:
   `docs/superpowers/plans/2026-07-17-self-servis-kiraci-kaydi.md`.
-- **Sıradaki adaylar:** SMTP gerçek e-posta göndericisi, kiracı verisi
-  **anonimleştirme** varyantı (silme yerine PII maskeleme), ilgili kişi verisi
-  dışa aktarımı (KVKK taşınabilirlik), kiracı bazlı yedekleme/geri yükleme.
-  Detay: `docs/kvkk-veri-izolasyonu.md` Bölüm 7.
+- **Sıradaki adaylar:** kiracı verisi **anonimleştirme** varyantı (silme yerine
+  PII maskeleme), ilgili kişi verisi dışa aktarımı (KVKK taşınabilirlik), kiracı
+  bazlı yedekleme/geri yükleme, purge/cleanup uçlarının bir cron/scheduler'a
+  bağlanması. Detay: `docs/kvkk-veri-izolasyonu.md` Bölüm 7.
 - **Referanslar:**
   - Tasarım dokümanı: `docs/superpowers/specs/2026-07-13-react-frontend-port-design.md`
   - Dilim 1 planı (tamamlandı): `docs/superpowers/plans/2026-07-13-react-port-dilim-1-iskelet.md`
@@ -64,6 +74,32 @@
 ---
 
 ## Kayıtlar (yeni → eski)
+
+### 2026-07-20 — SMTP gerçek e-posta göndericisi
+
+- **`MailKitSmtpEmailSender`** (`IEmailSender` implementasyonu, MailKit): MimeMessage
+  kurup `SmtpClient` ile bağlanır (StartTls veya SslOnConnect — `Smtp:UseStartTls`),
+  gerekiyorsa authenticate olur, gönderir. `IEmailSender` soyutlaması hiç değişmedi —
+  davet akışı (T5.2) kodunda tek satır değişiklik yok.
+- **Seçim mekanizması** (`DependencyInjection.cs`): `Email:Mode` config değeri
+  okunur. Varsayılan (yapılandırılmamış veya `outbox`) → mevcut `FileOutboxEmailSender`
+  (dev/demo/**test davranışı birebir korunur** — davet testleri hâlâ outbox
+  dosyasından `DAVET-KODU:` okuyor). `smtp` → `SmtpOptions` bağlanır ve
+  `.ValidateOnStart()` ile **fail-fast**: `Smtp:Host` veya `Smtp:From` boşsa
+  uygulama başlangıçta patlar (JWT sır kontrolüyle aynı "üretimde yanlış
+  yapılandırma sessizce geçmesin" ilkesi).
+- **Güvenlik notu:** MailKit ilk denemede 4.8.0 ile geldi; `dotnet restore`
+  NU1902 uyarısıyla CVE-2026-41319'u (StartTls sırasında SASL mekanizması
+  indirgeme) yakaladı. GitHub advisory'sinden yamalı sürüm (4.16.0) doğrulanıp
+  yükseltildi; restore artık temiz.
+- **Yapılandırma:** `appsettings.json`'a örnek `Email`/`Smtp` bloğu eklendi
+  (şifre alanı boş bırakıldı — `Smtp__Password` env'den gelmeli, commit'e
+  yazılmadı).
+- **Doğrulama:** 19 birim (+4 `SmtpOptionsTests`: Host/From eksik → exception,
+  tam yapılandırma → sorunsuz, varsayılan Port=587/StartTls=true) + 88
+  entegrasyon (+1 `EmailSenderSelectionTests`: varsayılan modda DI'nin
+  `FileOutboxEmailSender` çözdüğünü doğrular) yeşil.
+- KVKK dokümanı Bölüm 4 ve 7.4 güncellendi ("prod'da SMTP" → "mevcut, MailKit").
 
 ### 2026-07-20 — Kiracı purge & doğrulanmamış kiracı temizliği
 
