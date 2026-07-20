@@ -3,6 +3,7 @@ using IKPro.Domain.Common;
 using IKPro.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.Extensions.Logging;
 
 namespace IKPro.Infrastructure.Persistence;
 
@@ -11,8 +12,11 @@ namespace IKPro.Infrastructure.Persistence;
 /// metadata'sından türetilir (ITenantScoped + PK'lı = view'ler hariç); yeni bir
 /// kiracı-kapsamlı tablo eklendiğinde otomatik kapsama girer (unutma sızıntısı yok).
 /// </summary>
-public sealed class TenantPurger(AppDbContext context, ICurrentTenant currentTenant, IFileStorage fileStorage)
-    : ITenantPurger
+public sealed class TenantPurger(
+    AppDbContext context,
+    ICurrentTenant currentTenant,
+    IFileStorage fileStorage,
+    ILogger<TenantPurger> logger) : ITenantPurger
 {
     public async Task PurgeAsync(int tenantId, CancellationToken cancellationToken)
     {
@@ -51,10 +55,30 @@ public sealed class TenantPurger(AppDbContext context, ICurrentTenant currentTen
 
         await tx.CommitAsync(cancellationToken);
 
-        // 4) Fiziksel dosyalar (DB tutarlılığından sonra; best-effort).
+        // 4) Fiziksel dosyalar (DB tutarlılığından SONRA — rollback olursa dosya kaybı olmasın).
+        // Her dosya ayrı ele alınır: biri silinemezse (kilit/izin) işlem yarıda kesilmez ve
+        // hata sessizce yutulmaz — elle temizlik için LOUD loglanır (KVKK artık PII riski).
+        var failedFiles = 0;
         foreach (var path in filePaths)
         {
-            await fileStorage.DeleteAsync(path, cancellationToken);
+            try
+            {
+                await fileStorage.DeleteAsync(path, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                failedFiles++;
+                logger.LogError(ex,
+                    "Kiracı {TenantId} purge: dosya silinemedi ({Path}) — elle temizlik gerekebilir.",
+                    tenantId, path);
+            }
+        }
+
+        if (failedFiles > 0)
+        {
+            logger.LogWarning(
+                "Kiracı {TenantId} purge tamamlandı ancak {Count} fiziksel dosya silinemedi.",
+                tenantId, failedFiles);
         }
     }
 

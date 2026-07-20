@@ -56,6 +56,88 @@ public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(
     }
 
     [Fact]
+    public async Task Purge_DeletesPhysicalDocumentFiles()
+    {
+        var t = await ProvisionAndActivateAsync("Dosyalı A.Ş.", $"f-{Guid.NewGuid():N}@purge.local");
+
+        // Gerçek bir dosya yaz ve ona işaret eden bir EmployeeDocument seed'le.
+        var storage = Factory.Services.GetRequiredService<IFileStorage>();
+        var stored = await storage.SaveAsync(
+            new MemoryStream(new byte[] { 1, 2, 3 }), "gizli.pdf", "docs", CancellationToken.None);
+
+        await SeedInTenantAsync(t.TenantId, async db =>
+        {
+            var dept = new Department { Name = "Dosya-Dept" };
+            db.Departments.Add(dept);
+            await db.SaveChangesAsync();
+
+            var emp = new Employee
+            {
+                FirstName = "Ada", LastName = "Kayıt", Title = "Uzman",
+                DepartmentId = dept.Id, HireDate = new DateOnly(2024, 1, 1),
+            };
+            db.Employees.Add(emp);
+            await db.SaveChangesAsync();
+
+            db.EmployeeDocuments.Add(new EmployeeDocument
+            {
+                EmployeeId = emp.Id, DocumentType = "Sözleşme",
+                FileName = "gizli.pdf", FilePath = stored.Path, SizeBytes = 3,
+            });
+        });
+
+        var fullPath = Path.Combine(Factory.StorageRoot, stored.Path.Replace('/', Path.DirectorySeparatorChar));
+        File.Exists(fullPath).Should().BeTrue("dosya purge öncesi diskte olmalı");
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<ITenantPurger>()
+                .PurgeAsync(t.TenantId, CancellationToken.None);
+        }
+
+        File.Exists(fullPath).Should().BeFalse("purge fiziksel evrak dosyasını da silmeli (KVKK)");
+    }
+
+    [Fact]
+    public async Task Purge_WithUndeletableFile_DoesNotThrow_AndStillPurges()
+    {
+        var t = await ProvisionAndActivateAsync("Bozuk Dosya A.Ş.", $"b-{Guid.NewGuid():N}@purge.local");
+
+        await SeedInTenantAsync(t.TenantId, async db =>
+        {
+            var dept = new Department { Name = "Bozuk-Dept" };
+            db.Departments.Add(dept);
+            await db.SaveChangesAsync();
+            var emp = new Employee
+            {
+                FirstName = "Bora", LastName = "Bozuk", Title = "Uzman",
+                DepartmentId = dept.Id, HireDate = new DateOnly(2024, 1, 1),
+            };
+            db.Employees.Add(emp);
+            await db.SaveChangesAsync();
+
+            // Kök dışına kaçan yol → LocalFileStorage.DeleteAsync fırlatır; purge yine de bitmeli.
+            db.EmployeeDocuments.Add(new EmployeeDocument
+            {
+                EmployeeId = emp.Id, DocumentType = "Sözleşme",
+                FileName = "x.pdf", FilePath = $"../kacan-{Guid.NewGuid():N}.pdf", SizeBytes = 1,
+            });
+        });
+
+        var purge = async () =>
+        {
+            using var scope = Factory.Services.CreateScope();
+            await scope.ServiceProvider.GetRequiredService<ITenantPurger>()
+                .PurgeAsync(t.TenantId, CancellationToken.None);
+        };
+        await purge.Should().NotThrowAsync("silinemeyen bir dosya purge'ü yarıda kesmemeli");
+
+        using var check = Factory.Services.CreateScope();
+        var db2 = check.ServiceProvider.GetRequiredService<AppDbContext>();
+        (await db2.Tenants.AnyAsync(x => x.Id == t.TenantId)).Should().BeFalse("kiracı verisi yine de silinmeli");
+    }
+
+    [Fact]
     public async Task Delete_WithWrongSlug_Returns409_AndKeepsData()
     {
         var t = await ProvisionAndActivateAsync("Yanlış Onay A.Ş.", $"w-{Guid.NewGuid():N}@purge.local");
