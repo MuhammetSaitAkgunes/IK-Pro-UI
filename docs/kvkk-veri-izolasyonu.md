@@ -182,6 +182,9 @@ Dürüstlük için, bugün **otomatik olmayan** veya eksik olan maddeler:
    transaction'da siler: tüm kiracı-kapsamlı satırlar + kullanıcılar + refresh
    token'lar + audit + fiziksel evrak dosyaları + kiracı satırı. Yeni bir
    kiracı-kapsamlı tablo eklendiğinde otomatik kapsanır (unutma sızıntısı yok).
+   Fiziksel dosyalar DB commit'inden sonra silinir; bir dosya silinemezse işlem
+   yarıda kesilmez ve hata sessizce yutulmaz — elle temizlik için loglanır
+   (artık PII riski görünür kalır).
    - **Doğrulanmamış kiracı temizliği:** `POST /api/tenants/cleanup-unverified?olderThanDays=`
      — pasif + eski + hiç şifre belirlememiş (davet hiç kabul edilmemiş, self-servis)
      kiracıları toplu siler; askıya alınmış (şifreli kullanıcısı olan) kiracılar
