@@ -162,7 +162,7 @@ sorusuna kiracı-kapsamlı yanıt verebilmeyi hedefler.
 | **Veri sorumlusu / veri işleyen ayrımı** | Her müşteri şirketi kendi verisinin **veri sorumlusudur**; İK Pro işletmecisi **veri işleyendir**. Kiracı ayrımı bu sınırın teknik zeminidir. |
 | **Hesap verebilirlik / izlenebilirlik** | Kiracı-kapsamlı audit log (Bölüm 5). |
 | **Saklama süresi / silme** | Kiracı pasifleştirme + **otomatik kalıcı silme** (`DELETE /api/tenants/{id}`, confirm-slug) ve doğrulanmamış kiracı temizliği mevcut; anonimleştirme varyantı yol haritasında (Bölüm 7). |
-| **İlgili kişi hakları (erişim, düzeltme, silme, taşınabilirlik)** | Erişim/düzeltme uygulama içinden; toplu dışa aktarma/silme için elle prosedür (Bölüm 7). |
+| **İlgili kişi hakları (erişim, düzeltme, silme, taşınabilirlik)** | Erişim/düzeltme uygulama içinden; **kendi veri dışa aktarımı** (`GET /api/me/data-export`, JSON) ve **kiracı silme** (`DELETE /api/tenants/{id}`) mevcut; anonimleştirme varyantı yol haritasında (Bölüm 7). |
 
 > **Sorumluluk sınırı:** Bu doküman teknik izolasyonu belgeler; bir müşteriyle
 > yapılacak KVKK/veri işleme sözleşmesi (DPA), aydınlatma metni ve VERBİS
@@ -189,8 +189,17 @@ Dürüstlük için, bugün **otomatik olmayan** veya eksik olan maddeler:
    - **Halen yapılacak:** *anonimleştirme* varyantı (silme yerine PII maskeleyip
      istatistiği koruma) ve silme işleminin ayrı bir denetim kaydına (audit)
      yazılması.
-2. **İlgili kişi verisi dışa aktarımı (taşınabilirlik).** Tek çalışanın tüm
-   verisini standart formatta paketleyen uç yok — **yapılacak.**
+2. **İlgili kişi verisi dışa aktarımı (taşınabilirlik) — MEVCUT.**
+   `GET /api/me/data-export` — oturum açmış herhangi bir kullanıcı (rolden
+   bağımsız) kendi verisini tek istekle makine-okunur JSON paketi olarak indirir:
+   hesap bilgisi, (varsa) bağlı personel kaydı + profil (iletişim/banka/özlük),
+   izin talepleri ve bakiyeleri, puantaj kayıtları, uyum belgeleri, bordro
+   pusulası listesi. Yalnız **kendi** `EmployeeId`'sine bağlı kayıtlar dahil
+   edilir — başka kullanıcının verisi asla sızmaz (tenant izolasyonu + sorgu
+   daraltması çifte güvence; entegrasyon testiyle kanıtlı). Frontend'de üst
+   menüde "Verilerimi indir" ikonu. Fiziksel evrak dosyalarının (PDF vb.)
+   pakete gömülmesi kapsam dışı — yalnız metadata döner (bkz. madde 3'teki
+   fiziksel dosya durumu).
 3. **Fiziksel dosya şifreleme / kiracı-kapsamlı fiziksel ayrım.** Bugün erişim
    metadata ile kapılı; blob'lar ortak kökte şifresiz. **Yapılacak:** at-rest
    şifreleme ve/veya kiracı-önekli depolama.
@@ -223,7 +232,8 @@ adımlar" ve MVP sertleştirme kapsamıyla uyumludur.
 
 ---
 
-*Son güncelleme: 2026-07-20 — SMTP gerçek e-posta göndericisi eklendi (Bölüm 7.4
-otomatikleşti); önceki güncelleme aynı gün kiracı purge & doğrulanmamış temizlik
-(Bölüm 7.1). Uygulama değiştikçe bu dosya da güncellenmelidir; özellikle Bölüm 7'deki
-maddeler tamamlandıkça Bölüm 6 tablosuna taşınır.*
+*Son güncelleme: 2026-07-20 — ilgili kişi verisi dışa aktarımı eklendi (Bölüm 7.2
+otomatikleşti). Aynı gün önceki güncellemeler: SMTP gerçek e-posta göndericisi
+(Bölüm 7.4), kiracı purge & doğrulanmamış temizlik (Bölüm 7.1). Uygulama
+değiştikçe bu dosya da güncellenmelidir; özellikle Bölüm 7'deki maddeler
+tamamlandıkça Bölüm 6 tablosuna taşınır.*
