@@ -1,7 +1,6 @@
 using FluentValidation;
 using IKPro.Application.Common.Exceptions;
 using IKPro.Application.Common.Interfaces;
-using IKPro.Domain.Entities.Tenancy;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -46,24 +45,13 @@ public sealed class ProvisionTenantCommandHandler(IApplicationDbContext context,
             throw new ConflictException($"'{slug}' kısa adıyla bir şirket zaten var.");
         }
 
-        // Admin e-postasını önce doğrula — kiracı yazılmadan çakışmayı yakala (orphan önlenir).
-        if (await identityService.EmailExistsAsync(request.AdminEmail, cancellationToken))
-        {
-            throw new ConflictException($"'{request.AdminEmail}' e-postasıyla kayıtlı bir hesap zaten var.");
-        }
-
-        var tenant = new Tenant
-        {
-            Name = request.CompanyName.Trim(),
-            Slug = slug,
-            IsActive = true,
-            CreatedAtUtc = DateTime.UtcNow,
-        };
-        context.Tenants.Add(tenant);
-        await context.SaveChangesAsync(cancellationToken);
-
-        await identityService.CreateTenantAdminAsync(
-            tenant.Id, request.AdminName.Trim(), request.AdminEmail.Trim(), tenant.Name, cancellationToken);
+        // Provizyon (platform-key) güvenilir → kiracı aktif oluşturulur. Self-servis kayıt
+        // ise pasif oluşturur (bkz. RegisterTenantCommand); ortak adımlar TenantOnboarding'de.
+        var tenant = await TenantOnboarding.CreateWithAdminAsync(
+            context, identityService,
+            request.CompanyName.Trim(), slug,
+            request.AdminName.Trim(), request.AdminEmail.Trim(),
+            isActive: true, cancellationToken);
 
         return new ProvisionTenantResult(tenant.Id, tenant.Slug, request.AdminEmail.Trim());
     }

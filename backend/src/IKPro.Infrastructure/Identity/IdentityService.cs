@@ -144,6 +144,16 @@ public sealed class IdentityService(
             throw new ValidationException(result.Errors
                 .Select(e => new ValidationFailure("token", e.Description)));
         }
+
+        // Şifre belirlendi = e-posta doğrulandı. Self-servis kayıtta pasif oluşturulan kiracıyı
+        // ilk admin kabulünde etkinleştir. Aktif kiracıda (provizyon, personel daveti) no-op.
+        var tenant = await context.Tenants.FirstOrDefaultAsync(
+            t => t.Id == user.TenantId, cancellationToken);
+        if (tenant is { IsActive: false })
+        {
+            tenant.IsActive = true;
+            await context.SaveChangesAsync(cancellationToken);
+        }
     }
 
     /// <summary>

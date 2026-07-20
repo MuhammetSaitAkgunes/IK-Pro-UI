@@ -37,4 +37,15 @@ public sealed class TenancyController(ISender sender, IConfiguration configurati
         var result = await sender.Send(command, cancellationToken);
         return StatusCode(StatusCodes.Status201Created, result);
     }
+
+    /// <remarks>Self-servis kayıt (public, platform anahtarı yok, 'signup' rate-limit'li).
+    /// Kiracı pasif oluşturulur; admin davet e-postasını kabul edince etkinleşir.</remarks>
+    [HttpPost("signup")]
+    [EnableRateLimiting("signup")]
+    [ProducesResponseType<RegisterTenantResult>(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<RegisterTenantResult>> Signup(
+        RegisterTenantCommand command, CancellationToken cancellationToken)
+        => StatusCode(StatusCodes.Status201Created, await sender.Send(command, cancellationToken));
 }

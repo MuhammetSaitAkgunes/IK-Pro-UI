@@ -6,9 +6,9 @@
 
 ## Şu an neredeyiz
 
-- **Aktif iş:** **Multi-tenant SaaS altyapısı (Faz 0–5) tamamlandı ve main'e
-  merge/push edildi** (`feature/multi-tenant-saas` → main, merge `53ce480`).
-  React portu (8/8 dilim) daha önce tamamlanıp merge edilmişti.
+- **Aktif iş:** **Self-servis kiracı kaydı** (multi-tenant sonrası ilk faz).
+  Dal `feature/self-service-signup` main'e merge kararı bekliyor. Multi-tenant
+  altyapısı (Faz 0–5) ve React portu (8/8) daha önce merge/push edildi.
 - **Son tamamlanan:** **T5.2 davet/şifre-belirleme akışı.** Provizyonlanan
   hr-admin ve işe alınan personel artık `demo123` yerine **şifresiz** oluşturulur;
   davet e-postası (outbox stub) şifre-belirleme token'ı gönderir. Yeni uçlar:
@@ -22,14 +22,17 @@
   audit trigger'lar TenantId taşır; dosya deposu kiracı-kapsamlı. Provizyon
   `POST /api/tenants` platform anahtarıyla (`X-Platform-Key`) korunur. İzolasyon
   7 tenancy testiyle kanıtlı.
-- **Son doküman:** T5.4 — `docs/kvkk-veri-izolasyonu.md` (izolasyon katmanları,
-  erişim denetimi, davet akışı, KVKK ilke eşlemesi, bilinen boşluklar +
-  operasyonel kontrol listesi). Faz 0–5 kapsamı tamam.
-- **Sıradaki adım (bu programdan sonra):** self-servis kiracı kaydı (public
-  "şirketini oluştur" + kötüye kullanım önleme), SMTP e-posta göndericisi,
-  kiracı verisi silme/anonimleştirme otomasyonu (`PurgeTenant`), ilgili kişi
-  verisi dışa aktarımı. Detay: T5.4 dokümanı Bölüm 7 ve multi-tenant planı
-  "Sonraki adımlar".
+- **Son tamamlanan:** Self-servis kayıt — public `POST /api/tenants/signup`
+  (platform anahtarı yok, ayrı `signup` rate-limit'i), sunucuda slug türetme,
+  kiracı **pasif** başlar ve ilk admin davet e-postasını kabul edince
+  **etkinleşir** (e-posta doğrulama kapısı). Frontend `/#/register-company`
+  sayfası + login bağlantısı. 15 birim + 82 entegrasyon (backend), 136 birim
+  (frontend), her iki build yeşil. Plan:
+  `docs/superpowers/plans/2026-07-17-self-servis-kiraci-kaydi.md`.
+- **Sıradaki adaylar:** SMTP gerçek e-posta göndericisi, kiracı verisi
+  silme/anonimleştirme otomasyonu (`PurgeTenant`), ilgili kişi verisi dışa
+  aktarımı, doğrulanmamış (pasif) kiracıların periyodik temizliği. Detay:
+  `docs/kvkk-veri-izolasyonu.md` Bölüm 7.
 - **Referanslar:**
   - Tasarım dokümanı: `docs/superpowers/specs/2026-07-13-react-frontend-port-design.md`
   - Dilim 1 planı (tamamlandı): `docs/superpowers/plans/2026-07-13-react-port-dilim-1-iskelet.md`
@@ -50,6 +53,26 @@
 ---
 
 ## Kayıtlar (yeni → eski)
+
+### 2026-07-17 — Self-servis kiracı kaydı
+
+- **Public kayıt ucu** `POST /api/tenants/signup` (`RegisterTenantCommand`):
+  platform anahtarı gerektirmez, ayrı ve daha sıkı `signup` rate-limit
+  politikasıyla korunur (saatlik; kötüye kullanım önleme). Slug **sunucuda**
+  şirket adından türetilir (`TenantSlug`, Türkçe transliterasyon) ve çakışırsa
+  `-2/-3…` ile benzersizleştirilir.
+- **E-posta doğrulama kapısı:** self-servis kiracı **pasif** (`IsActive=false`)
+  oluşturulur; ilk hr-admin davet e-postasını kabul edince (`accept-invite`)
+  kiracı **etkinleşir**. Doğrulanmadan giriş reddedilir. Provizyon (platform-key)
+  yolu değişmedi — kiracı aktif başlar.
+- **DRY:** provizyon ve self-servis ortak `TenantOnboarding.CreateWithAdminAsync`
+  yardımcısını paylaşır; `ProvisionTenantCommand` bu yardımcıya taşındı
+  (davranış aynı, mevcut testler yeşil).
+- **Frontend:** `CompanySignupPage` (`/#/register-company`) — şirket+admin formu
+  → başarı ekranı ("doğrulama e-postası gönderildi"); login sayfasına "Şirketinizi
+  kaydedin" bağlantısı. `auth-alt`/`auth-link` stilleri token'larla eklendi.
+- **Doğrulama:** 15 birim + 82 entegrasyon (backend, +6 slug +3 signup), 136
+  birim (frontend, +2), her iki build yeşil. TDD (önce başarısız test).
 
 ### 2026-07-17 — Multi-tenancy Faz 5 / T5.4: KVKK & veri izolasyonu dokümanı
 

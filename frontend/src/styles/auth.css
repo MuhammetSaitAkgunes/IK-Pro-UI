@@ -176,6 +176,26 @@
   margin-top: 6px;
 }
 
+.auth-alt {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.auth-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--primary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-link:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 920px) {
   .auth-shell {
     grid-template-columns: 1fr;
