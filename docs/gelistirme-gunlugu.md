@@ -6,9 +6,10 @@
 
 ## Şu an neredeyiz
 
-- **Aktif iş:** **Self-servis kiracı kaydı** (multi-tenant sonrası ilk faz).
-  Dal `feature/self-service-signup` main'e merge kararı bekliyor. Multi-tenant
-  altyapısı (Faz 0–5) ve React portu (8/8) daha önce merge/push edildi.
+- **Aktif iş:** **Kiracı purge & doğrulanmamış kiracı temizliği** (KVKK
+  unutulma hakkı otomasyonu). Dal `feature/tenant-purge` main'e merge kararı
+  bekliyor. Self-servis kayıt, multi-tenant (Faz 0–5) ve React portu (8/8)
+  daha önce merge/push edildi.
 - **Son tamamlanan:** **T5.2 davet/şifre-belirleme akışı.** Provizyonlanan
   hr-admin ve işe alınan personel artık `demo123` yerine **şifresiz** oluşturulur;
   davet e-postası (outbox stub) şifre-belirleme token'ı gönderir. Yeni uçlar:
@@ -22,7 +23,17 @@
   audit trigger'lar TenantId taşır; dosya deposu kiracı-kapsamlı. Provizyon
   `POST /api/tenants` platform anahtarıyla (`X-Platform-Key`) korunur. İzolasyon
   7 tenancy testiyle kanıtlı.
-- **Son tamamlanan:** Self-servis kayıt — public `POST /api/tenants/signup`
+- **Son tamamlanan:** Kiracı purge — `ITenantPurger` bir kiracının TÜM verisini
+  (ITenantScoped tablolar EF metadata'sından FK-güvenli sırada + kullanıcılar +
+  refresh token + audit + fiziksel evrak + kiracı satırı) tek transaction'da
+  siler. Uçlar: `DELETE /api/tenants/{id}?confirmSlug=` (platform-key + slug
+  onayı) ve `POST /api/tenants/cleanup-unverified?olderThanDays=` (pasif +
+  doğrulanmamış kiracıları toplu siler; askıya alınmışları korur). 15 birim +
+  87 entegrasyon yeşil. Not: takvim 2026-07-20'ye ilerlediği için tarih-kırılgan
+  bir leaves testi (`LeaveLifecycle` takım widget'ı) düzeltildi — bugüne göreli
+  izinle test edilecek şekilde. Plan:
+  `docs/superpowers/plans/2026-07-20-kiraci-purge-temizlik.md`.
+- **Önceki tamamlanan:** Self-servis kayıt — public `POST /api/tenants/signup`
   (platform anahtarı yok, ayrı `signup` rate-limit'i), sunucuda slug türetme,
   kiracı **pasif** başlar ve ilk admin davet e-postasını kabul edince
   **etkinleşir** (e-posta doğrulama kapısı). Frontend `/#/register-company`
@@ -30,9 +41,9 @@
   (frontend), her iki build yeşil. Plan:
   `docs/superpowers/plans/2026-07-17-self-servis-kiraci-kaydi.md`.
 - **Sıradaki adaylar:** SMTP gerçek e-posta göndericisi, kiracı verisi
-  silme/anonimleştirme otomasyonu (`PurgeTenant`), ilgili kişi verisi dışa
-  aktarımı, doğrulanmamış (pasif) kiracıların periyodik temizliği. Detay:
-  `docs/kvkk-veri-izolasyonu.md` Bölüm 7.
+  **anonimleştirme** varyantı (silme yerine PII maskeleme), ilgili kişi verisi
+  dışa aktarımı (KVKK taşınabilirlik), kiracı bazlı yedekleme/geri yükleme.
+  Detay: `docs/kvkk-veri-izolasyonu.md` Bölüm 7.
 - **Referanslar:**
   - Tasarım dokümanı: `docs/superpowers/specs/2026-07-13-react-frontend-port-design.md`
   - Dilim 1 planı (tamamlandı): `docs/superpowers/plans/2026-07-13-react-port-dilim-1-iskelet.md`
@@ -53,6 +64,30 @@
 ---
 
 ## Kayıtlar (yeni → eski)
+
+### 2026-07-20 — Kiracı purge & doğrulanmamış kiracı temizliği
+
+- **`ITenantPurger`** (Infrastructure `TenantPurger`): bir kiracının tüm verisini
+  siler. Silinecek tablolar EF model metadata'sından türetilir (`ITenantScoped` +
+  PK'lı = keyless view'ler hariç) ve **FK bağımlılığına göre çocuk→ebeveyn** sırada
+  (metadata topo-sort) `DELETE FROM [tablo] WHERE TenantId=@id` çalıştırılır; ardından
+  refresh token → kullanıcı (UserRoles cascade) → kiracı satırı; hepsi tek transaction.
+  Fiziksel evrak dosyaları (yalnız `EmployeeDocument.FilePath`) commit sonrası silinir.
+  Tablo adları metadata'dan çözülür (Identity tabloları `Users`/`UserRoles`… olarak
+  yeniden adlandırılmış). Yeni kiracı-kapsamlı tablo otomatik kapsanır.
+- **`PurgeTenantCommand`** (confirm-slug güvenlik kapısı) + **`CleanupUnverifiedTenantsCommand`**
+  (pasif + eski + hiç şifre belirlememiş kiracılar; askıya alınmışları korur; mantık
+  `ITenantPurger.PurgeUnverifiedAsync`'te — Clean Architecture için handler Application'da).
+- **Uçlar** (platform-key korumalı, DRY `PlatformKeyValid()`): `DELETE /api/tenants/{id}?confirmSlug=`,
+  `POST /api/tenants/cleanup-unverified?olderThanDays=`.
+- **Doğrulama:** 5 yeni purge testi (izolasyon: A silinir B korunur; yanlış slug 409;
+  anahtarsız 401; doğru silme; cleanup doğrulanmamışı siler aktifi korur). 15 birim +
+  87 entegrasyon yeşil.
+- **Yan bulgu (purge dışı):** takvim 2026-07-20'ye ilerleyince `LeavesTests.LeaveLifecycle`
+  takım-widget assertion'ı düştü — test 07-13…07-17 sabit tarihli izni ileri-bakışlı
+  14 günlük pencerede (`EndDate >= bugün`) arıyordu. Temiz main'de de düşüyordu (regresyon
+  değil). Takım kısmı **bugüne göreli** onaylı izinle test edilecek şekilde düzeltildi;
+  Days=4/bakiye (sabit Temmuz tatiline bağlı) assertion'ları korundu.
 
 ### 2026-07-17 — Self-servis kiracı kaydı
 

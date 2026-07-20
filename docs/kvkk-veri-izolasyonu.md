@@ -159,7 +159,7 @@ sorusuna kiracı-kapsamlı yanıt verebilmeyi hedefler.
 | **Veri güvenliği (uygun önlemler)** | Şifresiz davet akışı, refresh token rotasyonu, rate limiting, sırların env'den gelmesi, HTTPS (deployment sorumluluğu). |
 | **Veri sorumlusu / veri işleyen ayrımı** | Her müşteri şirketi kendi verisinin **veri sorumlusudur**; İK Pro işletmecisi **veri işleyendir**. Kiracı ayrımı bu sınırın teknik zeminidir. |
 | **Hesap verebilirlik / izlenebilirlik** | Kiracı-kapsamlı audit log (Bölüm 5). |
-| **Saklama süresi / silme** | Kiracı pasifleştirme mevcut; otomatik silme/anonimleştirme **yol haritasında** (Bölüm 7). |
+| **Saklama süresi / silme** | Kiracı pasifleştirme + **otomatik kalıcı silme** (`DELETE /api/tenants/{id}`, confirm-slug) ve doğrulanmamış kiracı temizliği mevcut; anonimleştirme varyantı yol haritasında (Bölüm 7). |
 | **İlgili kişi hakları (erişim, düzeltme, silme, taşınabilirlik)** | Erişim/düzeltme uygulama içinden; toplu dışa aktarma/silme için elle prosedür (Bölüm 7). |
 
 > **Sorumluluk sınırı:** Bu doküman teknik izolasyonu belgeler; bir müşteriyle
@@ -172,15 +172,21 @@ sorusuna kiracı-kapsamlı yanıt verebilmeyi hedefler.
 
 Dürüstlük için, bugün **otomatik olmayan** veya eksik olan maddeler:
 
-1. **Kiracı verisi silme/anonimleştirme (otomasyon yok).**
-   Bugün kiracı kapatma `Tenant.IsActive = false` ile *erişimi* keser ama veriyi
-   silmez. Kalıcı silme için **elle prosedür**:
-   - Kiracıyı pasifleştir (girişi durdurur).
-   - Sözleşmesel saklama süresi sonunda, ilgili `TenantId`'ye ait satırları
-     (personel, izin, bordro, evrak metadatası, kullanıcılar, refresh token,
-     audit) ve varsa fiziksel dosyaları hedefli olarak sil/anonimleştir.
-   - **Yapılacak:** bunu tek işlemde yapan `PurgeTenant`/`AnonymizeTenant` bakım
-     komutu + onay/iz kaydı.
+1. **Kiracı verisi silme (otomasyon MEVCUT).**
+   Kalıcı silme artık tek işlemle yapılır: `DELETE /api/tenants/{id}?confirmSlug=`
+   (platform-key korumalı; `confirmSlug` hedef kiracının slug'ıyla eşleşmezse
+   reddedilir — yanlış-id koruması). `ITenantPurger`, silinecek tabloları EF model
+   metadata'sından (ITenantScoped + PK'lı) türetir ve FK-güvenli sırada tek
+   transaction'da siler: tüm kiracı-kapsamlı satırlar + kullanıcılar + refresh
+   token'lar + audit + fiziksel evrak dosyaları + kiracı satırı. Yeni bir
+   kiracı-kapsamlı tablo eklendiğinde otomatik kapsanır (unutma sızıntısı yok).
+   - **Doğrulanmamış kiracı temizliği:** `POST /api/tenants/cleanup-unverified?olderThanDays=`
+     — pasif + eski + hiç şifre belirlememiş (davet hiç kabul edilmemiş, self-servis)
+     kiracıları toplu siler; askıya alınmış (şifreli kullanıcısı olan) kiracılar
+     korunur. Cron ile tetiklenebilir.
+   - **Halen yapılacak:** *anonimleştirme* varyantı (silme yerine PII maskeleyip
+     istatistiği koruma) ve silme işleminin ayrı bir denetim kaydına (audit)
+     yazılması.
 2. **İlgili kişi verisi dışa aktarımı (taşınabilirlik).** Tek çalışanın tüm
    verisini standart formatta paketleyen uç yok — **yapılacak.**
 3. **Fiziksel dosya şifreleme / kiracı-kapsamlı fiziksel ayrım.** Bugün erişim
@@ -211,5 +217,6 @@ adımlar" ve MVP sertleştirme kapsamıyla uyumludur.
 
 ---
 
-*Son güncelleme: 2026-07-17 — Faz 5 / T5.4. Uygulama değiştikçe bu dosya da
-güncellenmelidir; özellikle Bölüm 7'deki maddeler tamamlandıkça Bölüm 6 tablosuna taşınır.*
+*Son güncelleme: 2026-07-20 — kiracı purge & doğrulanmamış temizlik eklendi
+(Bölüm 7.1 otomatikleşti). Uygulama değiştikçe bu dosya da güncellenmelidir;
+özellikle Bölüm 7'deki maddeler tamamlandıkça Bölüm 6 tablosuna taşınır.*
