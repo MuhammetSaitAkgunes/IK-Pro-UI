@@ -27,15 +27,52 @@ public sealed class TenancyController(ISender sender, IConfiguration configurati
     public async Task<ActionResult<ProvisionTenantResult>> Provision(
         ProvisionTenantCommand command, CancellationToken cancellationToken)
     {
-        var expected = configuration["Platform:ProvisioningKey"];
-        var provided = Request.Headers[PlatformKeyHeader].ToString();
-        if (string.IsNullOrEmpty(expected) || provided != expected)
+        if (!PlatformKeyValid())
         {
             return Unauthorized(new { title = "Platform anahtarı geçersiz veya eksik." });
         }
 
         var result = await sender.Send(command, cancellationToken);
         return StatusCode(StatusCodes.Status201Created, result);
+    }
+
+    /// <remarks>Bir kiracının TÜM verisini kalıcı siler (KVKK). Platform-key + confirmSlug zorunlu.</remarks>
+    [HttpDelete("{id:int}")]
+    [ProducesResponseType<PurgeTenantResult>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<PurgeTenantResult>> Purge(
+        int id, [FromQuery] string? confirmSlug, CancellationToken cancellationToken)
+    {
+        if (!PlatformKeyValid())
+        {
+            return Unauthorized(new { title = "Platform anahtarı geçersiz veya eksik." });
+        }
+
+        return Ok(await sender.Send(new PurgeTenantCommand(id, confirmSlug ?? ""), cancellationToken));
+    }
+
+    /// <remarks>Doğrulanmamış (pasif, davet kabul edilmemiş) eski kiracıları toplu siler. Cron.</remarks>
+    [HttpPost("cleanup-unverified")]
+    [ProducesResponseType<CleanupUnverifiedResult>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<CleanupUnverifiedResult>> CleanupUnverified(
+        [FromQuery] int olderThanDays, CancellationToken cancellationToken)
+    {
+        if (!PlatformKeyValid())
+        {
+            return Unauthorized(new { title = "Platform anahtarı geçersiz veya eksik." });
+        }
+
+        return Ok(await sender.Send(new CleanupUnverifiedTenantsCommand(olderThanDays), cancellationToken));
+    }
+
+    private bool PlatformKeyValid()
+    {
+        var expected = configuration["Platform:ProvisioningKey"];
+        var provided = Request.Headers[PlatformKeyHeader].ToString();
+        return !string.IsNullOrEmpty(expected) && provided == expected;
     }
 
     /// <remarks>Self-servis kayıt (public, platform anahtarı yok, 'signup' rate-limit'li).
