@@ -185,7 +185,10 @@ Dürüstlük için, bugün **otomatik olmayan** veya eksik olan maddeler:
    - **Doğrulanmamış kiracı temizliği:** `POST /api/tenants/cleanup-unverified?olderThanDays=`
      — pasif + eski + hiç şifre belirlememiş (davet hiç kabul edilmemiş, self-servis)
      kiracıları toplu siler; askıya alınmış (şifreli kullanıcısı olan) kiracılar
-     korunur. Cron ile tetiklenebilir.
+     korunur. Ayrıca **uygulama-içi zamanlayıcı** (`UnverifiedTenantCleanupService`,
+     `BackgroundService`) bu temizliği dış cron'a gerek kalmadan periyodik çalıştırır
+     — `Cleanup:UnverifiedTenants` ile yapılandırılır (`Enabled`/`IntervalHours`/
+     `OlderThanDays`); yıkıcı olduğu için **varsayılan kapalı**, üretimde açılır.
    - **Halen yapılacak:** *anonimleştirme* varyantı (silme yerine PII maskeleyip
      istatistiği koruma) ve silme işleminin ayrı bir denetim kaydına (audit)
      yazılması.
@@ -232,8 +235,8 @@ adımlar" ve MVP sertleştirme kapsamıyla uyumludur.
 
 ---
 
-*Son güncelleme: 2026-07-20 — ilgili kişi verisi dışa aktarımı eklendi (Bölüm 7.2
-otomatikleşti). Aynı gün önceki güncellemeler: SMTP gerçek e-posta göndericisi
-(Bölüm 7.4), kiracı purge & doğrulanmamış temizlik (Bölüm 7.1). Uygulama
-değiştikçe bu dosya da güncellenmelidir; özellikle Bölüm 7'deki maddeler
-tamamlandıkça Bölüm 6 tablosuna taşınır.*
+*Son güncelleme: 2026-07-20 — doğrulanmamış kiracı temizliği için uygulama-içi
+zamanlayıcı eklendi (Bölüm 7.1). Aynı gün önceki güncellemeler: ilgili kişi verisi
+dışa aktarımı (Bölüm 7.2), SMTP gerçek e-posta göndericisi (Bölüm 7.4), kiracı
+purge (Bölüm 7.1). Uygulama değiştikçe bu dosya da güncellenmelidir; özellikle
+Bölüm 7'deki maddeler tamamlandıkça Bölüm 6 tablosuna taşınır.*

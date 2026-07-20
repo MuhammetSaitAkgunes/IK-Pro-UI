@@ -136,6 +136,11 @@ try
     builder.Services.AddHealthChecks()
         .AddDbContextCheck<IKPro.Infrastructure.Persistence.AppDbContext>("database");
 
+    // Doğrulanmamış kiracıların uygulama-içi periyodik temizliği (varsayılan kapalı; opt-in).
+    builder.Services.Configure<UnverifiedTenantCleanupOptions>(
+        builder.Configuration.GetSection(UnverifiedTenantCleanupOptions.SectionName));
+    builder.Services.AddHostedService<UnverifiedTenantCleanupService>();
+
     // CORS — allow the local frontend origin during development.
     const string frontendCors = "frontend";
     builder.Services.AddCors(options => options.AddPolicy(frontendCors, policy =>
