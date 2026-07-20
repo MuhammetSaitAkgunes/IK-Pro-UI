@@ -1,4 +1,5 @@
 using IKPro.Application.Features.Auth;
+using IKPro.Application.Features.Auth.DataExport;
 using IKPro.Application.Features.Auth.GetMe;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -17,4 +18,14 @@ public sealed class MeController(ISender sender) : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<UserDto>> Get(CancellationToken cancellationToken)
         => Ok(await sender.Send(new GetMeQuery(), cancellationToken));
+
+    /// <remarks>KVKK taşınabilirlik: kullanıcının kendi verisini JSON paketi olarak indirir.</remarks>
+    [HttpGet("data-export")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> DataExport(CancellationToken cancellationToken)
+    {
+        var (content, fileName) = await sender.Send(new GetMyDataExportQuery(), cancellationToken);
+        return File(content, "application/json", fileName);
+    }
 }

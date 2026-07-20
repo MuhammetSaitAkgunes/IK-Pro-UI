@@ -20,6 +20,9 @@ public sealed class CurrentUser(IHttpContextAccessor accessor) : ICurrentUser
         ?? Principal?.FindFirstValue("email")
         ?? Principal?.FindFirstValue(ClaimTypes.Email);
 
+    public string? Email =>
+        Principal?.FindFirstValue("email") ?? Principal?.FindFirstValue(ClaimTypes.Email);
+
     public bool IsAuthenticated => Principal?.Identity?.IsAuthenticated ?? false;
 
     public IReadOnlyList<string> Roles =>

@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "../api/client";
+import { apiDownload, apiFetch } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { appRoutes, navGroups, navIcons, roleHomeFor, type AppRoute } from "../routes";
 import { GlobalSearch } from "./GlobalSearch";
@@ -46,6 +46,22 @@ export function AppShell() {
   const handleLogout = async () => {
     await logout();
     navigate("/login");
+  };
+
+  // KVKK taşınabilirlik: kullanıcı kendi verisini tek tıkla JSON olarak indirir.
+  const handleDataExport = async () => {
+    try {
+      const { blob, fileName } = await apiDownload("/me/data-export");
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = fileName ?? "ikpro-verilerim.json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(link.href);
+    } catch {
+      // Sessiz — kritik olmayan yardımcı işlem.
+    }
   };
 
   return (
@@ -117,6 +133,9 @@ export function AppShell() {
             <option value="manager">Yönetici</option>
             <option value="employee">Çalışan</option>
           </select>
+          <button className="btn-icon-sm" onClick={handleDataExport} title="Verilerimi indir" aria-label="Verilerimi indir (KVKK)">
+            <i aria-hidden="true" className="fa-solid fa-file-export" />
+          </button>
           <button className="btn-icon-sm" onClick={handleLogout} title="Çıkış yap" aria-label="Çıkış yap">
             <i aria-hidden="true" className="fa-solid fa-arrow-right-from-bracket" />
           </button>

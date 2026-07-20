@@ -6,9 +6,10 @@
 
 ## Şu an neredeyiz
 
-- **Aktif iş:** **SMTP gerçek e-posta göndericisi.** Dal `feature/smtp-email`
-  main'e merge kararı bekliyor. Kiracı purge, self-servis kayıt, multi-tenant
-  (Faz 0–5) ve React portu (8/8) daha önce merge/push edildi.
+- **Aktif iş:** **İlgili kişi verisi dışa aktarımı (KVKK taşınabilirlik).**
+  Dal `feature/data-export` main'e merge kararı bekliyor. SMTP göndericisi,
+  kiracı purge, self-servis kayıt, multi-tenant (Faz 0–5) ve React portu (8/8)
+  daha önce merge/push edildi.
 - **Son tamamlanan:** **T5.2 davet/şifre-belirleme akışı.** Provizyonlanan
   hr-admin ve işe alınan personel artık `demo123` yerine **şifresiz** oluşturulur;
   davet e-postası (outbox stub) şifre-belirleme token'ı gönderir. Yeni uçlar:
@@ -22,7 +23,18 @@
   audit trigger'lar TenantId taşır; dosya deposu kiracı-kapsamlı. Provizyon
   `POST /api/tenants` platform anahtarıyla (`X-Platform-Key`) korunur. İzolasyon
   7 tenancy testiyle kanıtlı.
-- **Son tamamlanan:** SMTP gerçek e-posta göndericisi — `IEmailSender`'ın MailKit
+- **Son tamamlanan:** İlgili kişi verisi dışa aktarımı — `GET /api/me/data-export`:
+  oturum açmış herhangi bir kullanıcı kendi verisini tek istekle JSON paketi
+  olarak indirir (hesap + varsa bağlı personel/profil + izin + puantaj + uyum
+  belgeleri + bordro listesi metadata). Yalnız kendi `EmployeeId`'sine bağlı
+  kayıtlar dahil edilir; tenant izolasyonu + sorgu daraltması çifte güvence
+  (test: başka çalışanın adı asla pakette yok; `EmployeeId`'siz kullanıcı
+  crash almadan `employee: null` alır). `ICurrentUser`'a `Email` eklendi (JWT
+  `email` claim'inden — tek implementasyon, güvenle genişletildi). Frontend
+  üst menüde "Verilerimi indir" ikonu (`apiDownload` deseni, bordro pusulası
+  indirmeyle aynı). 19 birim + 90 entegrasyon (+2), 136 birim (frontend) yeşil.
+  Plan: `docs/superpowers/plans/2026-07-20-ilgili-kisi-veri-disa-aktarim.md`.
+- **Önceki tamamlanan:** SMTP gerçek e-posta göndericisi — `IEmailSender`'ın MailKit
   tabanlı `MailKitSmtpEmailSender` implementasyonu eklendi. Seçim `Email:Mode`
   yapılandırmasıyla yapılır: varsayılan `outbox` (dev/demo/test — davranış
   DEĞİŞMEDİ, davet testleri hâlâ dosyadan token okuyor); `smtp` → `SmtpOptions`
@@ -51,9 +63,9 @@
   (frontend), her iki build yeşil. Plan:
   `docs/superpowers/plans/2026-07-17-self-servis-kiraci-kaydi.md`.
 - **Sıradaki adaylar:** kiracı verisi **anonimleştirme** varyantı (silme yerine
-  PII maskeleme), ilgili kişi verisi dışa aktarımı (KVKK taşınabilirlik), kiracı
-  bazlı yedekleme/geri yükleme, purge/cleanup uçlarının bir cron/scheduler'a
-  bağlanması. Detay: `docs/kvkk-veri-izolasyonu.md` Bölüm 7.
+  PII maskeleme), kiracı bazlı yedekleme/geri yükleme, purge/cleanup uçlarının
+  bir cron/scheduler'a bağlanması, fiziksel dosya at-rest şifreleme. Detay:
+  `docs/kvkk-veri-izolasyonu.md` Bölüm 7.
 - **Referanslar:**
   - Tasarım dokümanı: `docs/superpowers/specs/2026-07-13-react-frontend-port-design.md`
   - Dilim 1 planı (tamamlandı): `docs/superpowers/plans/2026-07-13-react-port-dilim-1-iskelet.md`
@@ -74,6 +86,33 @@
 ---
 
 ## Kayıtlar (yeni → eski)
+
+### 2026-07-20 — İlgili kişi verisi dışa aktarımı (KVKK taşınabilirlik)
+
+- **`GET /api/me/data-export`** (`GetMyDataExportQuery`): oturum açmış herhangi
+  bir kullanıcı (rolden bağımsız) kendi verisini tek istekle indirir. Paket:
+  hesap bilgisi (id/ad/e-posta/roller), varsa bağlı personel kaydı + profil
+  (unvan/departman/işe giriş + doğum tarihi/cinsiyet/medeni durum/telefon/
+  kişisel e-posta/adres/IBAN/banka), izin talepleri + bakiyeleri, puantaj
+  kayıtları, uyum belgeleri (metadata), bordro pusulası listesi (metadata).
+  JSON, girintili, `ikpro-verilerim-{tarih}.json` adıyla indirilir (mevcut
+  bordro pusulası indirme deseniyle aynı `(byte[], fileName)` → `File(...)`).
+- **İzolasyon çift güvence:** tüm alt sorgular `EmployeeId == currentUser.EmployeeId`
+  ile daraltılır; ayrıca EF tenant global filtresi devrede. `EmployeeId`'si
+  olmayan kullanıcı (ör. bağlı personeli olmayan hr-admin — seed'de
+  `ik@hrmaster.local`) crash almadan `employee: null` + boş listelerle export alır.
+- **Yan değişiklik:** `ICurrentUser`'a `Email` eklendi (JWT `email` claim'inden
+  okunur — daha önce yalnız `UserName`, kullanıcının görünen adını taşıyordu,
+  export'ta e-posta alanı için ayrıca gerekliydi). Tek implementasyon
+  (`CurrentUser`) olduğundan güvenle genişletildi.
+- **Frontend:** üst menüde "Verilerimi indir" ikonu (logout'un yanında, tüm
+  roller için görünür), `apiDownload("/me/data-export")` ile tarayıcı indirmesi
+  tetikler.
+- **Doğrulama:** 2 yeni entegrasyon testi (kendi verisi döner + başka çalışanın
+  adı asla pakette yok; `EmployeeId`'siz kullanıcı crash almaz) — 19 birim + 90
+  entegrasyon (backend), 136 birim (frontend), her iki build yeşil.
+- KVKK dokümanı Bölüm 6 (İlgili kişi hakları satırı) ve Bölüm 7.2 "mevcut"
+  olarak güncellendi.
 
 ### 2026-07-20 — SMTP gerçek e-posta göndericisi
 
