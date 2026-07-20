@@ -68,6 +68,12 @@ export function LoginPage({ mode = "login" }: { mode?: "login" | "signup" }) {
           <button type="submit" className="btn btn-primary auth-submit">
             <i aria-hidden="true" className="fa-solid fa-arrow-right-to-bracket" /> Giriş yap
           </button>
+          <p className="auth-alt">
+            Şirketiniz yok mu?{" "}
+            <button type="button" className="auth-link" onClick={() => navigate("/register-company")}>
+              Şirketinizi kaydedin
+            </button>
+          </p>
         </form>
 
         <form id="auth-signup" className={`auth-form ${mode === "signup" ? "active" : ""}`} onSubmit={(e) => run(e, () => register(name, signupEmail, signupPassword))}>

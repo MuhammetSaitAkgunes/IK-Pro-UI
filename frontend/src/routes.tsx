@@ -1,6 +1,7 @@
 import type { RouteObject } from "react-router-dom";
 import { LoginPage } from "./auth/LoginPage";
 import { AcceptInvitePage } from "./auth/AcceptInvitePage";
+import { CompanySignupPage } from "./auth/CompanySignupPage";
 import { PublicOnly, RequireAuth, RouteGate } from "./auth/guards";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { AppShell } from "./layout/AppShell";
@@ -111,6 +112,7 @@ export function buildRouteObjects(): RouteObject[] {
     { path: "/login", element: <PublicOnly><LoginPage mode="login" /></PublicOnly> },
     { path: "/signup", element: <PublicOnly><LoginPage mode="signup" /></PublicOnly> },
     { path: "/accept-invite", element: <PublicOnly><AcceptInvitePage /></PublicOnly> },
+    { path: "/register-company", element: <PublicOnly><CompanySignupPage /></PublicOnly> },
     {
       element: <RequireAuth />,
       children: [
