@@ -6,10 +6,10 @@
 
 ## Şu an neredeyiz
 
-- **Aktif iş:** **Doğrulanmamış kiracı zamanlanmış temizlik** (uygulama-içi
-  `BackgroundService`). Dal `feature/scheduled-cleanup` main'e merge kararı
-  bekliyor. Veri dışa aktarımı, SMTP göndericisi, kiracı purge, self-servis
-  kayıt, multi-tenant (Faz 0–5) ve React portu (8/8) daha önce merge/push edildi.
+- **Aktif iş:** **Kod-inceleme fix'leri (#2/#3/#4).** Dal `fix/review-2-3-4`
+  main'e merge kararı bekliyor. Zamanlanmış temizlik, veri dışa aktarımı, SMTP,
+  kiracı purge, self-servis kayıt, multi-tenant (Faz 0–5) ve React portu (8/8)
+  daha önce merge/push edildi.
 - **Son tamamlanan:** **T5.2 davet/şifre-belirleme akışı.** Provizyonlanan
   hr-admin ve işe alınan personel artık `demo123` yerine **şifresiz** oluşturulur;
   davet e-postası (outbox stub) şifre-belirleme token'ı gönderir. Yeni uçlar:
@@ -23,7 +23,18 @@
   audit trigger'lar TenantId taşır; dosya deposu kiracı-kapsamlı. Provizyon
   `POST /api/tenants` platform anahtarıyla (`X-Platform-Key`) korunur. İzolasyon
   7 tenancy testiyle kanıtlı.
-- **Son tamamlanan:** Doğrulanmamış kiracı zamanlanmış temizlik —
+- **Son tamamlanan:** Kod-inceleme (senior-backend + code-review) sonrası üç
+  düzeltme, TDD ile. **#2:** `UnverifiedTenantCleanupService` — `IntervalHours ≤ 0`
+  yapılandırması `PeriodicTimer` ctor'unu fırlatıp BackgroundService `StopHost`
+  ile tüm host'u çökertiyordu; guard eklendi (loglanıp devre dışı, host ayakta).
+  **#3:** self-servis signup slug'ı kontrol-sonra-ekle yarışında unique index
+  ihlaliyle 500 dönebiliyordu; retry (DbUpdateException'da bırak-yeniden dene,
+  yeniden denemede rastgele ekli slug) eklendi — 4 eşzamanlı kayıt testiyle
+  kilitlendi. **#4:** `TenantPurger` dosya silmede biri fırlarsa purge'ü yarıda
+  kesip 500 dönüyor + PII dosya artığı bırakıyordu; her dosya ayrı try/catch +
+  loud log, işlem tamamlanır. 19 birim + 95 entegrasyon yeşil. Plan:
+  `docs/superpowers/plans/2026-07-20-inceleme-fix-2-3-4.md`.
+- **Önceki tamamlanan:** Doğrulanmamış kiracı zamanlanmış temizlik —
   `UnverifiedTenantCleanupService` (`BackgroundService`), `cleanup-unverified`'ı
   uygulama-içi periyodik çalıştırır (dış cron gerektirmez). Mevcut
   `CleanupUnverifiedTenantsCommand`'i yeniden kullanır (yeni silme mantığı yok);
@@ -93,6 +104,32 @@
 ---
 
 ## Kayıtlar (yeni → eski)
+
+### 2026-07-20 — Kod-inceleme fix'leri (#2 host çökmesi, #3 slug yarışı, #4 purge dosya artığı)
+
+- **Bağlam:** `/senior-backend` + `/code-review` ile projenin kod kalitesi ve
+  satışa hazırlığı analiz edildi; 5 bulgu + üretim-hazırlık boşlukları raporlandı.
+  Kullanıcı kararıyla çökme/veri-bütünlüğü olan #2/#3/#4 düzeltildi (CORS/CI/prod
+  migration gibi ops maddeleri ayrı bırakıldı).
+- **#2 — `IntervalHours ≤ 0` host'u çökertiyordu:** `UnverifiedTenantCleanupService.ExecuteAsync`'te
+  `PeriodicTimer` ctor'u try/catch dışındaydı; `Enabled=true`+`IntervalHours=0` →
+  ctor fırlatır → BackgroundService varsayılanı `StopHost` → API hiç başlamaz.
+  Guard eklendi (hata logla, dön). Test: `IHostedService.StartAsync` fırlatmıyor.
+- **#3 — slug kontrol-sonra-ekle yarışı → 500:** `RegisterTenantCommandHandler`
+  slug'ı `AnyAsync` ile kontrol edip ekliyordu; eşzamanlı iki kayıt aynı slug'ı
+  hesaplayıp ikincisi unique index'i ihlal eder → yakalanmamış `DbUpdateException`.
+  Kiracı yazımı sınırlı (5) retry döngüsüne alındı; `DbUpdateException`'da
+  `context.Tenants.Remove` (Added→Detached) + yeniden denemede rastgele ekli slug.
+  Register artık `TenantOnboarding` yerine kendi retry'li akışını kullanır
+  (provizyon helper'ı değişmedi). Test: aynı ad + 4 eşzamanlı signup → hepsi 201,
+  slug'lar benzersiz (3× tekrar koşuldu, kararlı).
+- **#4 — purge fiziksel dosya artığı (KVKK):** `TenantPurger` DB commit sonrası
+  dosyaları döngüde siliyordu; biri fırlarsa (kilit/kaçış-yolu) döngü kalanları
+  silmeden çıkıp metod fırlıyordu (DB silinmiş ama diskte PII kalır, çağırana 500).
+  `ILogger` inject edildi; her dosya ayrı try/catch + loud log, sonda başarısız
+  sayısı uyarı. Testler: gerçek dosyalı purge dosyayı siler; kök-dışı kaçış yollu
+  dosya purge'ü yarıda kesmez, kiracı yine de silinir.
+- **Doğrulama:** 19 birim + 95 entegrasyon (+4) yeşil.
 
 ### 2026-07-20 — Doğrulanmamış kiracı zamanlanmış temizlik
 

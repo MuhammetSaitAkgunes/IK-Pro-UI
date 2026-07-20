@@ -24,6 +24,16 @@ public sealed class UnverifiedTenantCleanupService(
             return;
         }
 
+        // Yanlış yapılandırmada (IntervalHours<=0) PeriodicTimer ctor'u fırlatır; bu, host'u
+        // çökertmesin diye burada yakalanır — temizlik devre dışı kalır, uygulama ayakta kalır.
+        if (_options.IntervalHours <= 0)
+        {
+            logger.LogError(
+                "Cleanup:UnverifiedTenants:IntervalHours pozitif olmalı (verilen: {Value}); temizlik devre dışı.",
+                _options.IntervalHours);
+            return;
+        }
+
         using var timer = new PeriodicTimer(TimeSpan.FromHours(_options.IntervalHours));
         do
         {

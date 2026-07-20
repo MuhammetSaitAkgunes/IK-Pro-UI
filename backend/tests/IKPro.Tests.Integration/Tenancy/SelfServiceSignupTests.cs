@@ -65,4 +65,22 @@ public sealed class SelfServiceSignupTests(IKProApiFactory factory) : TenancyTes
         slugs.Should().HaveCountGreaterThanOrEqualTo(2);
         slugs.Should().OnlyHaveUniqueItems("aynı ad için slug'lar benzersiz türetilmeli");
     }
+
+    [Fact]
+    public async Task Signup_ConcurrentSameCompanyName_AllSucceedWithDistinctSlugs()
+    {
+        // Aynı şirket adıyla eşzamanlı kayıtlar aynı slug'ı hesaplayıp unique index'i
+        // ihlal edebilir; retry ile hepsi temiz 201 dönmeli (500 değil).
+        var tasks = Enumerable.Range(0, 4)
+            .Select(i => SignupAsync("Eşzamanlı A.Ş.", $"c{i}-{Guid.NewGuid():N}@race.local"))
+            .ToList();
+        var responses = await Task.WhenAll(tasks);
+        responses.Should().OnlyContain(r => r.StatusCode == HttpStatusCode.Created);
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var slugs = await db.Tenants.Where(t => t.Name == "Eşzamanlı A.Ş.")
+            .Select(t => t.Slug).ToListAsync();
+        slugs.Should().HaveCount(4).And.OnlyHaveUniqueItems("eşzamanlı kayıtlarda slug'lar benzersiz olmalı");
+    }
 }

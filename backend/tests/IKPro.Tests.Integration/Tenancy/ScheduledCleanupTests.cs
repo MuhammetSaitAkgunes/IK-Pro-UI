@@ -3,6 +3,7 @@ using IKPro.API.Services;
 using IKPro.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using System.Net;
@@ -56,5 +57,28 @@ public sealed class ScheduledCleanupTests(IKProApiFactory factory) : TenancyTest
             (await db.Tenants.AnyAsync(x => x.Id == unverifiedId)).Should().BeFalse("doğrulanmamış temizlenmeli");
             (await db.Tenants.AnyAsync(x => x.Id == kept.TenantId)).Should().BeTrue("aktif kiracı korunmalı");
         }
+    }
+
+    [Fact]
+    public async Task Start_WithNonPositiveInterval_DoesNotThrow()
+    {
+        // Yanlış yapılandırma (IntervalHours=0) host'u çökertmemeli — servis sessizce devre dışı kalır.
+        var options = Options.Create(new UnverifiedTenantCleanupOptions
+        {
+            Enabled = true,
+            IntervalHours = 0,
+            OlderThanDays = 7,
+        });
+        var service = new UnverifiedTenantCleanupService(
+            Factory.Services.GetRequiredService<IServiceScopeFactory>(),
+            options,
+            NullLogger<UnverifiedTenantCleanupService>.Instance);
+
+        var start = async () =>
+        {
+            await ((IHostedService)service).StartAsync(CancellationToken.None);
+            await ((IHostedService)service).StopAsync(CancellationToken.None);
+        };
+        await start.Should().NotThrowAsync("IntervalHours<=0 yapılandırması BackgroundService'i çökertmemeli");
     }
 }
