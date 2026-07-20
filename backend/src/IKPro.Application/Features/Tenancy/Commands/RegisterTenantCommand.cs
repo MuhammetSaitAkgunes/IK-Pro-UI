@@ -1,5 +1,7 @@
 using FluentValidation;
+using IKPro.Application.Common.Exceptions;
 using IKPro.Application.Common.Interfaces;
+using IKPro.Domain.Entities.Tenancy;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,23 +30,68 @@ public sealed class RegisterTenantCommandValidator : AbstractValidator<RegisterT
 public sealed class RegisterTenantCommandHandler(IApplicationDbContext context, IIdentityService identityService)
     : IRequestHandler<RegisterTenantCommand, RegisterTenantResult>
 {
+    private const int MaxSlugAttempts = 5;
+
     public async Task<RegisterTenantResult> Handle(RegisterTenantCommand request, CancellationToken cancellationToken)
     {
-        var slug = await GenerateUniqueSlugAsync(request.CompanyName, cancellationToken);
+        var adminEmail = request.AdminEmail.Trim();
+        // E-postayı önce doğrula — kiracı yazılmadan çakışmayı yakala (orphan önlenir).
+        if (await identityService.EmailExistsAsync(adminEmail, cancellationToken))
+        {
+            throw new ConflictException($"'{adminEmail}' e-postasıyla kayıtlı bir hesap zaten var.");
+        }
 
-        var tenant = await TenantOnboarding.CreateWithAdminAsync(
-            context, identityService,
-            request.CompanyName.Trim(), slug,
-            request.AdminName.Trim(), request.AdminEmail.Trim(),
-            isActive: false, cancellationToken);
+        var companyName = request.CompanyName.Trim();
+        var tenant = await CreateTenantWithUniqueSlugAsync(companyName, cancellationToken);
 
-        return new RegisterTenantResult(tenant.Slug, request.AdminEmail.Trim());
+        await identityService.CreateTenantAdminAsync(
+            tenant.Id, request.AdminName.Trim(), adminEmail, tenant.Name, cancellationToken);
+
+        return new RegisterTenantResult(tenant.Slug, adminEmail);
     }
 
-    // Türetilmiş slug'ı benzersizleştir: çakışırsa "-2", "-3", ... ekle.
-    private async Task<string> GenerateUniqueSlugAsync(string companyName, CancellationToken cancellationToken)
+    // Kiracıyı benzersiz slug'la yazar. Eşzamanlı bir kayıt aynı slug'ı kaparsa
+    // (unique index ihlali → DbUpdateException) izlenen eklemeyi bırakıp yeniden dener;
+    // yeniden denemede kısa rastgele ekli slug ile hızla yakınsar. Provizyon yolu
+    // (istemci-slug + 409) TenantOnboarding'de kalır — semantiği farklıdır.
+    private async Task<Tenant> CreateTenantWithUniqueSlugAsync(string companyName, CancellationToken cancellationToken)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            var slug = await GenerateSlugAsync(companyName, attempt, cancellationToken);
+            var tenant = new Tenant
+            {
+                Name = companyName,
+                Slug = slug,
+                IsActive = false,
+                CreatedAtUtc = DateTime.UtcNow,
+            };
+            context.Tenants.Add(tenant);
+            try
+            {
+                await context.SaveChangesAsync(cancellationToken);
+                return tenant;
+            }
+            catch (DbUpdateException) when (attempt < MaxSlugAttempts)
+            {
+                // Added durumundaki başarısız eklemeyi bırak (Remove → Detached, silme SQL'i üretmez).
+                context.Tenants.Remove(tenant);
+            }
+        }
+    }
+
+    private async Task<string> GenerateSlugAsync(string companyName, int attempt, CancellationToken cancellationToken)
     {
         var baseSlug = TenantSlug.From(companyName);
+
+        if (attempt > 1)
+        {
+            // Yeniden denemede eşzamanlı çakışmayı hızla kır: kısa rastgele ek (≤64 için base kırpılır).
+            var trimmed = baseSlug.Length > 56 ? baseSlug[..56] : baseSlug;
+            return $"{trimmed}-{Guid.NewGuid():N}"[..(trimmed.Length + 7)];
+        }
+
+        // İlk deneme: temiz base; sıralı çakışmada "-2", "-3", ...
         var candidate = baseSlug;
         var suffix = 2;
         while (await context.Tenants.AnyAsync(t => t.Slug == candidate, cancellationToken))
