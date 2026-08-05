@@ -409,7 +409,7 @@ public class AppDbContextInitializer(
         // payrollDefaultSettings + taxBrackets (components/payroll.js) ile birebir.
         var settings = new PayrollSettings
         {
-            Year = 2026,
+            EffectiveFrom = new DateOnly(2026, 1, 1),
             IsDefault = true,
             OvertimeMultiplier = 1.5m,
             MonthlyWorkingHours = 225m,

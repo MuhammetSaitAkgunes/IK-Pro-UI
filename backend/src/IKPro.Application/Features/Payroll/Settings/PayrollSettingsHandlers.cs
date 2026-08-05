@@ -9,24 +9,33 @@ namespace IKPro.Application.Features.Payroll.Settings;
 
 public static class PayrollSettingsResolver
 {
-    /// <summary>Yıla göre ayar seti; yoksa varsayılan; o da yoksa en yeni yıl.</summary>
+    /// <summary>
+    /// Verilen tarihte YÜRÜRLÜKTE olan ayar seti: yürürlük tarihi o tarihi geçmeyen
+    /// setlerin EN YENİSİ. Böylece yıl ortası değişimlerde (temmuz asgari ücret)
+    /// haziran dönemi eski seti, temmuz dönemi yeni seti kullanır.
+    /// Tarih verilmezse bugün esas alınır. Hiçbir set o tarihten önce başlamıyorsa
+    /// varsayılan set, o da yoksa en eski set kullanılır.
+    /// </summary>
     public static async Task<PayrollSettingsEntity> ResolveAsync(
-        IApplicationDbContext context, int? year, CancellationToken cancellationToken)
+        IApplicationDbContext context, DateOnly? asOf, CancellationToken cancellationToken)
     {
         var query = context.PayrollSettings.Include(s => s.TaxBrackets);
+        var effectiveDate = asOf ?? DateOnly.FromDateTime(DateTime.UtcNow);
 
-        var settings = year is null
-            ? null
-            : await query.FirstOrDefaultAsync(s => s.Year == year, cancellationToken);
+        var settings = await query
+            .Where(s => s.EffectiveFrom <= effectiveDate)
+            .OrderByDescending(s => s.EffectiveFrom)
+            .FirstOrDefaultAsync(cancellationToken);
+
         settings ??= await query.FirstOrDefaultAsync(s => s.IsDefault, cancellationToken)
-            ?? await query.OrderByDescending(s => s.Year).FirstOrDefaultAsync(cancellationToken)
-            ?? throw new NotFoundException("Bordro ayarları", year ?? 0);
+            ?? await query.OrderBy(s => s.EffectiveFrom).FirstOrDefaultAsync(cancellationToken)
+            ?? throw new NotFoundException("Bordro ayarları", effectiveDate.ToString("yyyy-MM-dd"));
 
         return settings;
     }
 
     public static PayrollSettingsDto ToDto(PayrollSettingsEntity s) => new(
-        s.Year, s.OvertimeMultiplier, s.MonthlyWorkingHours, s.DefaultWorkedDays,
+        s.EffectiveFrom, s.OvertimeMultiplier, s.MonthlyWorkingHours, s.DefaultWorkedDays,
         s.SgkEmployeeRate, s.UnemploymentEmployeeRate, s.SgkEmployerRate, s.UnemploymentEmployerRate,
         s.StampTaxRate, s.SgkBaseMin, s.SgkBaseMax,
         s.MonthlyMinWageIncomeTaxExemption, s.MonthlyMinWageStampTaxExemption, s.MinWageGross,
@@ -37,7 +46,7 @@ public static class PayrollSettingsResolver
 
 // --- görüntüle ---
 
-public sealed record GetPayrollSettingsQuery(int? Year = null) : IRequest<PayrollSettingsDto>;
+public sealed record GetPayrollSettingsQuery(DateOnly? AsOf = null) : IRequest<PayrollSettingsDto>;
 
 public sealed class GetPayrollSettingsQueryHandler(IApplicationDbContext context)
     : IRequestHandler<GetPayrollSettingsQuery, PayrollSettingsDto>
@@ -45,13 +54,13 @@ public sealed class GetPayrollSettingsQueryHandler(IApplicationDbContext context
     public async Task<PayrollSettingsDto> Handle(
         GetPayrollSettingsQuery request, CancellationToken cancellationToken)
         => PayrollSettingsResolver.ToDto(
-            await PayrollSettingsResolver.ResolveAsync(context, request.Year, cancellationToken));
+            await PayrollSettingsResolver.ResolveAsync(context, request.AsOf, cancellationToken));
 }
 
-// --- güncelle (yıla göre versiyonlu upsert) ---
+// --- güncelle (yürürlük tarihine göre versiyonlu upsert) ---
 
 public sealed record UpdatePayrollSettingsCommand(
-    int Year,
+    DateOnly EffectiveFrom,
     decimal OvertimeMultiplier,
     decimal MonthlyWorkingHours,
     int DefaultWorkedDays,
@@ -71,7 +80,9 @@ public sealed class UpdatePayrollSettingsCommandValidator : AbstractValidator<Up
 {
     public UpdatePayrollSettingsCommandValidator()
     {
-        RuleFor(x => x.Year).InclusiveBetween(2000, 2100);
+        RuleFor(x => x.EffectiveFrom)
+            .Must(d => d.Year is >= 2000 and <= 2100)
+            .WithMessage("Yürürlük tarihi 2000-2100 aralığında olmalı.");
         RuleFor(x => x.OvertimeMultiplier).InclusiveBetween(1m, 5m);
         RuleFor(x => x.MonthlyWorkingHours).GreaterThan(0m);
         RuleFor(x => x.DefaultWorkedDays).InclusiveBetween(1, 31);
@@ -99,11 +110,11 @@ public sealed class UpdatePayrollSettingsCommandHandler(IApplicationDbContext co
     {
         var settings = await context.PayrollSettings
             .Include(s => s.TaxBrackets)
-            .FirstOrDefaultAsync(s => s.Year == request.Year, cancellationToken);
+            .FirstOrDefaultAsync(s => s.EffectiveFrom == request.EffectiveFrom, cancellationToken);
 
         if (settings is null)
         {
-            settings = new PayrollSettingsEntity { Year = request.Year };
+            settings = new PayrollSettingsEntity { EffectiveFrom = request.EffectiveFrom };
             context.PayrollSettings.Add(settings);
         }
 

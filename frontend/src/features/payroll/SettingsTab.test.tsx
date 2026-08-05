@@ -7,7 +7,7 @@ import { ToastProvider } from "../../layout/ToastProvider";
 import { SettingsTab } from "./SettingsTab";
 
 const settings = {
-  year: 2026, overtimeMultiplier: 1.5, monthlyWorkingHours: 225, defaultWorkedDays: 30,
+  effectiveFrom: "2026-01-01", overtimeMultiplier: 1.5, monthlyWorkingHours: 225, defaultWorkedDays: 30,
   sgkEmployeeRate: 14, unemploymentEmployeeRate: 1, sgkEmployerRate: 20.5, unemploymentEmployerRate: 2,
   stampTaxRate: 0.759, sgkBaseMin: 33030, sgkBaseMax: 297270,
   monthlyMinWageIncomeTaxExemption: 4211, monthlyMinWageStampTaxExemption: 250.7,
@@ -42,10 +42,12 @@ test("kaydet PUT settings ucuna tam komutla gider", async () => {
     );
     expect(put).toBeTruthy();
     const body = JSON.parse(String(put![1]?.body));
-    expect(body).toMatchObject({ year: 2026, overtimeMultiplier: 2, sgkBaseMin: 33030, minWageGross: 33030 });
+    expect(body).toMatchObject({
+      effectiveFrom: "2026-01-01", overtimeMultiplier: 2, sgkBaseMin: 33030, minWageGross: 33030,
+    });
     expect(body.taxBrackets).toBeUndefined();
   });
-  expect(await screen.findByText(/Ayarlar kaydedildi/)).toBeInTheDocument();
+  expect(await screen.findByText(/2026-01-01 tarihinden itibaren geçerli/)).toBeInTheDocument();
 });
 
 test("varsayılana dön formu sorgu değerlerine geri alır", async () => {

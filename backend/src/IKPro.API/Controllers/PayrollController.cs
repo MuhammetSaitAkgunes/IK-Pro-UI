@@ -93,14 +93,14 @@ public sealed class PayrollController(ISender sender) : ControllerBase
         PreviewPayrollCommand command, CancellationToken cancellationToken)
         => Ok(await sender.Send(command, cancellationToken));
 
-    // --- ayarlar (hr-admin, yıla göre versiyonlu) ---
+    // --- ayarlar (hr-admin, yürürlük tarihine göre versiyonlu) ---
 
     [HttpGet("settings")]
     [Authorize(Policy = Policies.HrAdminOnly)]
     [ProducesResponseType<PayrollSettingsDto>(StatusCodes.Status200OK)]
     public async Task<ActionResult<PayrollSettingsDto>> GetSettings(
-        [FromQuery] int? year, CancellationToken cancellationToken)
-        => Ok(await sender.Send(new GetPayrollSettingsQuery(year), cancellationToken));
+        [FromQuery] DateOnly? asOf, CancellationToken cancellationToken)
+        => Ok(await sender.Send(new GetPayrollSettingsQuery(asOf), cancellationToken));
 
     [HttpPut("settings")]
     [Authorize(Policy = Policies.HrAdminOnly)]

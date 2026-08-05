@@ -3,13 +3,19 @@ using IKPro.Domain.Common;
 namespace IKPro.Domain.Entities.Payroll;
 
 /// <summary>
-/// Bordro parametreleri (döneme/yıla göre versiyonlu). Değerler frontend
-/// payrollDefaultSettings ile birebir. Oranlar yüzde/binde olarak saklanır.
+/// Bordro parametreleri, yürürlük tarihine göre versiyonlu. Oranlar yüzde/binde
+/// saklanır.
+///
+/// Neden yıl değil tarih: Türkiye'de asgari ücret ve SGK sınırları yıl ORTASINDA
+/// da değişebiliyor (temmuz güncellemeleri). Yıl granülaritesi bunu ifade edemez
+/// ve geçmiş dönemin yanlış parametreyle hesaplanmasına yol açar.
 /// </summary>
 public class PayrollSettings : AuditableEntity
 {
-    /// <summary>Ayar setinin geçerli olduğu yıl (versiyonlama).</summary>
-    public int Year { get; set; }
+    /// <summary>Bu setin yürürlüğe girdiği tarih; bir sonraki set başlayana kadar geçerlidir.</summary>
+    public DateOnly EffectiveFrom { get; set; }
+
+    /// <summary>Hiçbir set verilen tarihten önce başlamıyorsa kullanılacak yedek set.</summary>
     public bool IsDefault { get; set; }
 
     public decimal OvertimeMultiplier { get; set; } = 1.5m;
