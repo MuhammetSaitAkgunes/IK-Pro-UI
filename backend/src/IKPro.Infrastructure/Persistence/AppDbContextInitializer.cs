@@ -421,9 +421,13 @@ public class AppDbContextInitializer(
             StampTaxRate = 0.759m,
             SgkBaseMin = 33030m,
             SgkBaseMax = 297270m,
-            MonthlyMinWageIncomeTaxExemption = 4211m,
-            MonthlyMinWageStampTaxExemption = 250.7m,
-            MinWageGross = 33030m, // frontend: minWageGross = sgkBaseMin
+            // İstisna = asgari ücret üzerinden hesaplanan gelir vergisi:
+            // (33.030 − %15 SGK) × %15 = 28.075,50 × 0,15 = 4.211,325 → 4.211,33.
+            // Yuvarlanmış 4.211 kullanıldığında asgari ücretliden 0,325 TL gelir
+            // vergisi kesiliyor ve net, resmî 28.075,50 yerine 28.075,175 çıkıyordu.
+            MonthlyMinWageIncomeTaxExemption = 4211.33m,
+            MonthlyMinWageStampTaxExemption = 250.7m, // 33.030 × binde 7,59 = 250,6977
+            MinWageGross = 33030m,
             TaxBrackets =
             {
                 new IncomeTaxBracket { Order = 1, Limit = 190000m, Base = 0m, BaseTax = 0m, Rate = 0.15m },

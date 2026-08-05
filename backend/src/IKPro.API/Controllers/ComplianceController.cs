@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace IKPro.API.Controllers;
 
 /// <summary>
-/// Uyum & belge uçları (Faz 9). Okuma: hr-admin + manager (manager yalnız ekibini görür);
+/// Uyum &amp; belge uçları (Faz 9). Okuma: hr-admin + manager (manager yalnız ekibini görür);
 /// mutasyonlar (oluştur/güncelle/durum/owner) yalnız hr-admin.
 /// </summary>
 [ApiController]

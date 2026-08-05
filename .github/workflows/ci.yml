@@ -72,7 +72,9 @@ jobs:
 
       - run: dotnet restore
 
-      - run: dotnet build --no-restore --configuration Release
+      # -warnaserror: derleme uyarıları hata sayılır. Uyarı birikmesi gerçek
+      # uyarıyı gizler; taban temizken bu kural onu temiz tutar.
+      - run: dotnet build --no-restore --configuration Release -warnaserror
 
       - name: Testler (birim + entegrasyon)
         run: dotnet test --no-build --configuration Release --verbosity normal

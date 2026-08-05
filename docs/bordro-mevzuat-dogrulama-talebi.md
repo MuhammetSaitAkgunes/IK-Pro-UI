@@ -25,30 +25,45 @@ güvenlik ağı olur.
 Hangi dönem için doğrulama yapıyorsak o dönemin resmî değerleri. Sistemdeki
 mevcut değerler "Sistemde" sütununda; yanlışsa lütfen düzeltin.
 
-| Parametre | Sistemde | Doğrusu | Yürürlük tarihi |
+Aşağıdaki değerler **açık kaynaklardan araştırılıp** sisteme işlendi (kaynaklar
+Bölüm 5'te). Lütfen yalnızca **teyit** edin ya da düzeltin.
+
+| Parametre | Sistemde (2026) | Teyit ✓/✗ | Düzeltme |
 | --- | --- | --- | --- |
 | Asgari ücret (brüt, aylık) | 33.030,00 | | |
+| Net asgari ücret (kontrol) | 28.075,50 | | |
 | SGK prime esas kazanç **alt** sınırı (aylık) | 33.030,00 | | |
-| SGK prime esas kazanç **üst** sınırı (aylık) | 297.270,00 | | |
+| SGK prime esas kazanç **üst** sınırı (aylık) | 297.270,00 (asgari ücret × **9**) | | |
 | SGK işçi payı | %14 | | |
 | İşsizlik sigortası işçi payı | %1 | | |
 | SGK işveren payı | %20,5 | | |
 | İşsizlik sigortası işveren payı | %2 | | |
 | Damga vergisi oranı | binde 7,59 | | |
-| Asgari ücret **gelir vergisi** istisnası (aylık) | 4.211,00 | | |
+| Asgari ücret **gelir vergisi** istisnası (aylık) | 4.211,33 | | |
 | Asgari ücret **damga vergisi** istisnası (aylık) | 250,70 | | |
 | Aylık normal çalışma saati | 225 | | |
 | Ay içi standart gün sayısı | 30 | | |
 
+> **Not — SGK tavan çarpanı:** 5510 s.K. m.82'deki çarpan 01.01.2026'dan itibaren
+> 7,5'ten **9'a** yükseltilmiştir. Sistemdeki 297.270 bu yeni çarpana göredir.
+>
+> **Not — GV istisnası düzeltmesi:** Sistemde 4.211,00 yazıyordu. İstisna,
+> asgari ücret üzerinden hesaplanan gelir vergisine eşit olmalı:
+> (33.030 − %15 SGK) × %15 = 28.075,50 × 0,15 = **4.211,325 → 4.211,33**.
+> Yuvarlanmış değerle asgari ücretliden 0,325 TL gelir vergisi kesiliyor ve net
+> 28.075,175 çıkıyordu; düzeltmeden sonra resmî 28.075,50 tutuyor.
+
 **Gelir vergisi dilimleri (kümülatif matrah):**
 
-| # | Üst sınır | Oran | Doğrusu (sınır / oran) |
-| --- | --- | --- | --- |
-| 1 | 190.000 | %15 | |
-| 2 | 400.000 | %20 | |
-| 3 | 1.500.000 | %27 | |
-| 4 | 5.300.000 | %35 | |
-| 5 | üstü | %40 | |
+Ücret gelirleri tarifesi (ücret dışı gelirlerden 3. dilimde ayrışır):
+
+| # | Üst sınır | Kümülatif vergi | Oran | Teyit ✓/✗ |
+| --- | --- | --- | --- | --- |
+| 1 | 190.000 | — | %15 | |
+| 2 | 400.000 | 28.500 | %20 | |
+| 3 | 1.500.000 | 70.500 | %27 | |
+| 4 | 5.300.000 | 367.500 | %35 | |
+| 5 | üstü | 1.697.500 | %40 | |
 
 ---
 
@@ -62,7 +77,7 @@ davranışlar. Her biri için "doğru davranış nedir?" sorusuna yanıt bekliyo
 | S1 | SGK **alt** sınırı çalışılan gün ile oranlanıyor, **üst** sınır oranlanmıyor (tam ay uygulanıyor). | Ay içi giriş/çıkışta SGK tavanı da prim gün sayısına göre oranlanmalı mı? |
 | S2 | Asgari ücret gelir vergisi ve damga vergisi istisnaları, çalışan ay içinde işe girse bile **tam ay** düşülüyor. | Kısmi aylarda istisnalar gün oranlı mı uygulanır? |
 | S3 | Gelir vergisi istisnası **sabit tutar** (4.211) olarak düşülüyor. | İstisna, çalışanın kendi kümülatif vergi dilimine göre asgari ücret üzerinden **hesaplanmalı** mı? Çalışan üst dilime geçtiğinde istisna tutarı değişir mi? |
-| S4 | **Yol ve yemek yardımı** brüte ekleniyor; SGK matrahına ve gelir vergisi matrahına tam giriyor. | Bu kalemlerin SGK ve gelir vergisi istisna sınırları nedir? Nakit / ayni ödeme farkı hesabı nasıl etkiler? |
+| S4 | **Yol ve yemek yardımı** brüte ekleniyor; SGK matrahına ve gelir vergisi matrahına tam giriyor — hiçbir istisna uygulanmıyor. | Araştırmada 2026 için şunlar geçiyor: yemek **nakit** günlük 300 TL / **ayni (kart)** 330 TL gelir vergisi istisnası, SGK tarafında günlük 158 TL; yol **ayni** günlük 158 TL, **nakit** ödemede istisna yok. Bu tutarlar ve gelir vergisi ile SGK için farklı sınır uygulanması doğru mu? İstisna fiilen çalışılan gün sayısıyla mı çarpılır? |
 | S5 | Fazla mesai için **tek çarpan** var (varsayılan 1,5). | Hafta tatili ve ulusal bayram/genel tatil çalışması için ayrı çarpan (%100) gerekiyor mu? Hesaplama farkı nedir? |
 | S6 | İşveren SGK primi **%20,5 tam** hesaplanıyor; hiçbir teşvik/indirim uygulanmıyor. | 5510 sayılı kanun kapsamındaki 5 puanlık indirim hangi koşullarda uygulanır? İşveren maliyetine nasıl yansır? |
 | S7 | Hesap sonuçlarında **yuvarlama yapılmıyor** (kuruş sonrası basamaklar taşınıyor). | Hangi kalemler, hangi aşamada, kaç kuruşa yuvarlanmalı? (Her kalem ayrı mı, yoksa sadece net mi?) |
@@ -148,6 +163,18 @@ de) bu belgenin yenilenmesi ve testlerin güncellenmesi gerekir. Sistem
 parametreleri yürürlük tarihiyle sakladığı için geçmiş dönemler etkilenmez.
 
 ---
+
+## Bölüm 5 — Araştırma kaynakları
+
+Bölüm 1 ve 3'teki değerler aşağıdaki açık kaynaklardan derlendi. **Bunlar mali
+müşavir onayı yerine geçmez**; teyit için sunulmuştur.
+
+- 2026 gelir vergisi tarifesi (31.12.2025 tarih, 33124 sayılı Resmî Gazete) —
+  Alomaliye, "2026 Yılı Vergi Dilimleri"
+- 2026 asgari ücret ve SGK PEK alt/üst sınırları; 5510 s.K. m.82 çarpanının
+  7,5 → 9 değişimi — muhasebetr, Verginet SGK genelge özeti, EY sirküleri
+- 2026 yemek/yol istisna tutarları — Kolay İK, PwC Türkiye köşe yazısı
+- Temmuz 2026'da ara zam yapılmadığı bilgisi — Uzmanpara/Hürriyet derlemeleri
 
 **Doldurma tarihi:** ⬜
 **Doğrulayan (ad / unvan / SMMM no):** ⬜

@@ -86,6 +86,34 @@ public sealed class PayrollTests(IKProApiFactory factory)
             .Should().Be(40000m, "temmuz döneminde yeni set yürürlükte");
     }
 
+    /// <summary>
+    /// Tohum parametreleriyle asgari ücretlinin neti, 2026 resmî tutarı (28.075,50 TL)
+    /// vermeli. Motor doğru olsa bile parametre yuvarlaması neti kaydırabildiği için
+    /// bu kontrol uçtan uca (seed → API → motor) yapılır.
+    /// </summary>
+    [Fact]
+    public async Task Preview_AsgariUcret_ResmiNetiVerir()
+    {
+        var admin = await AuthedClientAsync("ik@hrmaster.local");
+
+        var response = await admin.PostAsJsonAsync("/api/payroll/preview", new
+        {
+            grossSalary = 33030,
+            workedDays = 30,
+            overtimeHours = 0,
+            premiumPay = 0,
+            roadAllowance = 0,
+            mealAllowance = 0,
+            specialDeductions = 0,
+            previousTaxBase = 0,
+            asOf = "2026-01-01",
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var calc = (await response.Content.ReadFromJsonAsync<PayrollCalcDto>())!;
+        calc.NetPay.Should().Be(28075.50m, "2026 resmî net asgari ücret");
+    }
+
     [Fact]
     public async Task Preview_MatchesJsParityScenario()
     {
@@ -107,7 +135,10 @@ public sealed class PayrollTests(IKProApiFactory factory)
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var calc = (await response.Content.ReadFromJsonAsync<PayrollCalcDto>())!;
-        calc.NetPay.Should().BeApproximately(68800.416111m, 0.01m, "JS motor referans değeri");
+        // JS mock referansı 68.800,416111 idi. Asgari ücret GV istisnası tohum verisinde
+        // 4.211 yerine tam değerine (4.211,33) çekilince gelir vergisi 0,33 TL azaldı ve
+        // net aynı miktarda arttı. Beklenen değer bu düzeltmeyi yansıtır.
+        calc.NetPay.Should().BeApproximately(68800.746111m, 0.01m, "istisna düzeltmesi sonrası");
         calc.EmployerCost.Should().BeApproximately(117668.055556m, 0.01m);
         calc.Warnings.Should().Contain("Vergi dilimi geçişi");
     }
@@ -164,7 +195,8 @@ public sealed class PayrollTests(IKProApiFactory factory)
         var updatedRow = (await updateResponse.Content.ReadFromJsonAsync<PayrollRowDto>())!;
 
         updatedRow.ApprovalStatus.Should().Be("Kontrol");
-        updatedRow.NetPay.Should().BeApproximately(92876.1774m, 0.01m, "JS motor pr-001 referansı");
+        // Bkz. yukarıdaki not: istisna düzeltmesi neti 0,33 TL yükseltir (92.876,1774 → 92.876,5074).
+        updatedRow.NetPay.Should().BeApproximately(92876.5074m, 0.01m, "istisna düzeltmesi sonrası");
         updatedRow.EmployerCost.Should().BeApproximately(167996.5m, 0.01m);
         updatedRow.Warnings.Should().Contain("Kontrol bekliyor");
 
@@ -254,8 +286,9 @@ public sealed class PayrollTests(IKProApiFactory factory)
 
         // --- /my: çalışan kendi onaylı bordrolarını görür ---
         var myPayslips = await GetAsync<List<MyPayslipDto>>(employee, "/api/payroll/my");
+        // Pusuladaki net, onaylı satırın snapshot'ıdır; istisna düzeltmesiyle 0,33 TL arttı.
         myPayslips.Should().Contain(p =>
-            p.PeriodName == "Eylül 2026" && Math.Abs(p.NetPay - 92876.1774m) < 0.01m);
+            p.PeriodName == "Eylül 2026" && Math.Abs(p.NetPay - 92876.5074m) < 0.01m);
     }
 
     [Fact]

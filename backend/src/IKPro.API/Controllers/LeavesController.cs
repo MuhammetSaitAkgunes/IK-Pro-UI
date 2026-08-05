@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace IKPro.API.Controllers;
 
 /// <summary>
-/// İzin & onay uçları (routes.js: /leaves tüm roller). Bakiye/talepler kişiye,
+/// İzin &amp; onay uçları (routes.js: /leaves tüm roller). Bakiye/talepler kişiye,
 /// onay kuyruğu yönetim rollerine ve ekip kapsamına bağlıdır.
 /// </summary>
 [ApiController]

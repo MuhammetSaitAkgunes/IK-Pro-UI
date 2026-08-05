@@ -36,6 +36,11 @@ public sealed class TenantPurger(
 
         await using var tx = await context.Database.BeginTransactionAsync(cancellationToken);
 
+        // EF1002 bilinçli olarak bastırılıyor: tenantId SQL'e PARAMETRE olarak geçiyor
+        // ({0} yer tutucusu + object[]), dolayısıyla enjeksiyona kapalı. Enterpole edilen
+        // tek şey EF metadata'sından çözülen tablo adları — tablo adı SQL'de zaten
+        // parametreleştirilemez ve kullanıcı girdisinden gelmez.
+#pragma warning disable EF1002
         // 1) ITenantScoped tablolar (çocuk→ebeveyn). Açık TenantId filtresi (impersonation'a bağlı değil).
         foreach (var table in tables)
         {
@@ -52,6 +57,7 @@ public sealed class TenantPurger(
         // 3) Kiracı satırı.
         await context.Database.ExecuteSqlRawAsync(
             $"DELETE FROM {tenantTable} WHERE [Id] = {{0}}", new object[] { tenantId }, cancellationToken);
+#pragma warning restore EF1002
 
         await tx.CommitAsync(cancellationToken);
 

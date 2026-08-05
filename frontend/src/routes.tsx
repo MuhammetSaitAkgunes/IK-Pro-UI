@@ -1,25 +1,29 @@
+import { Suspense, lazy, type ComponentType } from "react";
 import type { RouteObject } from "react-router-dom";
+import { PageLoading } from "./features/shared/PageState";
 import { LoginPage } from "./auth/LoginPage";
 import { AcceptInvitePage } from "./auth/AcceptInvitePage";
 import { CompanySignupPage } from "./auth/CompanySignupPage";
 import { PublicOnly, RequireAuth, RouteGate } from "./auth/guards";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { AppShell } from "./layout/AppShell";
-import { ActionsPage } from "./features/actions/ActionsPage";
-import { OverviewPage } from "./features/overview/OverviewPage";
-import { RiskCenterPage } from "./features/dashboard/RiskCenterPage";
-import { AttritionDetailPage } from "./features/dashboard/AttritionDetailPage";
-import { BurnoutDetailPage } from "./features/dashboard/BurnoutDetailPage";
-import { ManagerLoadPage } from "./features/dashboard/ManagerLoadPage";
-import { EmployeeVoicePage } from "./features/dashboard/EmployeeVoicePage";
-import { CompliancePage } from "./features/compliance/CompliancePage";
-import { PersonnelPage } from "./features/personnel/PersonnelPage";
-import { RecruitmentPage } from "./features/recruitment/RecruitmentPage";
-import { SettingsPage } from "./features/settings/SettingsPage";
-import { LeavesPage } from "./features/leaves/LeavesPage";
-import { AttendancePage } from "./features/attendance/AttendancePage";
-import { PayrollPeriodPage, PayrollCalculatorPage, PayrollSettingsPage } from "./features/payroll/PayrollPage";
-import { ManagerPage } from "./features/manager/ManagerPage";
+const ActionsPage = lazy(() => import("./features/actions/ActionsPage").then((m) => ({ default: m.ActionsPage })));
+const OverviewPage = lazy(() => import("./features/overview/OverviewPage").then((m) => ({ default: m.OverviewPage })));
+const RiskCenterPage = lazy(() => import("./features/dashboard/RiskCenterPage").then((m) => ({ default: m.RiskCenterPage })));
+const AttritionDetailPage = lazy(() => import("./features/dashboard/AttritionDetailPage").then((m) => ({ default: m.AttritionDetailPage })));
+const BurnoutDetailPage = lazy(() => import("./features/dashboard/BurnoutDetailPage").then((m) => ({ default: m.BurnoutDetailPage })));
+const ManagerLoadPage = lazy(() => import("./features/dashboard/ManagerLoadPage").then((m) => ({ default: m.ManagerLoadPage })));
+const EmployeeVoicePage = lazy(() => import("./features/dashboard/EmployeeVoicePage").then((m) => ({ default: m.EmployeeVoicePage })));
+const CompliancePage = lazy(() => import("./features/compliance/CompliancePage").then((m) => ({ default: m.CompliancePage })));
+const PersonnelPage = lazy(() => import("./features/personnel/PersonnelPage").then((m) => ({ default: m.PersonnelPage })));
+const RecruitmentPage = lazy(() => import("./features/recruitment/RecruitmentPage").then((m) => ({ default: m.RecruitmentPage })));
+const SettingsPage = lazy(() => import("./features/settings/SettingsPage").then((m) => ({ default: m.SettingsPage })));
+const LeavesPage = lazy(() => import("./features/leaves/LeavesPage").then((m) => ({ default: m.LeavesPage })));
+const AttendancePage = lazy(() => import("./features/attendance/AttendancePage").then((m) => ({ default: m.AttendancePage })));
+const PayrollPeriodPage = lazy(() => import("./features/payroll/PayrollPage").then((m) => ({ default: m.PayrollPeriodPage })));
+const PayrollCalculatorPage = lazy(() => import("./features/payroll/PayrollPage").then((m) => ({ default: m.PayrollCalculatorPage })));
+const PayrollSettingsPage = lazy(() => import("./features/payroll/PayrollPage").then((m) => ({ default: m.PayrollSettingsPage })));
+const ManagerPage = lazy(() => import("./features/manager/ManagerPage").then((m) => ({ default: m.ManagerPage })));
 
 export type Role = "hr-admin" | "manager" | "employee";
 
@@ -76,7 +80,8 @@ export const navGroups = [
 ];
 
 // Sayfa component eşlemesi: sonraki dilimler PlaceholderPage'i gerçek sayfayla değiştirir.
-const pageFor: Record<string, () => JSX.Element> = {
+// Lazy bileşenler LazyExoticComponent tipindedir; sözlük ComponentType tutar.
+const pageFor: Record<string, ComponentType> = {
   overview: OverviewPage,
   actions: ActionsPage,
   "action-center": ActionsPage,
@@ -102,7 +107,10 @@ function GatedPage({ route }: { route: AppRoute }) {
   const Page = pageFor[route.key] ?? PlaceholderPage;
   return (
     <RouteGate route={route}>
-      <Page />
+      {/* Sayfalar rota bazlı bölünür; ilk yüklemede yalnız açılan sayfa iner. */}
+      <Suspense fallback={<PageLoading />}>
+        <Page />
+      </Suspense>
     </RouteGate>
   );
 }
