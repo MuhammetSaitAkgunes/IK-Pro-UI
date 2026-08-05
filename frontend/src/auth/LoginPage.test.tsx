@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { AuthProvider } from "./AuthContext";
 import { LoginPage } from "./LoginPage";
@@ -19,13 +20,17 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
+// Gerçek ağaçtaki gibi: AuthProvider oturum değişiminde sorgu önbelleğini
+// temizlediği için QueryClientProvider altında çalışır (bkz. App.tsx).
 const renderLogin = () =>
   render(
-    <MemoryRouter>
-      <AuthProvider>
-        <LoginPage mode="login" />
-      </AuthProvider>
-    </MemoryRouter>,
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter>
+        <AuthProvider>
+          <LoginPage mode="login" />
+        </AuthProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 
 test("login formu öndolu demo bilgileriyle render edilir (parite)", () => {

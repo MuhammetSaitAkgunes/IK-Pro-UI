@@ -10,12 +10,15 @@ import { SESSION_KEY } from "./api/session";
 const sessionFor = (role: string, name: string) =>
   JSON.stringify({ token: "T", refreshToken: "R", user: { id: "u", name, email: "x@x", role, roleLabel: name, initials: "XX", employeeId: null } });
 
+// Gerçek ağaçtaki gibi: AuthProvider QueryClientProvider altında çalışır (App.tsx).
 const renderAt = (path: string) => {
   const router = createMemoryRouter(buildRouteObjects(), { initialEntries: [path] });
   return render(
-    <AuthProvider>
-      <RouterProvider router={router} />
-    </AuthProvider>,
+    <QueryClientProvider client={new QueryClient()}>
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    </QueryClientProvider>,
   );
 };
 

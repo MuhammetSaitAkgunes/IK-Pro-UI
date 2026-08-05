@@ -23,8 +23,23 @@ public sealed class IKProApiFactory : WebApplicationFactory<Program>
     /// <summary>Davet e-postalarının (outbox) yazıldığı kök — davet token'ını okumak için.</summary>
     public string StorageRoot { get; }
 
-    private const string TestConnectionString =
-        $"Server=localhost;Database={TestDatabaseName};Trusted_Connection=True;TrustServerCertificate=True;Encrypt=False";
+    /// <summary>
+    /// Sunucu bağlantısı IKPRO_TEST_SQL ile geçersiz kılınabilir; varsayılan yerel
+    /// Windows kimlik doğrulamasıdır. CI'da (Linux + SQL Server servis konteyneri)
+    /// Trusted_Connection kullanılamadığı için sa bağlantısı bu değişkenle verilir.
+    /// Veritabanı adı her zaman burada belirlenir, dışarıdan gelen değer ezilir.
+    /// </summary>
+    private const string DefaultServerConnection =
+        "Server=localhost;Trusted_Connection=True;TrustServerCertificate=True;Encrypt=False";
+
+    private static string ConnectionFor(string database) =>
+        new SqlConnectionStringBuilder(
+            Environment.GetEnvironmentVariable("IKPRO_TEST_SQL") ?? DefaultServerConnection)
+        {
+            InitialCatalog = database,
+        }.ConnectionString;
+
+    private static readonly string TestConnectionString = ConnectionFor(TestDatabaseName);
 
     public IKProApiFactory()
     {
@@ -42,8 +57,7 @@ public sealed class IKProApiFactory : WebApplicationFactory<Program>
 
     private static void DropTestDatabase()
     {
-        using var connection = new SqlConnection(
-            "Server=localhost;Database=master;Trusted_Connection=True;TrustServerCertificate=True;Encrypt=False");
+        using var connection = new SqlConnection(ConnectionFor("master"));
         connection.Open();
 
         using var command = connection.CreateCommand();

@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Aynı dal için yeni push gelirse önceki koşuyu iptal et (runner tasarrufu).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend (tip + lint + test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # openapi-typescript, TypeScript 6 ile peer çakışması veriyor (yalnızca
+      # geliştirme aracı, çalışma zamanını etkilemez) — kurulum bu yüzden esnek.
+      - run: npm ci --legacy-peer-deps
+
+      - name: Tip kontrolü
+        run: npx tsc -b
+
+      - name: Lint
+        run: npx oxlint
+
+      - name: Testler
+        run: npx vitest run
+
+  backend:
+    name: Backend (derleme + testler)
+    runs-on: ubuntu-latest
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: "Your_strong_Pass123"
+          MSSQL_PID: Developer
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P Your_strong_Pass123 -C -Q 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 20
+          --health-start-period 30s
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      # Linux runner'da Windows kimlik doğrulaması yok; testler sa ile bağlanır.
+      IKPRO_TEST_SQL: "Server=localhost,1433;User Id=sa;Password=Your_strong_Pass123;TrustServerCertificate=True;Encrypt=False"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: backend/global.json
+
+      - run: dotnet restore
+
+      - run: dotnet build --no-restore --configuration Release
+
+      - name: Testler (birim + entegrasyon)
+        run: dotnet test --no-build --configuration Release --verbosity normal

@@ -8,18 +8,18 @@ using Microsoft.EntityFrameworkCore;
 namespace IKPro.Application.Features.Employees.Files;
 
 /// <summary>Özlük evrakı yükler (nüfus cüzdanı, ikametgah, adli sicil vb.).</summary>
+// Not: İstemcinin bildirdiği Content-Type bilinçli olarak alınmaz — MIME,
+// doğrulanmış uzantıdan türetilir (bkz. EmployeeDocumentTypes).
 public sealed record UploadEmployeeDocumentCommand(
     int EmployeeId,
     string DocumentType,
     Stream Content,
     string FileName,
-    string? ContentType,
     long Length) : IRequest<EmployeeDocumentDto>;
 
 public sealed class UploadEmployeeDocumentCommandValidator : AbstractValidator<UploadEmployeeDocumentCommand>
 {
     private const long MaxBytes = 10 * 1024 * 1024;
-    private static readonly string[] AllowedExtensions = [".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx"];
 
     public UploadEmployeeDocumentCommandValidator()
     {
@@ -30,8 +30,8 @@ public sealed class UploadEmployeeDocumentCommandValidator : AbstractValidator<U
             .LessThanOrEqualTo(MaxBytes).WithMessage("Evrak en fazla 10 MB olabilir.");
 
         RuleFor(x => x.FileName)
-            .Must(name => AllowedExtensions.Contains(Path.GetExtension(name).ToLowerInvariant()))
-            .WithMessage($"İzin verilen dosya türleri: {string.Join(", ", AllowedExtensions)}");
+            .Must(EmployeeDocumentTypes.IsAllowed)
+            .WithMessage($"İzin verilen dosya türleri: {string.Join(", ", EmployeeDocumentTypes.AllowedExtensions)}");
     }
 }
 
@@ -57,7 +57,7 @@ public sealed class UploadEmployeeDocumentCommandHandler(IApplicationDbContext c
             DocumentType = request.DocumentType.Trim(),
             FileName = request.FileName,
             FilePath = stored.Path,
-            ContentType = string.IsNullOrWhiteSpace(request.ContentType) ? null : request.ContentType,
+            ContentType = EmployeeDocumentTypes.ResolveContentType(request.FileName),
             SizeBytes = stored.SizeBytes,
         };
 

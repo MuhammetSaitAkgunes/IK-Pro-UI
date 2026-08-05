@@ -58,11 +58,19 @@ public sealed class LocalFileStorage : IFileStorage
         return Task.CompletedTask;
     }
 
-    /// <summary>Depo kökü dışına çıkan yolları (../ vb.) reddeder.</summary>
+    /// <summary>
+    /// Depo kökü dışına çıkan yolları (../ vb.) reddeder. Karşılaştırma kök + dizin
+    /// ayracı ile yapılır: ayraçsız bir StartsWith, kök adının ön ekini paylaşan
+    /// KARDEŞ dizinleri ("store" kökü için "store-gizli") kök içinde sanır.
+    /// </summary>
     private string ResolveSafe(string relativePath)
     {
+        var rootBoundary = _root.EndsWith(Path.DirectorySeparatorChar)
+            ? _root
+            : _root + Path.DirectorySeparatorChar;
+
         var fullPath = Path.GetFullPath(Path.Combine(_root, relativePath));
-        if (!fullPath.StartsWith(_root, StringComparison.OrdinalIgnoreCase))
+        if (!fullPath.StartsWith(rootBoundary, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException("Geçersiz dosya yolu.");
         }

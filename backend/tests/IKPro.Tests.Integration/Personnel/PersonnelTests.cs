@@ -331,6 +331,28 @@ public sealed class PersonnelTests(IKProApiFactory factory)
         return (await response.Content.ReadFromJsonAsync<EmployeeDetailDto>())!.Id;
     }
 
+    [Fact]
+    public async Task Documents_SahteContentType_DogrulanmisUzantidanTuretilir()
+    {
+        var client = await AuthedClientAsync("ik@hrmaster.local");
+        var departments = await GetAsync<List<DepartmentDto>>(client, "/api/departments");
+        var id = await CreateMinimalEmployeeAsync(client, departments[0].Id, "Mime", "Sahibi");
+
+        // İstemci PDF'i "text/html" diye beyan ediyor. MIME tipi kullanıcı girdisidir;
+        // saklanan ve indirmede geri verilen değer, doğrulanmış uzantıdan türetilmeli.
+        using var content = new MultipartFormDataContent();
+        var file = new ByteArrayContent(Encoding.UTF8.GetBytes("%PDF-1.4 test"));
+        file.Headers.ContentType = new MediaTypeHeaderValue("text/html");
+        content.Add(file, "file", "sozlesme.pdf");
+        content.Add(new StringContent("Sözleşme"), "documentType");
+
+        var response = await client.PostAsync($"/api/employees/{id}/documents", content);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var uploaded = (await response.Content.ReadFromJsonAsync<EmployeeDocumentDto>())!;
+        uploaded.ContentType.Should().Be("application/pdf");
+    }
+
     private static Task<HttpResponseMessage> UploadDocumentAsync(
         HttpClient client, int employeeId, string fileName, string documentType)
     {
