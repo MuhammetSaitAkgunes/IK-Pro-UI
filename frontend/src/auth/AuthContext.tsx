@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { apiFetch, toSession, type AuthResponse } from "../api/client";
 import { clearSession, getSession, setSession, subscribeSession, type UserDto } from "../api/session";
 
@@ -15,6 +16,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Kaynak localStorage oturumu: api/client.ts 401'de oturumu sildiğinde
   // (React dışından) bu abonelik sayesinde user anında null'a düşer.
   const user = useSyncExternalStore(subscribeSession, getSession)?.user ?? null;
+
+  // Sorgu önbelleği kullanıcıya özeldir. Kimlik değişir değişmez (çıkış, yeniden
+  // giriş, rol değiştirme) önbellek boşaltılmalı; aksi hâlde ortak bilgisayarda
+  // bir sonraki kullanıcı, kendi verisi gelene kadar öncekinin personel/bordro
+  // verisini görür (KVKK ihlali). Kimliğe bakıyoruz: token yenilemede aynı
+  // kullanıcı devam ettiği için önbellek gereksiz yere boşaltılmaz.
+  const queryClient = useQueryClient();
+  const lastUserId = useRef<string | null | undefined>(user?.id ?? null);
+  useEffect(() => {
+    const currentUserId = user?.id ?? null;
+    if (lastUserId.current !== currentUserId) {
+      lastUserId.current = currentUserId;
+      queryClient.clear();
+    }
+  }, [user?.id, queryClient]);
 
   const accept = useCallback((auth: AuthResponse) => {
     const session = toSession(auth);
