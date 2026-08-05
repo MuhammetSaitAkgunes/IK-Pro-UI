@@ -35,6 +35,21 @@ public sealed class EmployeesController(ISender sender) : ControllerBase
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             "ikpro-personel-sablonu.xlsx");
 
+    /// <summary>
+    /// Dosyayı doğrular ve rapor döner; HİÇBİR ŞEY kaydetmez. Aktarımdan önce
+    /// kullanıcının hatalı satırları görüp düzeltmesi içindir.
+    /// </summary>
+    [HttpPost("import/preview")]
+    [Authorize(Policy = Policies.HrAdminOnly)]
+    [RequestSizeLimit(5 * 1024 * 1024)]
+    [ProducesResponseType<ImportPreviewDto>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<ImportPreviewDto>> PreviewImport(
+        IFormFile file, CancellationToken cancellationToken)
+    {
+        await using var stream = file.OpenReadStream();
+        return Ok(await sender.Send(new PreviewEmployeeImportCommand(stream), cancellationToken));
+    }
+
     [HttpGet]
     [Authorize(Policy = Policies.Management)]
     [ProducesResponseType<PagedResult<EmployeeListItemDto>>(StatusCodes.Status200OK)]
