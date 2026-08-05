@@ -87,3 +87,49 @@ export const useUploadDocument = () => {
       queryClient.invalidateQueries({ queryKey: ["employees", id, "documents"] }),
   });
 };
+
+// --- Excel içe aktarma ---
+// Tipler elle yazılır: schema.d.ts backend Swagger'ından üretilir ve bu özellik
+// için henüz yeniden üretilmedi. gen:api koşulduğunda components şemasına geçirilebilir.
+
+export type ImportRowIssue = { satirNo: number; alan: string; mesaj: string };
+
+export type ImportPreviewDto = {
+  toplamSatir: number;
+  gecerliSatir: number;
+  hataliSatir: number;
+  mukerrerSatir: number;
+  bilinmeyenDepartmanlar: string[];
+  sorunlar: ImportRowIssue[];
+};
+
+export type ImportResultDto = {
+  olusturulanSatir: number;
+  atlananSatir: number;
+  sorunlar: ImportRowIssue[];
+};
+
+const dosyaGovdesi = (file: File): FormData => {
+  const form = new FormData();
+  form.append("file", file);
+  return form;
+};
+
+/** Doğrular, KAYDETMEZ. */
+export const usePreviewImport = () =>
+  useMutation({
+    mutationFn: (file: File) =>
+      apiFetch<ImportPreviewDto>("/employees/import/preview", {
+        method: "POST",
+        body: dosyaGovdesi(file),
+      }),
+  });
+
+export const useImportEmployees = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) =>
+      apiFetch<ImportResultDto>("/employees/import", { method: "POST", body: dosyaGovdesi(file) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["employees"] }),
+  });
+};
