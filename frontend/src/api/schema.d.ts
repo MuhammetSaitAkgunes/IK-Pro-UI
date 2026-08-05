@@ -1677,6 +1677,139 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/employees/import/template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * İçe aktarma şablonunu indirir. Başlıklar sunucudan üretilir ki
+         *     kullanıcının dosyası ayrıştırıcıyla garantili uyumlu olsun.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/employees/import/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dosyayı doğrular ve rapor döner; HİÇBİR ŞEY kaydetmez. Aktarımdan önce
+         *     kullanıcının hatalı satırları görüp düzeltmesi içindir.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportPreviewDto"];
+                        "application/json": components["schemas"]["ImportPreviewDto"];
+                        "text/json": components["schemas"]["ImportPreviewDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/employees/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Geçerli satırları kaydeder; hatalı ve mükerrer satırları atlar.
+         *     Önizlemeyle aynı doğrulamayı kullanır, bu yüzden sonuçlar ayrışamaz.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ImportResultDto"];
+                        "application/json": components["schemas"]["ImportResultDto"];
+                        "text/json": components["schemas"]["ImportResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/employees": {
         parameters: {
             query?: never;
@@ -4693,6 +4826,31 @@ export interface components {
             /** Format: int32 */
             employeeId?: number;
             employeeName?: string | null;
+        };
+        ImportPreviewDto: {
+            /** Format: int32 */
+            toplamSatir?: number;
+            /** Format: int32 */
+            gecerliSatir?: number;
+            /** Format: int32 */
+            hataliSatir?: number;
+            /** Format: int32 */
+            mukerrerSatir?: number;
+            bilinmeyenDepartmanlar?: string[] | null;
+            sorunlar?: components["schemas"]["ImportRowIssueDto"][] | null;
+        };
+        ImportResultDto: {
+            /** Format: int32 */
+            olusturulanSatir?: number;
+            /** Format: int32 */
+            atlananSatir?: number;
+            sorunlar?: components["schemas"]["ImportRowIssueDto"][] | null;
+        };
+        ImportRowIssueDto: {
+            /** Format: int32 */
+            satirNo?: number;
+            alan?: string | null;
+            mesaj?: string | null;
         };
         InterviewNoteDto: {
             /** Format: int32 */

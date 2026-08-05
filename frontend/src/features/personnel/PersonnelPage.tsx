@@ -3,6 +3,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { useToast } from "../../layout/ToastProvider";
 import { PageError, PageLoading } from "../shared/PageState";
 import { downloadCsv, tableToCsvLines } from "../shared/csv";
+import { ImportModal } from "./ImportModal";
 import { PersonnelModal } from "./PersonnelModal";
 import { useBulkDeactivate, useDepartments, useEmployees, type EmployeeFilters } from "./queries";
 
@@ -18,6 +19,7 @@ export function PersonnelPage() {
   const [filters, setFilters] = useState<EmployeeFilters>({ search: "", departmentId: "", status: "" });
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [cardId, setCardId] = useState<number | null | undefined>(undefined); // undefined: kapalı, null: yeni kayıt
+  const [importOpen, setImportOpen] = useState(false);
   const tableRef = useRef<HTMLTableElement>(null);
 
   // Arama debounce: 300ms sonra server-side filtreye yansır.
@@ -84,9 +86,14 @@ export function PersonnelPage() {
             <p>Sicil, özlük, iletişim ve kurumsal bilgileri tek ekrandan yönetin.</p>
           </div>
           {isHrAdmin && (
-            <button className="btn btn-primary" onClick={() => setCardId(null)}>
-              <i aria-hidden="true" className="fa-solid fa-plus" /> Yeni Personel
-            </button>
+            <div className="toolbar-actions">
+              <button className="btn btn-secondary" onClick={() => setImportOpen(true)}>
+                <i aria-hidden="true" className="fa-solid fa-file-import" /> Excel'den İçe Aktar
+              </button>
+              <button className="btn btn-primary" onClick={() => setCardId(null)}>
+                <i aria-hidden="true" className="fa-solid fa-plus" /> Yeni Personel
+              </button>
+            </div>
           )}
         </div>
 
@@ -218,6 +225,8 @@ export function PersonnelPage() {
           </div>
         </div>
       </div>
+
+      <ImportModal open={importOpen} onClose={() => setImportOpen(false)} />
 
       {cardId !== undefined && (
         <PersonnelModal

@@ -5,6 +5,7 @@ using IKPro.Application.Features.Employees.BulkDeactivate;
 using IKPro.Application.Features.Employees.Files;
 using IKPro.Application.Features.Employees.GetEmployee;
 using IKPro.Application.Features.Employees.GetEmployees;
+using IKPro.Application.Features.Employees.Import;
 using IKPro.Application.Features.Employees.SetStatus;
 using IKPro.Application.Features.Employees.Upsert;
 using MediatR;
@@ -22,6 +23,48 @@ namespace IKPro.API.Controllers;
 [Route("api/employees")]
 public sealed class EmployeesController(ISender sender) : ControllerBase
 {
+    /// <summary>
+    /// İçe aktarma şablonunu indirir. Başlıklar sunucudan üretilir ki
+    /// kullanıcının dosyası ayrıştırıcıyla garantili uyumlu olsun.
+    /// </summary>
+    [HttpGet("import/template")]
+    [Authorize(Policy = Policies.HrAdminOnly)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public IActionResult DownloadImportTemplate()
+        => File(EmployeeImportTemplate.Olustur(),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "ikpro-personel-sablonu.xlsx");
+
+    /// <summary>
+    /// Dosyayı doğrular ve rapor döner; HİÇBİR ŞEY kaydetmez. Aktarımdan önce
+    /// kullanıcının hatalı satırları görüp düzeltmesi içindir.
+    /// </summary>
+    [HttpPost("import/preview")]
+    [Authorize(Policy = Policies.HrAdminOnly)]
+    [RequestSizeLimit(5 * 1024 * 1024)]
+    [ProducesResponseType<ImportPreviewDto>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<ImportPreviewDto>> PreviewImport(
+        IFormFile file, CancellationToken cancellationToken)
+    {
+        await using var stream = file.OpenReadStream();
+        return Ok(await sender.Send(new PreviewEmployeeImportCommand(stream), cancellationToken));
+    }
+
+    /// <summary>
+    /// Geçerli satırları kaydeder; hatalı ve mükerrer satırları atlar.
+    /// Önizlemeyle aynı doğrulamayı kullanır, bu yüzden sonuçlar ayrışamaz.
+    /// </summary>
+    [HttpPost("import")]
+    [Authorize(Policy = Policies.HrAdminOnly)]
+    [RequestSizeLimit(5 * 1024 * 1024)]
+    [ProducesResponseType<ImportResultDto>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<ImportResultDto>> Import(
+        IFormFile file, CancellationToken cancellationToken)
+    {
+        await using var stream = file.OpenReadStream();
+        return Ok(await sender.Send(new ImportEmployeesCommand(stream), cancellationToken));
+    }
+
     [HttpGet]
     [Authorize(Policy = Policies.Management)]
     [ProducesResponseType<PagedResult<EmployeeListItemDto>>(StatusCodes.Status200OK)]

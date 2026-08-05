@@ -87,3 +87,36 @@ export const useUploadDocument = () => {
       queryClient.invalidateQueries({ queryKey: ["employees", id, "documents"] }),
   });
 };
+
+// --- Excel içe aktarma ---
+// Tipler backend Swagger'ından üretilir (npm run gen:api); sözleşme değişirse
+// derleme kırılır, elle yazılan kopya sessizce ayrışamaz.
+
+export type ImportRowIssue = components["schemas"]["ImportRowIssueDto"];
+export type ImportPreviewDto = components["schemas"]["ImportPreviewDto"];
+export type ImportResultDto = components["schemas"]["ImportResultDto"];
+
+const dosyaGovdesi = (file: File): FormData => {
+  const form = new FormData();
+  form.append("file", file);
+  return form;
+};
+
+/** Doğrular, KAYDETMEZ. */
+export const usePreviewImport = () =>
+  useMutation({
+    mutationFn: (file: File) =>
+      apiFetch<ImportPreviewDto>("/employees/import/preview", {
+        method: "POST",
+        body: dosyaGovdesi(file),
+      }),
+  });
+
+export const useImportEmployees = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) =>
+      apiFetch<ImportResultDto>("/employees/import", { method: "POST", body: dosyaGovdesi(file) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["employees"] }),
+  });
+};
