@@ -50,6 +50,21 @@ public sealed class EmployeesController(ISender sender) : ControllerBase
         return Ok(await sender.Send(new PreviewEmployeeImportCommand(stream), cancellationToken));
     }
 
+    /// <summary>
+    /// Geçerli satırları kaydeder; hatalı ve mükerrer satırları atlar.
+    /// Önizlemeyle aynı doğrulamayı kullanır, bu yüzden sonuçlar ayrışamaz.
+    /// </summary>
+    [HttpPost("import")]
+    [Authorize(Policy = Policies.HrAdminOnly)]
+    [RequestSizeLimit(5 * 1024 * 1024)]
+    [ProducesResponseType<ImportResultDto>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<ImportResultDto>> Import(
+        IFormFile file, CancellationToken cancellationToken)
+    {
+        await using var stream = file.OpenReadStream();
+        return Ok(await sender.Send(new ImportEmployeesCommand(stream), cancellationToken));
+    }
+
     [HttpGet]
     [Authorize(Policy = Policies.Management)]
     [ProducesResponseType<PagedResult<EmployeeListItemDto>>(StatusCodes.Status200OK)]

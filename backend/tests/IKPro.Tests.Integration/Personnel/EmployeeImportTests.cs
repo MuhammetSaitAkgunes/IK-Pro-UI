@@ -94,6 +94,61 @@ public sealed class EmployeeImportTests(IKProApiFactory factory)
         satirlar.Should().ContainSingle("şablonda bir örnek satır var");
     }
 
+    [Fact]
+    public async Task Import_GecerliSatirlariOlusturur_AyniDosyaTekrarYuklenirseMukerreriAtlar()
+    {
+        var admin = await AuthedClientAsync("ik@hrmaster.local");
+        var tc = "988" + Random.Shared.Next(10000000, 99999999);
+        string[] satir = ["Zeynep", "Aktaş", "Analist", "Yazılım", "01.03.2026", tc, "", "", "", ""];
+
+        var oncekiSayi = await PersonelSayisiAsync(admin);
+
+        using var ilk = DosyaIcerigi(satir);
+        var ilkYanit = await admin.PostAsync("/api/employees/import", ilk);
+        ilkYanit.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await ilkYanit.Content.ReadFromJsonAsync<ImportResultDto>())!
+            .OlusturulanSatir.Should().Be(1);
+        (await PersonelSayisiAsync(admin)).Should().Be(oncekiSayi + 1);
+
+        // Aynı dosya ikinci kez (sık rastlanan kaza): mükerrer atlanmalı.
+        using var ikinci = DosyaIcerigi(satir);
+        var ikinciYanit = await admin.PostAsync("/api/employees/import", ikinci);
+        var sonuc = (await ikinciYanit.Content.ReadFromJsonAsync<ImportResultDto>())!;
+
+        sonuc.OlusturulanSatir.Should().Be(0, "aynı TC zaten kayıtlı");
+        sonuc.AtlananSatir.Should().Be(1);
+        (await PersonelSayisiAsync(admin))
+            .Should().Be(oncekiSayi + 1, "mükerrer yükleme yeni kayıt OLUŞTURMAMALI");
+    }
+
+    [Fact]
+    public async Task Import_HataliSatirlariAtlar_GecerlileriKaydeder()
+    {
+        var admin = await AuthedClientAsync("ik@hrmaster.local");
+        var oncekiSayi = await PersonelSayisiAsync(admin);
+
+        using var content = DosyaIcerigi(
+            ["Kerem", "Şahin", "Uzman", "Yazılım", "01.04.2026", "", "", "", "", ""],
+            ["", "Eksik", "Uzman", "Yazılım", "01.04.2026", "", "", "", "", ""]);
+
+        var response = await admin.PostAsync("/api/employees/import", content);
+
+        var sonuc = (await response.Content.ReadFromJsonAsync<ImportResultDto>())!;
+        sonuc.OlusturulanSatir.Should().Be(1);
+        sonuc.Sorunlar.Should().ContainSingle(s => s.Alan == "Ad");
+        (await PersonelSayisiAsync(admin)).Should().Be(oncekiSayi + 1);
+    }
+
+    [Fact]
+    public async Task Import_HrAdminDisindakileriReddeder()
+    {
+        var manager = await AuthedClientAsync("ece.arslan@hrmaster.local");
+        using var content = DosyaIcerigi(["A", "B", "C", "Yazılım", "01.03.2026", "", "", "", "", ""]);
+
+        (await manager.PostAsync("/api/employees/import", content))
+            .StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
     // --- yardımcılar ---
 
     private static MultipartFormDataContent DosyaIcerigi(params string[][] satirlar)
