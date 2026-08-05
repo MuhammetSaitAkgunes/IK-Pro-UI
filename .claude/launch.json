@@ -4,13 +4,13 @@
     {
       "name": "ikpro-static",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["-y", "serve", "-l", "3210", "."],
+      "runtimeArgs": ["-y", "serve", "-l", "3210", "legacy-frontend"],
       "port": 3210
     },
     {
       "name": "ikpro-frontend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "C:\\Dev\\IKPro\\frontend", "run", "dev"],
+      "runtimeArgs": ["--prefix", "frontend", "run", "dev"],
       "port": 5173
     }
   ]
