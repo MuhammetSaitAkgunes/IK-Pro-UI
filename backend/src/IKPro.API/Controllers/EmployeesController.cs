@@ -5,6 +5,7 @@ using IKPro.Application.Features.Employees.BulkDeactivate;
 using IKPro.Application.Features.Employees.Files;
 using IKPro.Application.Features.Employees.GetEmployee;
 using IKPro.Application.Features.Employees.GetEmployees;
+using IKPro.Application.Features.Employees.Import;
 using IKPro.Application.Features.Employees.SetStatus;
 using IKPro.Application.Features.Employees.Upsert;
 using MediatR;
@@ -22,6 +23,18 @@ namespace IKPro.API.Controllers;
 [Route("api/employees")]
 public sealed class EmployeesController(ISender sender) : ControllerBase
 {
+    /// <summary>
+    /// İçe aktarma şablonunu indirir. Başlıklar sunucudan üretilir ki
+    /// kullanıcının dosyası ayrıştırıcıyla garantili uyumlu olsun.
+    /// </summary>
+    [HttpGet("import/template")]
+    [Authorize(Policy = Policies.HrAdminOnly)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public IActionResult DownloadImportTemplate()
+        => File(EmployeeImportTemplate.Olustur(),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "ikpro-personel-sablonu.xlsx");
+
     [HttpGet]
     [Authorize(Policy = Policies.Management)]
     [ProducesResponseType<PagedResult<EmployeeListItemDto>>(StatusCodes.Status200OK)]

@@ -8,6 +8,7 @@
     <PackageReference Include="MediatR" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
     <PackageReference Include="Mapster" />
+    <PackageReference Include="ClosedXML" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
   </ItemGroup>
 
