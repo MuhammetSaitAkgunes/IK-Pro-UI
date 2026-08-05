@@ -89,25 +89,12 @@ export const useUploadDocument = () => {
 };
 
 // --- Excel içe aktarma ---
-// Tipler elle yazılır: schema.d.ts backend Swagger'ından üretilir ve bu özellik
-// için henüz yeniden üretilmedi. gen:api koşulduğunda components şemasına geçirilebilir.
+// Tipler backend Swagger'ından üretilir (npm run gen:api); sözleşme değişirse
+// derleme kırılır, elle yazılan kopya sessizce ayrışamaz.
 
-export type ImportRowIssue = { satirNo: number; alan: string; mesaj: string };
-
-export type ImportPreviewDto = {
-  toplamSatir: number;
-  gecerliSatir: number;
-  hataliSatir: number;
-  mukerrerSatir: number;
-  bilinmeyenDepartmanlar: string[];
-  sorunlar: ImportRowIssue[];
-};
-
-export type ImportResultDto = {
-  olusturulanSatir: number;
-  atlananSatir: number;
-  sorunlar: ImportRowIssue[];
-};
+export type ImportRowIssue = components["schemas"]["ImportRowIssueDto"];
+export type ImportPreviewDto = components["schemas"]["ImportPreviewDto"];
+export type ImportResultDto = components["schemas"]["ImportResultDto"];
 
 const dosyaGovdesi = (file: File): FormData => {
   const form = new FormData();

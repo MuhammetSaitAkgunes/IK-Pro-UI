@@ -42,7 +42,18 @@ export function ImportModal({ open, onClose }: { open: boolean; onClose: () => v
     }
   };
 
-  const aktarilabilir = rapor !== null && rapor.gecerliSatir > 0 && !importer.isPending;
+  // Sözleşmede alanlar opsiyonel; tek yerde güvenli değerlere indirgenir ki
+  // aşağıdaki JSX her erişimde tekrar kontrol etmek zorunda kalmasın.
+  const ozet = rapor && {
+    toplam: rapor.toplamSatir ?? 0,
+    gecerli: rapor.gecerliSatir ?? 0,
+    hatali: rapor.hataliSatir ?? 0,
+    mukerrer: rapor.mukerrerSatir ?? 0,
+    bilinmeyenDepartmanlar: rapor.bilinmeyenDepartmanlar ?? [],
+    sorunlar: rapor.sorunlar ?? [],
+  };
+
+  const aktarilabilir = ozet !== null && ozet !== undefined && ozet.gecerli > 0 && !importer.isPending;
 
   return (
     <div
@@ -78,47 +89,47 @@ export function ImportModal({ open, onClose }: { open: boolean; onClose: () => v
 
         {preview.isPending && <p className="pending-desc">Dosya doğrulanıyor…</p>}
 
-        {rapor && (
+        {ozet && (
           <>
             <div className="kpi-grid">
               <div className="kpi-card">
                 <div className="kpi-content">
                   <span className="kpi-label">Toplam</span>
-                  <h3 className="kpi-value">{rapor.toplamSatir}</h3>
+                  <h3 className="kpi-value">{ozet.toplam}</h3>
                 </div>
               </div>
               <div className="kpi-card">
                 <div className="kpi-content">
                   <span className="kpi-label">Geçerli</span>
-                  <h3 className="kpi-value">{rapor.gecerliSatir}</h3>
+                  <h3 className="kpi-value">{ozet.gecerli}</h3>
                 </div>
               </div>
               <div className="kpi-card">
                 <div className="kpi-content">
                   <span className="kpi-label">Hatalı</span>
-                  <h3 className="kpi-value">{rapor.hataliSatir}</h3>
+                  <h3 className="kpi-value">{ozet.hatali}</h3>
                 </div>
               </div>
               <div className="kpi-card">
                 <div className="kpi-content">
                   <span className="kpi-label">Mükerrer</span>
-                  <h3 className="kpi-value">{rapor.mukerrerSatir}</h3>
+                  <h3 className="kpi-value">{ozet.mukerrer}</h3>
                 </div>
               </div>
             </div>
 
-            {rapor.mukerrerSatir > 0 && (
+            {ozet.mukerrer > 0 && (
               <p className="pending-desc">
                 Mükerrer satırlar TC Kimlik No ile tespit edildi ve atlanacak; mevcut kayıtlar
                 değiştirilmez. TC'si boş satırlar bu kontrolden geçemez.
               </p>
             )}
 
-            {rapor.bilinmeyenDepartmanlar.length > 0 && (
+            {ozet.bilinmeyenDepartmanlar.length > 0 && (
               <section className="surface">
                 <strong>Sistemde olmayan departmanlar</strong>
                 <ul>
-                  {rapor.bilinmeyenDepartmanlar.map((departman) => (
+                  {ozet.bilinmeyenDepartmanlar.map((departman) => (
                     <li key={departman}>{departman}</li>
                   ))}
                 </ul>
@@ -126,13 +137,13 @@ export function ImportModal({ open, onClose }: { open: boolean; onClose: () => v
               </section>
             )}
 
-            {rapor.sorunlar.length > 0 && (
+            {ozet.sorunlar.length > 0 && (
               <table className="data-table">
                 <thead>
                   <tr><th>Satır</th><th>Alan</th><th>Sorun</th></tr>
                 </thead>
                 <tbody>
-                  {rapor.sorunlar.map((sorun, index) => (
+                  {ozet.sorunlar.map((sorun, index) => (
                     <tr key={`${sorun.satirNo}-${sorun.alan}-${index}`}>
                       <td>{sorun.satirNo}</td>
                       <td>{sorun.alan}</td>
