@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace IKPro.API.Controllers;
 
 /// <summary>
-/// Analitik & risk merkezi uçları — routes.js: /dashboard ve /risk/* hr-admin + manager;
+/// Analitik &amp; risk merkezi uçları — routes.js: /dashboard ve /risk/* hr-admin + manager;
 /// /overview tüm roller. Metrikler rol kapsamına göre daralır (manager → kendi ekibi).
 /// </summary>
 [ApiController]

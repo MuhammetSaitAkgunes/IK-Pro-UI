@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace IKPro.API.Controllers;
 
 /// <summary>
-/// Aksiyon merkezi & denetim izi & birleşik arama uçları (Faz 10).
+/// Aksiyon merkezi &amp; denetim izi &amp; birleşik arama uçları (Faz 10).
 /// routes.js: /actions tüm rollere açık → liste/rozet/arama herkese; CRUD hr-admin;
 /// durum geçişi hr-admin + manager; denetim izi yönetsel bilgi olduğundan Management.
 /// apiClient.js sözleşmesi: GET /api/actions, GET /api/audit-logs, PATCH /api/actions/{id}/status.

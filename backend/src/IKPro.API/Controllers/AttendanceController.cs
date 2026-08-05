@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace IKPro.API.Controllers;
 
 /// <summary>
-/// Mesai & puantaj uçları (routes.js: /attendance hr-admin+manager). Canlı yoklama
+/// Mesai &amp; puantaj uçları (routes.js: /attendance hr-admin+manager). Canlı yoklama
 /// panosu, aylık puantaj, manuel giriş + satır düzenleme ve aylık özet (SQL view).
 /// Manager kapsamı handler'larda ekibiyle sınırlanır.
 /// </summary>
