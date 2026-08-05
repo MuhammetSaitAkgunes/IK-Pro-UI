@@ -105,6 +105,17 @@
 
 ## Kayıtlar (yeni → eski)
 
+### 2026-07-20 — Geliştirici rehberleri (docs/rehberler/)
+
+- Yeni başlayan (junior dahil) bir geliştiricinin projeye A–Z hakim olması için
+  12 dosyalık rehber seti yazıldı: `docs/rehberler/` (README indeks + 00–10).
+  Konular: genel bakış, ortam kurulumu, Clean Architecture, backend derinlemesine,
+  frontend derinlemesine, kimlik & yetkilendirme, multi-tenancy, veritabanı &
+  migration, testler, **adım adım yeni özellik ekleme** (uçtan uca örnek), sözlük & SSS.
+- Gerçek kod dosyalarına referans verir, "neden böyle?" sorusunu yanıtlar; mermaid
+  diyagramları (katmanlar, istek yolculuğu, davet akışı, TDD döngüsü) içerir.
+  Kök README dokümantasyon bölümü bu seti işaret eder.
+
 ### 2026-07-20 — Kod-inceleme fix'leri (#2 host çökmesi, #3 slug yarışı, #4 purge dosya artığı)
 
 - **Bağlam:** `/senior-backend` + `/code-review` ile projenin kod kalitesi ve
