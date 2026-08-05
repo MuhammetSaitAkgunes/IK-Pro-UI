@@ -104,12 +104,58 @@ yapılmamış sayılır.
 edeceği ve tatbikatı kimin koşacağı belirlenmelidir. Sahibi olmayan yedek
 politikası uygulanmaz.
 
-## Bu runbook'un eksikleri
+## Tam kurulum (dört bileşen birlikte)
 
-Dürüst olmak gerekirse aşağıdakiler **henüz yok** ve üretim öncesi tamamlanmalı:
+```powershell
+pwsh scripts/backup-restore-drill.ps1 `
+  -Database IKProDb `
+  -BackupPath "C:\SQLYedek" `
+  -StoragePath "C:\IKPro\App_Data\storage" `
+  -OffsitePath "\\yedek-sunucu\ikpro" `
+  -LogPath "C:\SQLYedek\tatbikat.jsonl" `
+  -AlertWebhookUrl "https://hooks.slack.com/services/..."
+```
 
-- Otomatik zamanlama (SQL Agent job / zamanlanmış görev) — script elle çalışıyor.
-- Yedeklerin sunucu dışına kopyalanması (off-site).
-- Yedek başarısızlığında uyarı (şu an kimse fark etmez).
-- Yüklenen dosyaların (`App_Data/storage` — özlük evrakları) yedeklenmesi.
-  **Script yalnız veritabanını yedekler; evrak dosyaları kapsam dışıdır.**
+| Bileşen | Parametre | Ne sağlar |
+| --- | --- | --- |
+| Evrak dosyaları | `-StoragePath` | Özlük evrakları/fotoğraflar zip'lenip yedeğe eklenir. **Veritabanı tek başına yetmez:** DB yalnız dosya yollarını tutar, dosyalar diskte durur. |
+| Off-site kopya | `-OffsitePath` | Yedek ikinci konuma kopyalanır ve boyut olarak doğrulanır. Aynı diskteki yedek, disk arızasında veriyle birlikte gider. |
+| Denetim izi | `-LogPath` | Her koşum JSON satırı olarak eklenir (başarı **ve** başarısızlık). |
+| Uyarı | `-AlertWebhookUrl` | Başarısızlıkta POST edilir (Slack/Teams uyumlu). Sessiz başarısızlık en tehlikeli durumdur. |
+
+## Otomatik zamanlama
+
+```powershell
+# 1) Önce ne yapacağını gör (sistemi değiştirmez):
+pwsh scripts/register-backup-task.ps1 -Database IKProDb -BackupPath "C:\SQLYedek" -WhatIf
+
+# 2) YÖNETİCİ PowerShell'de kaydet:
+pwsh scripts/register-backup-task.ps1 -Database IKProDb -BackupPath "C:\SQLYedek" `
+  -StoragePath "C:\IKPro\App_Data\storage" -OffsitePath "\\yedek-sunucu\ikpro" `
+  -LogPath "C:\SQLYedek\tatbikat.jsonl"
+
+# 3) Hemen tetikleyip doğrula:
+Start-ScheduledTask -TaskName IKPro-YedekTatbikati
+Get-ScheduledTaskInfo -TaskName IKPro-YedekTatbikati | Select LastRunTime, LastTaskResult
+```
+
+`LastTaskResult` **0** = başarılı. Görev SYSTEM hesabıyla kaydedilir, çünkü SQL
+Server yedek dizinine yazma izni kullanıcı hesabında genelde yoktur.
+
+Kaldırmak için: `Unregister-ScheduledTask -TaskName IKPro-YedekTatbikati -Confirm:$false`
+
+> **Not:** Zamanlanmış görev bu depoda **kaydedilmedi** — sistemde kalıcı
+> yapılandırma oluşturduğu ve yönetici hakkı gerektirdiği için bilinçli olarak
+> operatöre bırakıldı. Yukarıdaki komut çalıştırılana kadar yedekleme ELLE
+> çalışır durumdadır.
+
+## Kalan eksikler
+
+- ⬜ **RPO/RTO belirlenmedi** — ticari karar; sözleşmeye yazılmadan önce netleşmeli.
+- ⬜ **Zamanlanmış görev kurulmadı** — yukarıdaki komut operatör tarafından
+  çalıştırılmalı.
+- ⬜ **Off-site hedefi seçilmedi** — `-OffsitePath` için gerçek bir ağ paylaşımı
+  veya nesne depolama belirlenmeli; SYSTEM hesabının o hedefe erişebildiği
+  doğrulanmalı.
+- ⬜ **Log dosyası kimse tarafından izlenmiyor** — webhook kurulana kadar
+  `tatbikat.jsonl` dosyasına düzenli bakılmalı.

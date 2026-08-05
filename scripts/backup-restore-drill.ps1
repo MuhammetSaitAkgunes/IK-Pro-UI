@@ -35,11 +35,67 @@ param(
     [Parameter(Mandatory = $true)][string]$Database,
     [Parameter(Mandatory = $true)][string]$BackupPath,
     [string]$ServerInstance = "localhost",
-    [switch]$KeepRestoredCopy
+    [switch]$KeepRestoredCopy,
+
+    # Yüklenen evrak/foto dizini (App_Data/storage). Verilirse zip'lenip yedeğe eklenir.
+    # Veritabanı tek başına yetmez: evrak dosyaları diskte durur, DB yalnız yolu tutar.
+    [string]$StoragePath,
+
+    # İkinci (off-site) kopya hedefi. Yedek sunucuyla aynı diskte durursa disk
+    # arızasında veriyle birlikte gider — bu yüzden ayrı konuma kopyalanır.
+    [string]$OffsitePath,
+
+    # Her koşumun sonucu JSON satırı olarak buraya eklenir (izleme/denetim izi).
+    [string]$LogPath,
+
+    # Başarısızlıkta POST edilir. Sessiz başarısızlık en tehlikeli durumdur:
+    # yedek alınmıyorsa bunu felaket anında öğrenmemek gerekir.
+    [string]$AlertWebhookUrl
 )
 
 $ErrorActionPreference = "Stop"
 $drillDatabase = "${Database}_RestoreDrill"
+$script:startedAt = Get-Date
+$script:storageArchive = $null
+$script:offsiteCopies = @()
+
+function Write-DrillResult {
+    <#
+      Sonucu JSON satırı olarak loglar ve başarısızlıkta uyarı gönderir.
+      Uyarı gönderimi ASLA tatbikatın sonucunu değiştirmez (best-effort).
+    #>
+    param([bool]$Success, [string]$Message, [hashtable]$Details = @{})
+
+    $record = [ordered]@{
+        zaman    = (Get-Date).ToString("o")
+        surenSn  = [int]((Get-Date) - $script:startedAt).TotalSeconds
+        sunucu   = $ServerInstance
+        veritabani = $Database
+        basarili = $Success
+        mesaj    = $Message
+    }
+    foreach ($k in $Details.Keys) { $record[$k] = $Details[$k] }
+    $json = ($record | ConvertTo-Json -Compress -Depth 4)
+
+    if ($LogPath) {
+        try {
+            $dir = Split-Path -Parent $LogPath
+            if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+            Add-Content -Path $LogPath -Value $json -Encoding utf8
+        }
+        catch { Write-Host "UYARI: sonuç loglanamadı — $_" -ForegroundColor Yellow }
+    }
+
+    if (-not $Success -and $AlertWebhookUrl) {
+        try {
+            Invoke-RestMethod -Uri $AlertWebhookUrl -Method Post -ContentType "application/json" `
+                -Body (@{ text = "İK Pro yedek tatbikatı BAŞARISIZ ($Database): $Message" } | ConvertTo-Json) `
+                -TimeoutSec 20 | Out-Null
+            Write-Host "       uyarı gönderildi"
+        }
+        catch { Write-Host "UYARI: uyarı gönderilemedi — $_" -ForegroundColor Yellow }
+    }
+}
 
 # --- Koruma: tatbikat hedefi kaynakla aynı olamaz -------------------------
 if ($drillDatabase -eq $Database) {
@@ -144,7 +200,45 @@ RESTORE DATABASE [$drillDatabase] FROM DISK = N'$backupFile' WITH $($moves -join
     if ($mismatches.Count -gt 0) {
         Write-Host "TATBİKAT BAŞARISIZ — satır sayıları tutmuyor:" -ForegroundColor Red
         $mismatches | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+        Write-DrillResult -Success $false -Message "Satır sayıları tutmuyor" `
+            -Details @{ tutmayan = $mismatches }
         exit 1
+    }
+
+    # --- Evrak dosyaları -------------------------------------------------
+    # Veritabanı tek başına yeterli değil: özlük evrakları ve fotoğraflar diskte
+    # durur, DB yalnız yollarını tutar. Sadece DB geri yüklenirse kayıtlar var
+    # ama dosyalar yok olur.
+    if ($StoragePath) {
+        Write-Host "[4b] Evrak dosyaları arşivleniyor: $StoragePath"
+        if (-not (Test-Path $StoragePath)) {
+            throw "Evrak dizini bulunamadı: $StoragePath"
+        }
+        $script:storageArchive = Join-Path (Resolve-Path $BackupPath) "$Database-storage-$stamp.zip"
+        Compress-Archive -Path (Join-Path $StoragePath "*") -DestinationPath $script:storageArchive -Force -ErrorAction Stop
+        $dosyaSayisi = (Get-ChildItem -Path $StoragePath -Recurse -File).Count
+        $arsivBoyut = [Math]::Round((Get-Item $script:storageArchive).Length / 1KB, 1)
+        Write-Host "       $dosyaSayisi dosya arşivlendi ($arsivBoyut KB)"
+    }
+
+    # --- Off-site kopya --------------------------------------------------
+    # Yedek, kaynak sunucuyla aynı diskte durursa disk arızasında veriyle birlikte
+    # gider. İkinci konuma kopyalanır ve kopya BOYUT olarak doğrulanır.
+    if ($OffsitePath) {
+        Write-Host "[4c] Off-site kopyalanıyor: $OffsitePath"
+        if (-not (Test-Path $OffsitePath)) { New-Item -ItemType Directory -Path $OffsitePath -Force | Out-Null }
+
+        foreach ($kaynak in @($backupFile, $script:storageArchive) | Where-Object { $_ }) {
+            $hedef = Join-Path (Resolve-Path $OffsitePath) (Split-Path -Leaf $kaynak)
+            Copy-Item -Path $kaynak -Destination $hedef -Force -ErrorAction Stop
+            $kaynakBoyut = (Get-Item $kaynak).Length
+            $hedefBoyut = (Get-Item $hedef).Length
+            if ($kaynakBoyut -ne $hedefBoyut) {
+                throw "Off-site kopya eksik: $(Split-Path -Leaf $kaynak) ($kaynakBoyut → $hedefBoyut bayt)"
+            }
+            $script:offsiteCopies += $hedef
+            Write-Host ("       {0} kopyalandı ve doğrulandı" -f (Split-Path -Leaf $kaynak))
+        }
     }
 
     Write-Host "[5/5] Temizlik"
@@ -162,9 +256,19 @@ DROP DATABASE [$drillDatabase];
     Write-Host ""
     Write-Host "TATBİKAT BAŞARILI — yedek alındı, geri yüklendi ve doğrulandı." -ForegroundColor Green
     Write-Host "Yedek dosyası: $backupFile"
+
+    Write-DrillResult -Success $true -Message "Tatbikat başarılı" -Details @{
+        yedekDosyasi  = $backupFile
+        tabloSayisi   = $before.Count
+        toplamSatir   = ($before.Values | Measure-Object -Sum).Sum
+        evrakArsivi   = $script:storageArchive
+        offsiteKopya  = $script:offsiteCopies
+    }
     exit 0
 }
 catch {
-    Write-Host "TATBİKAT BAŞARISIZ: $_" -ForegroundColor Red
+    $hata = "$_"
+    Write-Host "TATBİKAT BAŞARISIZ: $hata" -ForegroundColor Red
+    Write-DrillResult -Success $false -Message $hata
     exit 1
 }
