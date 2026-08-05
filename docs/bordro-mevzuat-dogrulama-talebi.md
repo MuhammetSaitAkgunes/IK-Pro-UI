@@ -1,0 +1,153 @@
+# Bordro Mevzuat Doğrulama Talebi
+
+> **Amaç:** İK Pro bordro motorunu üretime almadan önce, hesapların mevzuata
+> uygunluğunu bağımsız bir mali müşavir doğrulamasıyla sabitlemek.
+>
+> **Kime:** Mali müşavir / SMMM
+> **Kimden:** İK Pro geliştirme
+> **Durum:** ⬜ Doldurulmayı bekliyor
+
+## Neden bu belge var
+
+Bordro motoru şu an eski bir arayüz prototipinin hesap mantığını birebir taklit
+ediyor; test edilen değerler o prototipten üretildi, **mevzuattan değil**. Bu
+yüzden motorun bugünkü çıktısı "tutarlı" ama "doğrulanmış" değil.
+
+Aşağıdaki tabloları doldurduğunuzda, verdiğiniz her satırı otomatik teste
+çeviriyoruz. O testler bundan sonra her kod değişikliğinde çalışır; hesap sapması
+olursa derleme kırılır. Yani bu belge tek seferlik bir kontrol değil, kalıcı bir
+güvenlik ağı olur.
+
+---
+
+## Bölüm 1 — Parametreler
+
+Hangi dönem için doğrulama yapıyorsak o dönemin resmî değerleri. Sistemdeki
+mevcut değerler "Sistemde" sütununda; yanlışsa lütfen düzeltin.
+
+| Parametre | Sistemde | Doğrusu | Yürürlük tarihi |
+| --- | --- | --- | --- |
+| Asgari ücret (brüt, aylık) | 33.030,00 | | |
+| SGK prime esas kazanç **alt** sınırı (aylık) | 33.030,00 | | |
+| SGK prime esas kazanç **üst** sınırı (aylık) | 297.270,00 | | |
+| SGK işçi payı | %14 | | |
+| İşsizlik sigortası işçi payı | %1 | | |
+| SGK işveren payı | %20,5 | | |
+| İşsizlik sigortası işveren payı | %2 | | |
+| Damga vergisi oranı | binde 7,59 | | |
+| Asgari ücret **gelir vergisi** istisnası (aylık) | 4.211,00 | | |
+| Asgari ücret **damga vergisi** istisnası (aylık) | 250,70 | | |
+| Aylık normal çalışma saati | 225 | | |
+| Ay içi standart gün sayısı | 30 | | |
+
+**Gelir vergisi dilimleri (kümülatif matrah):**
+
+| # | Üst sınır | Oran | Doğrusu (sınır / oran) |
+| --- | --- | --- | --- |
+| 1 | 190.000 | %15 | |
+| 2 | 400.000 | %20 | |
+| 3 | 1.500.000 | %27 | |
+| 4 | 5.300.000 | %35 | |
+| 5 | üstü | %40 | |
+
+---
+
+## Bölüm 2 — Şüphelendiğimiz noktalar
+
+Kod incelemesinde tespit ettiğimiz, **mevzuata aykırı olabileceğinden şüphelendiğimiz**
+davranışlar. Her biri için "doğru davranış nedir?" sorusuna yanıt bekliyoruz.
+
+| # | Motorun bugünkü davranışı | Sorumuz |
+| --- | --- | --- |
+| S1 | SGK **alt** sınırı çalışılan gün ile oranlanıyor, **üst** sınır oranlanmıyor (tam ay uygulanıyor). | Ay içi giriş/çıkışta SGK tavanı da prim gün sayısına göre oranlanmalı mı? |
+| S2 | Asgari ücret gelir vergisi ve damga vergisi istisnaları, çalışan ay içinde işe girse bile **tam ay** düşülüyor. | Kısmi aylarda istisnalar gün oranlı mı uygulanır? |
+| S3 | Gelir vergisi istisnası **sabit tutar** (4.211) olarak düşülüyor. | İstisna, çalışanın kendi kümülatif vergi dilimine göre asgari ücret üzerinden **hesaplanmalı** mı? Çalışan üst dilime geçtiğinde istisna tutarı değişir mi? |
+| S4 | **Yol ve yemek yardımı** brüte ekleniyor; SGK matrahına ve gelir vergisi matrahına tam giriyor. | Bu kalemlerin SGK ve gelir vergisi istisna sınırları nedir? Nakit / ayni ödeme farkı hesabı nasıl etkiler? |
+| S5 | Fazla mesai için **tek çarpan** var (varsayılan 1,5). | Hafta tatili ve ulusal bayram/genel tatil çalışması için ayrı çarpan (%100) gerekiyor mu? Hesaplama farkı nedir? |
+| S6 | İşveren SGK primi **%20,5 tam** hesaplanıyor; hiçbir teşvik/indirim uygulanmıyor. | 5510 sayılı kanun kapsamındaki 5 puanlık indirim hangi koşullarda uygulanır? İşveren maliyetine nasıl yansır? |
+| S7 | Hesap sonuçlarında **yuvarlama yapılmıyor** (kuruş sonrası basamaklar taşınıyor). | Hangi kalemler, hangi aşamada, kaç kuruşa yuvarlanmalı? (Her kalem ayrı mı, yoksa sadece net mi?) |
+| S8 | Kıdem tazminatı, ihbar tazminatı ve yıllık izin ücreti **hiç hesaplanmıyor**. | Bunlar bordro modülünün kapsamında olmalı mı; olacaksa öncelik sırası nedir? |
+
+---
+
+## Bölüm 3 — Doğrulama senaryoları
+
+**En kritik bölüm.** Her satır için, verdiğimiz girdilerle mevzuata uygun
+sonuçları yazmanızı rica ediyoruz. Boş bıraktığınız satırlar test edilmez.
+
+Ortak varsayımlar: 4/a kapsamında, tam zamanlı, ek kesinti yok, teşvik yok
+(aksi belirtilmedikçe). "Önceki kümülatif matrah" = yıl içinde önceki aylardan
+devreden gelir vergisi matrahı.
+
+### Senaryo A — Asgari ücretli, tam ay
+
+Brüt 33.030 · 30 gün · mesai yok · yardım yok · önceki kümülatif matrah 0
+
+| Kalem | Tutar |
+| --- | --- |
+| SGK matrahı | |
+| SGK işçi payı | |
+| İşsizlik işçi payı | |
+| Gelir vergisi matrahı | |
+| Gelir vergisi (istisna sonrası) | |
+| Damga vergisi (istisna sonrası) | |
+| **Net ücret** | |
+| İşveren SGK payı | |
+| İşveren işsizlik payı | |
+| **Toplam işveren maliyeti** | |
+
+### Senaryo B — Orta maaş, tam ay
+
+Brüt 60.000 · 30 gün · mesai yok · yardım yok · önceki kümülatif matrah 0
+
+*(Senaryo A ile aynı kalemler)*
+
+### Senaryo C — Ay içi işe giriş (S1 + S2'yi belirler)
+
+Brüt 60.000 · **15 gün** · mesai yok · yardım yok · önceki kümülatif matrah 0
+
+*(Aynı kalemler + ayrıca: SGK matrahı hesaplanırken taban/tavan nasıl oranlandı?)*
+
+### Senaryo D — SGK tavanını aşan maaş
+
+Brüt 320.000 · 30 gün · mesai yok · yardım yok · önceki kümülatif matrah 0
+
+*(Aynı kalemler)*
+
+### Senaryo E — Yıl içi vergi dilimi geçişi (kümülatif doğrulama)
+
+Brüt 60.000 · 30 gün · **önceki kümülatif matrah 185.000** (yani bu ay 1. dilimden 2.'ye geçiliyor)
+
+*(Aynı kalemler + ayrıca: dilim geçişinde vergi nasıl bölündü?)*
+
+### Senaryo F — Fazla mesai + yol/yemek (S4 + S5'i belirler)
+
+Brüt 60.000 · 30 gün · **10 saat fazla mesai** · yol 2.000 · yemek 3.000 · önceki kümülatif matrah 0
+
+| Kalem | Tutar |
+| --- | --- |
+| Fazla mesai tutarı | |
+| Yol yardımının **SGK matrahına giren** kısmı | |
+| Yemek yardımının **SGK matrahına giren** kısmı | |
+| Yol yardımının **gelir vergisine giren** kısmı | |
+| Yemek yardımının **gelir vergisine giren** kısmı | |
+| SGK matrahı | |
+| Gelir vergisi (istisna sonrası) | |
+| Damga vergisi | |
+| **Net ücret** | |
+
+---
+
+## Bölüm 4 — Sorumluluk notu
+
+Bu doğrulama, yazılımın hesap mantığını sabitlemek içindir. Doldurulan değerler
+otomatik testlere dönüştürülür ve motorun çıktısı bunlara göre düzeltilir.
+
+Mevzuat değiştiğinde (asgari ücret güncellemeleri dahil, yıl içi değişiklikler
+de) bu belgenin yenilenmesi ve testlerin güncellenmesi gerekir. Sistem
+parametreleri yürürlük tarihiyle sakladığı için geçmiş dönemler etkilenmez.
+
+---
+
+**Doldurma tarihi:** ⬜
+**Doğrulayan (ad / unvan / SMMM no):** ⬜
