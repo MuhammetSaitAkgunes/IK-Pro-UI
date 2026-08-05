@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { ApiError, apiDownload, apiFetch } from "./client";
-import { SESSION_KEY, getSession, setSession } from "./session";
+import { SESSION_KEY, getSession, setSession, subscribeSession } from "./session";
 
 const user = { id: "u1", name: "İK Yöneticisi", email: "ik@hrmaster.local", role: "hr-admin", roleLabel: "İK Admin", initials: "İK", employeeId: null } as never;
 const json = (status: number, body: unknown) =>
@@ -48,15 +48,40 @@ test("401'de refresh denenir ve istek yeni token'la tekrarlanır", async () => {
   expect(new Headers(vi.mocked(fetch).mock.calls[2][1]?.headers).get("Authorization")).toBe("Bearer YENI");
 });
 
-test("refresh de düşerse oturum silinir ve login'e yönlenir", async () => {
+// Yönlendirme artık burada elle yapılmıyor; oturumun silinip abonelerin
+// uyarılması AuthProvider'ı çıkışa düşürür, RequireAuth login'e indirir
+// (uçtan uca kanıt: auth/session-expiry.test.tsx).
+test("refresh de düşerse oturum silinir ve aboneler uyarılır", async () => {
   setSession({ token: "ESKI", refreshToken: "R1", user });
+  let notified = 0;
+  const unsubscribe = subscribeSession(() => notified++);
   vi.mocked(fetch)
     .mockResolvedValueOnce(json(401, { title: "Yetkisiz" }))
     .mockResolvedValueOnce(json(401, { title: "Refresh geçersiz" }));
 
   await expect(apiFetch("/me")).rejects.toMatchObject({ status: 401 });
   expect(localStorage.getItem(SESSION_KEY)).toBeNull();
-  expect(window.location.hash).toBe("#/login");
+  expect(notified).toBeGreaterThan(0);
+  unsubscribe();
+});
+
+test("refresh token'sız 401 sonrası, yeniden giriş yapılınca refresh tekrar çalışır", async () => {
+  // Oturumsuz bir 401: tryRefresh erken döner. Bu erken dönüş tek-uçuş
+  // cache'ini kalıcı "false" ile zehirlememeli.
+  vi.mocked(fetch).mockResolvedValueOnce(json(401, { title: "Yetkisiz" }));
+  await expect(apiFetch("/me")).rejects.toMatchObject({ status: 401 });
+
+  // Kullanıcı yeniden giriş yaptı; sonraki 401 sessizce refresh'lenebilmeli.
+  setSession({ token: "ESKI", refreshToken: "R1", user });
+  vi.mocked(fetch)
+    .mockResolvedValueOnce(json(401, { title: "Yetkisiz" }))
+    .mockResolvedValueOnce(json(200, { token: "YENI", refreshToken: "R2", expiresAtUtc: "2026-07-13T12:00:00Z", user }))
+    .mockResolvedValueOnce(json(200, { ok: true }));
+
+  const result = await apiFetch<{ ok: boolean }>("/me");
+
+  expect(result.ok).toBe(true);
+  expect(getSession()?.token).toBe("YENI");
 });
 
 test("401 sonrası retry'de FormData gövdesi alanlarıyla korunur", async () => {
@@ -86,7 +111,6 @@ test("refresh başarılı ama retry de 401 dönerse oturum silinir", async () =>
 
   await expect(apiFetch("/me")).rejects.toMatchObject({ status: 401 });
   expect(localStorage.getItem(SESSION_KEY)).toBeNull();
-  expect(window.location.hash).toBe("#/login");
 });
 
 test("FormData gövdesinde Content-Type başlığı eklenmez", async () => {

@@ -33,27 +33,33 @@ const rawFetch = async (path: string, init: RequestInit = {}): Promise<Response>
   return fetch(`${API_BASE}${path}`, { ...init, headers });
 };
 
+const runRefresh = async (): Promise<boolean> => {
+  try {
+    const session = getSession();
+    if (!session?.refreshToken) return false;
+    const response = await fetch(`${API_BASE}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken: session.refreshToken }),
+    });
+    if (!response.ok) return false;
+    const auth = (await response.json()) as AuthResponse;
+    setSession(toSession(auth));
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 // Tek-uçuş refresh: eşzamanlı 401'ler aynı refresh isteğini paylaşır.
+// Sıfırlama .finally ile yapılır; böylece refresh token yokken yaşanan
+// await'siz erken dönüşte bile temizlik atamadan SONRA çalışır. (Gövde içindeki
+// finally, ??= ataması gerçekleşmeden önce koşuyor ve cache'i kalıcı "false"
+// ile zehirliyordu: sonraki girişlerde refresh bir daha hiç denenmiyordu.)
 const tryRefresh = (): Promise<boolean> =>
-  (refreshInFlight ??= (async () => {
-    try {
-      const session = getSession();
-      if (!session?.refreshToken) return false;
-      const response = await fetch(`${API_BASE}/auth/refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken: session.refreshToken }),
-      });
-      if (!response.ok) return false;
-      const auth = (await response.json()) as AuthResponse;
-      setSession(toSession(auth));
-      return true;
-    } catch {
-      return false;
-    } finally {
-      refreshInFlight = null;
-    }
-  })());
+  (refreshInFlight ??= runRefresh().finally(() => {
+    refreshInFlight = null;
+  }));
 
 const toError = async (response: Response): Promise<ApiError> => {
   let problem: ProblemDetails | undefined;
@@ -66,7 +72,11 @@ const toError = async (response: Response): Promise<ApiError> => {
 };
 
 // 401 → tek-uçuş refresh → tek retry. Refresh düşerse VEYA retry de 401 dönerse
-// (yeni token'la bile hâlâ yetkisiz) oturumu temizleyip login'e yönlendir.
+// (yeni token'la bile hâlâ yetkisiz) oturum temizlenir. Yönlendirmeyi burada
+// yapmıyoruz: clearSession aboneleri uyarır, AuthProvider user'ı null'a düşürür
+// ve RequireAuth login'e indirir. (Eskiden window.location.hash elle set
+// ediliyordu; bellekteki user bayat kaldığı için PublicOnly kullanıcıyı geri
+// fırlatıyor ve ekran sonsuz "Yükleniyor"da kilitleniyordu.)
 // Not: string ve FormData gövdeleri fetch'te her çağrıda yeniden serileştirilir,
 // bu yüzden aynı init retry'de güvenle kullanılabilir.
 const handleUnauthorized = async (
@@ -80,7 +90,6 @@ const handleUnauthorized = async (
   if (refreshed) response = await reissue();
   if (!refreshed || response.status === 401) {
     clearSession();
-    window.location.hash = "/login";
   }
   return response;
 };

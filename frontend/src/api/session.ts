@@ -5,15 +5,45 @@ export type Session = { token: string; refreshToken: string; user: UserDto };
 
 export const SESSION_KEY = "ikpro-session";
 
+// Oturum tek kaynaktan okunur ve değişimi abonelere duyurulur: 401 kurtarması
+// (api/client.ts) oturumu sildiğinde React tarafı da anında "çıkış yapmış"
+// duruma geçer. Aksi hâlde bellekteki bayat kullanıcı yüzünden guard'lar
+// login'e inişi geri çevirir ve ekran sonsuz "Yükleniyor"da kalır.
+const listeners = new Set<() => void>();
+
+// useSyncExternalStore aynı veri için aynı referansı görmeli; ham metin
+// değişmedikçe çözümlenmiş nesne yeniden kullanılır.
+let cachedRaw: string | null = null;
+let cachedSession: Session | null = null;
+let parsed = false;
+
 export const getSession = (): Session | null => {
-  try {
-    return JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
-  } catch {
-    return null;
+  const raw = localStorage.getItem(SESSION_KEY);
+  if (!parsed || raw !== cachedRaw) {
+    cachedRaw = raw;
+    parsed = true;
+    try {
+      cachedSession = JSON.parse(raw || "null");
+    } catch {
+      cachedSession = null;
+    }
   }
+  return cachedSession;
 };
 
-export const setSession = (session: Session) =>
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+export const subscribeSession = (listener: () => void): (() => void) => {
+  listeners.add(listener);
+  return () => void listeners.delete(listener);
+};
 
-export const clearSession = () => localStorage.removeItem(SESSION_KEY);
+const notify = () => listeners.forEach((listener) => listener());
+
+export const setSession = (session: Session) => {
+  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  notify();
+};
+
+export const clearSession = () => {
+  localStorage.removeItem(SESSION_KEY);
+  notify();
+};
