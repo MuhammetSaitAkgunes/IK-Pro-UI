@@ -19,8 +19,14 @@ const FIELDS: [keyof PayrollSettingsDto & string, string, string][] = [
   ["monthlyMinWageStampTaxExemption", "Asgari ücret damga istisnası", "0.01"],
 ];
 
-const toForm = (data: PayrollSettingsDto): Record<string, string> =>
-  Object.fromEntries(FIELDS.map(([key]) => [key, String(data[key] ?? 0)]));
+const TODAY = () => new Date().toISOString().slice(0, 10);
+
+// Yürürlük tarihi sayısal alanlardan ayrı tutulur: parametreler yıla değil bu
+// tarihe bağlıdır ve yıl ortası değişimler (temmuz asgari ücret) böyle modellenir.
+const toForm = (data: PayrollSettingsDto): Record<string, string> => ({
+  ...Object.fromEntries(FIELDS.map(([key]) => [key, String(data[key] ?? 0)])),
+  effectiveFrom: data.effectiveFrom ?? TODAY(),
+});
 
 const parseNumber = (value: string): number => {
   const parsed = Number(String(value ?? "").replace(",", "."));
@@ -46,7 +52,7 @@ export function SettingsTab() {
   const save = async () => {
     try {
       await updateSettings.mutateAsync({
-        year: data.year ?? new Date().getFullYear(),
+        effectiveFrom: form.effectiveFrom || TODAY(),
         overtimeMultiplier: parseNumber(form.overtimeMultiplier),
         monthlyWorkingHours: parseNumber(form.monthlyWorkingHours),
         defaultWorkedDays: Math.round(parseNumber(form.defaultWorkedDays)),
@@ -61,7 +67,7 @@ export function SettingsTab() {
         monthlyMinWageStampTaxExemption: parseNumber(form.monthlyMinWageStampTaxExemption),
         minWageGross: parseNumber(form.sgkBaseMin),
       });
-      setFeedback("Ayarlar kaydedildi. Dönem bordrosu ve tekil hesaplama bu varsayılanları kullanacak.");
+      setFeedback(`${form.effectiveFrom} tarihinden itibaren geçerli. Bu tarihten önceki dönemler etkilenmez.`);
       showToast("Bordro ayarları kaydedildi.", "success");
     } catch (e) {
       showToast(e instanceof ApiError ? e.message : "Ayarlar kaydedilemedi.", "error");
@@ -79,7 +85,10 @@ export function SettingsTab() {
       <div className="card-header-clean">
         <div>
           <h4>Bordro Ayarları</h4>
-          <p className="text-muted">Şirket varsayılanlarını düzenleyin. Ayarlar yıla göre saklanır.</p>
+          <p className="text-muted">
+            Şirket varsayılanlarını düzenleyin. Parametreler yürürlük tarihine göre saklanır;
+            asgari ücret yıl ortasında değişirse yeni bir tarih girip kaydedin — önceki dönemler etkilenmez.
+          </p>
         </div>
         <div className="toolbar-actions">
           <button className="btn btn-secondary" onClick={reset}>
@@ -91,6 +100,16 @@ export function SettingsTab() {
         </div>
       </div>
       <div className="payroll-settings-grid">
+        <div className="input-group">
+          <label className="input-label" htmlFor="setting-effectiveFrom">Yürürlük tarihi</label>
+          <input
+            id="setting-effectiveFrom"
+            className="input-control"
+            type="date"
+            value={form.effectiveFrom}
+            onChange={(e) => setForm((f) => ({ ...f!, effectiveFrom: e.target.value }))}
+          />
+        </div>
         {FIELDS.map(([key, label, step]) => (
           <div key={key} className="input-group">
             <label className="input-label" htmlFor={`setting-${key}`}>{label}</label>

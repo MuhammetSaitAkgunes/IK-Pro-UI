@@ -22,7 +22,8 @@ public class PayrollSettingsConfiguration : IEntityTypeConfiguration<PayrollSett
 {
     public void Configure(EntityTypeBuilder<PayrollSettings> b)
     {
-        b.HasIndex(s => s.Year);
+        // Bir kiracıda aynı tarihten iki set yürürlüğe giremez (çözüm belirsizleşir).
+        b.HasIndex(s => new { s.TenantId, s.EffectiveFrom }).IsUnique();
     }
 }
 

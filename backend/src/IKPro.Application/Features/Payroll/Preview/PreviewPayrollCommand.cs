@@ -21,7 +21,8 @@ public sealed record PreviewPayrollCommand(
     decimal BenefitPay = 0m,
     decimal SpecialDeductions = 0m,
     decimal PreviousTaxBase = 0m,
-    int? Year = null) : IRequest<PayrollCalculation>;
+    /// <summary>Hangi tarihte yürürlükteki parametrelerle hesaplansın (boşsa bugün).</summary>
+    DateOnly? AsOf = null) : IRequest<PayrollCalculation>;
 
 public sealed class PreviewPayrollCommandValidator : AbstractValidator<PreviewPayrollCommand>
 {
@@ -41,7 +42,7 @@ public sealed class PreviewPayrollCommandHandler(IApplicationDbContext context, 
     public async Task<PayrollCalculation> Handle(
         PreviewPayrollCommand request, CancellationToken cancellationToken)
     {
-        var settings = await PayrollSettingsResolver.ResolveAsync(context, request.Year, cancellationToken);
+        var settings = await PayrollSettingsResolver.ResolveAsync(context, request.AsOf, cancellationToken);
 
         var input = new PayrollInput(
             request.GrossSalary,

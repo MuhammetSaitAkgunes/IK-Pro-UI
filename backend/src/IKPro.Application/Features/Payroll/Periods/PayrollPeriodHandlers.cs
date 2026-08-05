@@ -63,7 +63,9 @@ public sealed class CreatePayrollPeriodCommandHandler(IApplicationDbContext cont
                 $"{PayrollMappings.PeriodName(request.Year, request.Month)} dönemi zaten var.");
         }
 
-        var settings = await PayrollSettingsResolver.ResolveAsync(context, request.Year, cancellationToken);
+        // Dönemin kendi ayının ilk günü: o tarihte yürürlükteki parametre seti kullanılır.
+        var settings = await PayrollSettingsResolver.ResolveAsync(
+            context, new DateOnly(request.Year, request.Month, 1), cancellationToken);
 
         var employees = await context.Employees
             .AsNoTracking()

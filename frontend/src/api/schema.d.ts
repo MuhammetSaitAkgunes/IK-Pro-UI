@@ -796,6 +796,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/accept-invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Davet token'ıyla ilk şifreyi belirler (anonim; kullanıcının henüz oturumu yok). */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["AcceptInviteCommand"];
+                    "text/json": components["schemas"]["AcceptInviteCommand"];
+                    "application/*+json": components["schemas"]["AcceptInviteCommand"];
+                };
+            };
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/change-password": {
         parameters: {
             query?: never;
@@ -2562,6 +2613,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/me/data-export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description KVKK taşınabilirlik: kullanıcının kendi verisini JSON paketi olarak indirir. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ping": {
         parameters: {
             query?: never;
@@ -3046,7 +3131,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    year?: number;
+                    asOf?: string;
                 };
                 header?: never;
                 path?: never;
@@ -3859,10 +3944,210 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description Bir kiracının TÜM verisini kalıcı siler (KVKK). Platform-key + confirmSlug zorunlu. */
+        delete: {
+            parameters: {
+                query?: {
+                    confirmSlug?: string;
+                };
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PurgeTenantResult"];
+                        "application/json": components["schemas"]["PurgeTenantResult"];
+                        "text/json": components["schemas"]["PurgeTenantResult"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/cleanup-unverified": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Doğrulanmamış (pasif, davet kabul edilmemiş) eski kiracıları toplu siler. Cron. */
+        post: {
+            parameters: {
+                query?: {
+                    olderThanDays?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CleanupUnverifiedResult"];
+                        "application/json": components["schemas"]["CleanupUnverifiedResult"];
+                        "text/json": components["schemas"]["CleanupUnverifiedResult"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/signup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Self-servis kayıt (public, platform anahtarı yok, 'signup' rate-limit'li).
+         *                 Kiracı pasif oluşturulur; admin davet e-postasını kabul edince etkinleşir.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["RegisterTenantCommand"];
+                    "text/json": components["schemas"]["RegisterTenantCommand"];
+                    "application/*+json": components["schemas"]["RegisterTenantCommand"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["RegisterTenantResult"];
+                        "application/json": components["schemas"]["RegisterTenantResult"];
+                        "text/json": components["schemas"]["RegisterTenantResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AcceptInviteCommand: {
+            email?: string | null;
+            token?: string | null;
+            newPassword?: string | null;
+        };
         ActionBadgeDto: {
             /** Format: int32 */
             openCount?: number;
@@ -4033,6 +4318,10 @@ export interface components {
         ChangePasswordCommand: {
             currentPassword?: string | null;
             newPassword?: string | null;
+        };
+        CleanupUnverifiedResult: {
+            /** Format: int32 */
+            purgedCount?: number;
         };
         CompanyProfileDto: {
             name?: string | null;
@@ -4711,8 +5000,8 @@ export interface components {
             notes?: string | null;
         };
         PayrollSettingsDto: {
-            /** Format: int32 */
-            year?: number;
+            /** Format: date */
+            effectiveFrom?: string;
             /** Format: double */
             overtimeMultiplier?: number;
             /** Format: double */
@@ -4785,8 +5074,8 @@ export interface components {
             specialDeductions?: number;
             /** Format: double */
             previousTaxBase?: number;
-            /** Format: int32 */
-            year?: number | null;
+            /** Format: date */
+            asOf?: string | null;
         };
         ProblemDetails: {
             type?: string | null;
@@ -4809,6 +5098,11 @@ export interface components {
             tenantId?: number;
             slug?: string | null;
             adminEmail?: string | null;
+        };
+        PurgeTenantResult: {
+            /** Format: int32 */
+            tenantId?: number;
+            slug?: string | null;
         };
         RecruitmentFunnelDto: {
             /** Format: int32 */
@@ -4845,6 +5139,15 @@ export interface components {
             name?: string | null;
             email?: string | null;
             password?: string | null;
+        };
+        RegisterTenantCommand: {
+            companyName?: string | null;
+            adminName?: string | null;
+            adminEmail?: string | null;
+        };
+        RegisterTenantResult: {
+            slug?: string | null;
+            adminEmail?: string | null;
         };
         RiskDetailDto: {
             /** Format: int32 */
@@ -5000,8 +5303,8 @@ export interface components {
             weeklyReportEmail?: boolean;
         };
         UpdatePayrollSettingsCommand: {
-            /** Format: int32 */
-            year?: number;
+            /** Format: date */
+            effectiveFrom?: string;
             /** Format: double */
             overtimeMultiplier?: number;
             /** Format: double */

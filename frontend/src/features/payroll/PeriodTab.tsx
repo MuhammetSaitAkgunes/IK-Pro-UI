@@ -132,7 +132,7 @@ export function PeriodTab({ periodId }: { periodId: number | null }) {
         <div className="card payroll-parameters">
           <div className="card-header-clean">
             <div>
-              <h4>{parameters.year} Bordro Parametreleri</h4>
+              <h4>Bordro Parametreleri ({parameters.effectiveFrom} tarihinden geçerli)</h4>
               <p className="text-muted">Demo ön hesap için kullanılan Türkiye 4/a parametreleri.</p>
             </div>
             <span className="status-pill info">Ön hesap</span>

@@ -8,7 +8,7 @@ public sealed record TaxBracketDto(int Order, decimal? Limit, decimal Base, deci
 
 /// <summary>Bordro parametreleri — payroll.js payrollDefaultSettings alanlarıyla birebir.</summary>
 public sealed record PayrollSettingsDto(
-    int Year,
+    DateOnly EffectiveFrom,
     decimal OvertimeMultiplier,
     decimal MonthlyWorkingHours,
     int DefaultWorkedDays,
