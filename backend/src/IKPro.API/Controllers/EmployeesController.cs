@@ -117,7 +117,7 @@ public sealed class EmployeesController(ISender sender) : ControllerBase
     {
         await using var stream = file.OpenReadStream();
         var document = await sender.Send(
-            new UploadEmployeeDocumentCommand(id, documentType, stream, file.FileName, file.ContentType, file.Length),
+            new UploadEmployeeDocumentCommand(id, documentType, stream, file.FileName, file.Length),
             cancellationToken);
         return CreatedAtAction(nameof(GetDocuments), new { id }, document);
     }
