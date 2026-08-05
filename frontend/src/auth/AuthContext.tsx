@@ -1,6 +1,6 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useSyncExternalStore, type ReactNode } from "react";
 import { apiFetch, toSession, type AuthResponse } from "../api/client";
-import { clearSession, getSession, setSession, type UserDto } from "../api/session";
+import { clearSession, getSession, setSession, subscribeSession, type UserDto } from "../api/session";
 
 type AuthValue = {
   user: UserDto | null;
@@ -12,12 +12,13 @@ type AuthValue = {
 const AuthContext = createContext<AuthValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UserDto | null>(() => getSession()?.user ?? null);
+  // Kaynak localStorage oturumu: api/client.ts 401'de oturumu sildiğinde
+  // (React dışından) bu abonelik sayesinde user anında null'a düşer.
+  const user = useSyncExternalStore(subscribeSession, getSession)?.user ?? null;
 
   const accept = useCallback((auth: AuthResponse) => {
     const session = toSession(auth);
     setSession(session);
-    setUser(session.user);
     return session.user;
   }, []);
 
@@ -41,7 +42,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       /* oturum zaten kapanıyor */
     }
     clearSession();
-    setUser(null);
   }, []);
 
   return <AuthContext.Provider value={{ user, login, register, logout }}>{children}</AuthContext.Provider>;
