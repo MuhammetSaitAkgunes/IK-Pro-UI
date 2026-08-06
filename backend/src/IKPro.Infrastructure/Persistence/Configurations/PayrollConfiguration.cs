@@ -9,7 +9,9 @@ public class PayrollPeriodConfiguration : IEntityTypeConfiguration<PayrollPeriod
     public void Configure(EntityTypeBuilder<PayrollPeriod> b)
     {
         b.Property(p => p.Name).IsRequired().HasMaxLength(64);
-        b.HasIndex(p => new { p.Year, p.Month }).IsUnique();
+        // Bir dönem KİRACI İÇİNDE tektir. TenantId olmadan sistemdeki 2026/08
+        // bordro dönemini yalnız TEK bir müşteri açabilirdi.
+        b.HasIndex(p => new { p.TenantId, p.Year, p.Month }).IsUnique();
 
         b.HasOne(p => p.Settings)
             .WithMany()
