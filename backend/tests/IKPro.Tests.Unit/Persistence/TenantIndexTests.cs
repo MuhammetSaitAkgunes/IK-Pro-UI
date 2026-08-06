@@ -29,8 +29,11 @@ public class TenantIndexTests
     {
         using var context = ModelIcinContext();
 
+        // Kural ITenantScoped'a değil, TenantId SÜTUNUNA bağlanır: Identity varlıkları
+        // (ApplicationUser, RefreshToken) ITenantScoped değildir ama TenantId taşır ve
+        // kiracı bazında sorgulanır — onlar da kapsama girmeli.
         var indekssiz = context.Model.GetEntityTypes()
-            .Where(e => typeof(ITenantScoped).IsAssignableFrom(e.ClrType))
+            .Where(e => e.FindProperty(nameof(ITenantScoped.TenantId)) is not null)
             // SQL view'larına indeks eklenemez; onlar altındaki tablolardan beslenir.
             .Where(e => e.GetViewName() is null)
             .Where(e => !e.GetIndexes().Any(i =>

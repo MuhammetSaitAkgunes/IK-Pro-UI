@@ -165,6 +165,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentTenant
             }
         }
 
+        // Identity varlıkları ITenantScoped DEĞİL (login e-posta araması kiracı-üstüdür),
+        // bu yüzden yukarıdaki reflection döngüsüne girmezler. Ama TenantId taşır ve
+        // kiracı bazında sorgulanırlar (kullanıcı listesi, purge) — indeksleri elle eklenir.
+        builder.Entity<ApplicationUser>().HasIndex(u => u.TenantId);
+        builder.Entity<RefreshToken>().HasIndex(r => r.TenantId);
+
         // Kısa Identity tablo adları.
         builder.Entity<ApplicationUser>().ToTable("Users");
         builder.Entity<Microsoft.AspNetCore.Identity.IdentityRole>().ToTable("Roles");
