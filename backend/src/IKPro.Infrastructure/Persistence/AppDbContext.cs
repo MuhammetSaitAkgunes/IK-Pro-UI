@@ -139,12 +139,29 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentTenant
         // kiracı-üstüdür, onlar elle kapsamlanır.
         foreach (var entityType in builder.Model.GetEntityTypes())
         {
-            if (typeof(ITenantScoped).IsAssignableFrom(entityType.ClrType))
+            if (!typeof(ITenantScoped).IsAssignableFrom(entityType.ClrType))
             {
-                typeof(AppDbContext)
-                    .GetMethod(nameof(SetTenantFilter), BindingFlags.NonPublic | BindingFlags.Instance)!
-                    .MakeGenericMethod(entityType.ClrType)
-                    .Invoke(this, [builder]);
+                continue;
+            }
+
+            typeof(AppDbContext)
+                .GetMethod(nameof(SetTenantFilter), BindingFlags.NonPublic | BindingFlags.Instance)!
+                .MakeGenericMethod(entityType.ClrType)
+                .Invoke(this, [builder]);
+
+            // Filtre yüzünden HER sorgu "TenantId = @p" içerir; indeks olmadan her sorgu
+            // tam tablo taraması olur. Filtreyle aynı yerde eklenir ki yeni bir kiracı
+            // varlığı geldiğinde indeksi eklemeyi unutmak mümkün olmasın.
+            // Atlananlar: SQL view'ları (indekslenemez) ve TenantId ile BAŞLAYAN bileşik
+            // indeksi zaten olanlar (ör. PayrollSettings) — ikinci indeks gereksiz yazma
+            // maliyeti olurdu.
+            var viewMi = entityType.GetViewName() is not null;
+            var tenantIndeksiVar = entityType.GetIndexes().Any(i =>
+                i.Properties.Count > 0 && i.Properties[0].Name == nameof(ITenantScoped.TenantId));
+
+            if (!viewMi && !tenantIndeksiVar)
+            {
+                builder.Entity(entityType.ClrType).HasIndex(nameof(ITenantScoped.TenantId));
             }
         }
 
