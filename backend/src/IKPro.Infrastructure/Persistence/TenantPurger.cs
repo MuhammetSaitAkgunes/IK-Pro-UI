@@ -20,12 +20,10 @@ public sealed class TenantPurger(
 {
     public async Task PurgeAsync(int tenantId, CancellationToken cancellationToken)
     {
-        // Fiziksel dosyaları önce topla (yalnız EmployeeDocument saklar). Global filtre için impersone et.
+        // Global filtre için impersone et: aradaki sorgular kiracı filtresine tabidir.
+        // Dosya yollarını önceden toplamaya gerek yok — silme, kiracının tüm alanı üzerinden
+        // yapılır (bkz. adım 4).
         currentTenant.Impersonate(tenantId);
-        var filePaths = await context.EmployeeDocuments
-            .Where(d => d.FilePath != "")
-            .Select(d => d.FilePath)
-            .ToListAsync(cancellationToken);
 
         var tables = TenantScopedTablesInDeleteOrder();
 
@@ -62,29 +60,20 @@ public sealed class TenantPurger(
         await tx.CommitAsync(cancellationToken);
 
         // 4) Fiziksel dosyalar (DB tutarlılığından SONRA — rollback olursa dosya kaybı olmasın).
-        // Her dosya ayrı ele alınır: biri silinemezse (kilit/izin) işlem yarıda kesilmez ve
-        // hata sessizce yutulmaz — elle temizlik için LOUD loglanır (KVKK artık PII riski).
-        var failedFiles = 0;
-        foreach (var path in filePaths)
+        // Kiracının TÜM dosya alanı silinir. Eskiden yalnız EmployeeDocuments yolları tek tek
+        // siliniyordu; bu, çalışan fotoğraflarını ve şirket logosunu KAÇIRIYORDU. Alan silme
+        // ileride eklenecek her dosya türünü de otomatik kapsar.
+        // Hata sessizce yutulmaz: DB temizlenip dosyalar kalırsa KVKK açısından PII riski
+        // sürer, elle temizlik için LOUD loglanır. Hata purge'ü yarıda kesmez.
+        try
         {
-            try
-            {
-                await fileStorage.DeleteAsync(path, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                failedFiles++;
-                logger.LogError(ex,
-                    "Kiracı {TenantId} purge: dosya silinemedi ({Path}) — elle temizlik gerekebilir.",
-                    tenantId, path);
-            }
+            await fileStorage.DeleteTenantSpaceAsync(tenantId, cancellationToken);
         }
-
-        if (failedFiles > 0)
+        catch (Exception ex)
         {
-            logger.LogWarning(
-                "Kiracı {TenantId} purge tamamlandı ancak {Count} fiziksel dosya silinemedi.",
-                tenantId, failedFiles);
+            logger.LogError(ex,
+                "Kiracı {TenantId} purge: dosya alanı silinemedi — elle temizlik gerekiyor.",
+                tenantId);
         }
     }
 

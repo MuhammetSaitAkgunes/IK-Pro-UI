@@ -37,8 +37,9 @@ param(
     [string]$ServerInstance = "localhost",
     [switch]$KeepRestoredCopy,
 
-    # Yüklenen evrak/foto dizini (App_Data/storage). Verilirse zip'lenip yedeğe eklenir.
-    # Veritabanı tek başına yetmez: evrak dosyaları diskte durur, DB yalnız yolu tutar.
+    # Yüklenen evrak/foto/logo dizini (App_Data/storage). Verilirse KİRACI BAŞINA
+    # ayrı zip üretilir ({db}-tenant-{id}-{damga}.zip). Veritabanı tek başına yetmez:
+    # dosyalar diskte durur, DB yalnız yollarını tutar.
     [string]$StoragePath,
 
     # İkinci (off-site) kopya hedefi. Yedek sunucuyla aynı diskte durursa disk
@@ -56,7 +57,7 @@ param(
 $ErrorActionPreference = "Stop"
 $drillDatabase = "${Database}_RestoreDrill"
 $script:startedAt = Get-Date
-$script:storageArchive = $null
+$script:storageArchives = @()
 $script:offsiteCopies = @()
 
 function Write-DrillResult {
@@ -205,20 +206,36 @@ RESTORE DATABASE [$drillDatabase] FROM DISK = N'$backupFile' WITH $($moves -join
         exit 1
     }
 
-    # --- Evrak dosyaları -------------------------------------------------
-    # Veritabanı tek başına yeterli değil: özlük evrakları ve fotoğraflar diskte
-    # durur, DB yalnız yollarını tutar. Sadece DB geri yüklenirse kayıtlar var
-    # ama dosyalar yok olur.
+    # --- Evrak dosyaları (KİRACI BAŞINA) ---------------------------------
+    # Veritabanı tek başına yeterli değil: özlük evrakları, fotoğraflar ve şirket
+    # logosu diskte durur, DB yalnız yollarını tutar. Sadece DB geri yüklenirse
+    # kayıtlar var ama dosyalar yok olur.
+    #
+    # Her kiracı için AYRI arşiv üretilir. Böylece tek müşterinin dosyaları
+    # diğerlerine dokunmadan geri yüklenebilir ve müşteri ayrıldığında KVKK gereği
+    # YALNIZ onun yedeği imha edilebilir — paylaşımlı tek arşivde bu mümkün değildir.
     if ($StoragePath) {
-        Write-Host "[4b] Evrak dosyaları arşivleniyor: $StoragePath"
+        Write-Host "[4b] Evrak dosyaları kiracı başına arşivleniyor: $StoragePath"
         if (-not (Test-Path $StoragePath)) {
             throw "Evrak dizini bulunamadı: $StoragePath"
         }
-        $script:storageArchive = Join-Path (Resolve-Path $BackupPath) "$Database-storage-$stamp.zip"
-        Compress-Archive -Path (Join-Path $StoragePath "*") -DestinationPath $script:storageArchive -Force -ErrorAction Stop
-        $dosyaSayisi = (Get-ChildItem -Path $StoragePath -Recurse -File).Count
-        $arsivBoyut = [Math]::Round((Get-Item $script:storageArchive).Length / 1KB, 1)
-        Write-Host "       $dosyaSayisi dosya arşivlendi ($arsivBoyut KB)"
+
+        # Kiracı listesi klasör adlarından gelir; yedek script'i DB şemasına bağlı olmamalı.
+        $kiraciKlasorleri = @(Get-ChildItem -Path $StoragePath -Directory -Filter "tenant-*" -ErrorAction SilentlyContinue)
+        if ($kiraciKlasorleri.Count -eq 0) {
+            # Hata değil: henüz hiçbir kiracı dosya yüklememiş olabilir.
+            Write-Host "       kiracı klasörü yok; evrak arşivi üretilmedi"
+        }
+
+        foreach ($klasor in $kiraciKlasorleri) {
+            $arsiv = Join-Path (Resolve-Path $BackupPath) "$Database-$($klasor.Name)-$stamp.zip"
+            Compress-Archive -Path (Join-Path $klasor.FullName "*") -DestinationPath $arsiv -Force -ErrorAction Stop
+            $script:storageArchives += $arsiv
+
+            $dosyaSayisi = (Get-ChildItem -Path $klasor.FullName -Recurse -File).Count
+            $arsivBoyut = [Math]::Round((Get-Item $arsiv).Length / 1KB, 1)
+            Write-Host ("       {0}: {1} dosya → {2} KB" -f $klasor.Name, $dosyaSayisi, $arsivBoyut)
+        }
     }
 
     # --- Off-site kopya --------------------------------------------------
@@ -228,7 +245,7 @@ RESTORE DATABASE [$drillDatabase] FROM DISK = N'$backupFile' WITH $($moves -join
         Write-Host "[4c] Off-site kopyalanıyor: $OffsitePath"
         if (-not (Test-Path $OffsitePath)) { New-Item -ItemType Directory -Path $OffsitePath -Force | Out-Null }
 
-        foreach ($kaynak in @($backupFile, $script:storageArchive) | Where-Object { $_ }) {
+        foreach ($kaynak in (@($backupFile) + $script:storageArchives) | Where-Object { $_ }) {
             $hedef = Join-Path (Resolve-Path $OffsitePath) (Split-Path -Leaf $kaynak)
             Copy-Item -Path $kaynak -Destination $hedef -Force -ErrorAction Stop
             $kaynakBoyut = (Get-Item $kaynak).Length
@@ -261,7 +278,7 @@ DROP DATABASE [$drillDatabase];
         yedekDosyasi  = $backupFile
         tabloSayisi   = $before.Count
         toplamSatir   = ($before.Values | Measure-Object -Sum).Sum
-        evrakArsivi   = $script:storageArchive
+        evrakArsivleri = $script:storageArchives
         offsiteKopya  = $script:offsiteCopies
     }
     exit 0

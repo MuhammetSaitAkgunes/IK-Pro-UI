@@ -91,7 +91,9 @@ public static class DependencyInjection
         services.AddScoped<JwtTokenService>();
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<ITenantPurger, Persistence.TenantPurger>();
-        services.AddSingleton<IFileStorage, Storage.LocalFileStorage>();
+        // Kiracıya bağlı olduğu için SCOPED: singleton olsaydı ilk isteğin kiracısı
+        // sonsuza kadar yapışırdı (captive dependency).
+        services.AddScoped<IFileStorage, Storage.LocalFileStorage>();
         // E-posta: Email:Mode=smtp → gerçek SMTP (MailKit, fail-fast doğrulamalı);
         // aksi halde (varsayılan "outbox") dosya stub'ı — dev/test davranışı değişmez.
         var emailMode = configuration["Email:Mode"] ?? "outbox";
