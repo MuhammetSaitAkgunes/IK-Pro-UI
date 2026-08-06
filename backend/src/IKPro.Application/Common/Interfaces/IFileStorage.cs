@@ -17,4 +17,11 @@ public interface IFileStorage
 
     /// <summary>Dosyayı siler; yoksa sessizce geçer.</summary>
     Task DeleteAsync(string path, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Kiracının tüm dosya alanını siler (purge). Dizin yoksa sessizce geçer.
+    /// Kiracı AÇIKÇA parametredir: purge sırasında silinen kiracı ile aktif
+    /// bağlam ayrışabilir, örtük çözümleme burada tehlikelidir.
+    /// </summary>
+    Task DeleteTenantSpaceAsync(int tenantId, CancellationToken cancellationToken);
 }
