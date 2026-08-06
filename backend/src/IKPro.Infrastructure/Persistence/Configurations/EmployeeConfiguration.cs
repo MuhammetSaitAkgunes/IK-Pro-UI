@@ -21,7 +21,14 @@ public class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
         b.Ignore(e => e.FullName);
         b.Ignore(e => e.Initials);
 
-        b.HasIndex(e => e.NationalId).IsUnique().HasFilter("[NationalId] IS NOT NULL");
+        // TC Kimlik No tekilliği KİRACI İÇİNDE geçerlidir: aynı kişi iki farklı
+        // müşteri firmada çalışıyor olabilir. Global tekillik hem bunu engellerdi
+        // hem de hata mesajıyla "bu TC başka bir müşteride kayıtlı" bilgisini
+        // sızdırırdı (KVKK).
+        b.HasIndex(e => new { e.TenantId, e.NationalId }).IsUnique().HasFilter("[NationalId] IS NOT NULL");
+
+        // UserId tekilliği GLOBAL kalır: Identity kullanıcısı tek kiracıya aittir,
+        // dolayısıyla bir kullanıcı yalnız bir personel kaydına bağlanabilir.
         b.HasIndex(e => e.UserId).IsUnique().HasFilter("[UserId] IS NOT NULL");
 
         b.HasOne(e => e.Department)
