@@ -41,7 +41,7 @@ storage/
   tenant-1/
     documents-emp-14/{guid}.pdf
     photos/{guid}.png
-    logos/{guid}.png
+    branding/{guid}.png     ← şirket logosu (kategori adı kodda "branding")
   tenant-2/…
   outbox/
 ```
