@@ -1,4 +1,5 @@
 using FluentAssertions;
+using IKPro.Infrastructure.Storage;
 using IKPro.Application.Common.Interfaces;
 using IKPro.Domain.Entities.Organization;
 using IKPro.Infrastructure.Identity;
@@ -60,10 +61,15 @@ public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(
     {
         var t = await ProvisionAndActivateAsync("Dosyalı A.Ş.", $"f-{Guid.NewGuid():N}@purge.local");
 
-        // Gerçek bir dosya yaz ve ona işaret eden bir EmployeeDocument seed'le.
-        var storage = Factory.Services.GetRequiredService<IFileStorage>();
-        var stored = await storage.SaveAsync(
-            new MemoryStream(new byte[] { 1, 2, 3 }), "gizli.pdf", "docs", CancellationToken.None);
+        // Depo artık kiracıya bağlı ve SCOPED; kök sağlayıcıdan çözülemez.
+        // Kiracı bağlamı TenantPurger'ın yaptığı gibi impersonate ile kurulur.
+        StoredFile stored;
+        using (var yazmaScope = Factory.Services.CreateScope())
+        {
+            yazmaScope.ServiceProvider.GetRequiredService<ICurrentTenant>().Impersonate(t.TenantId);
+            stored = await yazmaScope.ServiceProvider.GetRequiredService<IFileStorage>().SaveAsync(
+                new MemoryStream(new byte[] { 1, 2, 3 }), "gizli.pdf", "docs", CancellationToken.None);
+        }
 
         await SeedInTenantAsync(t.TenantId, async db =>
         {
@@ -86,8 +92,18 @@ public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(
             });
         });
 
-        var fullPath = Path.Combine(Factory.StorageRoot, stored.Path.Replace('/', Path.DirectorySeparatorChar));
-        File.Exists(fullPath).Should().BeTrue("dosya purge öncesi diskte olmalı");
+        var kiraciKlasoru = Path.Combine(Factory.StorageRoot, LocalFileStorage.TenantFolder(t.TenantId));
+        var evrakYolu = Path.Combine(kiraciKlasoru, stored.Path.Replace('/', Path.DirectorySeparatorChar));
+        File.Exists(evrakYolu).Should().BeTrue("dosya purge öncesi diskte olmalı");
+
+        // Evrak DIŞINDAKİ türler de kiracı alanındadır ve purge'de gitmeli.
+        // Eski davranış yalnız EmployeeDocuments yollarını siliyordu; foto ve logo kalıyordu.
+        var fotoYolu = Path.Combine(kiraciKlasoru, "photos", "vesikalik.png");
+        var logoYolu = Path.Combine(kiraciKlasoru, "branding", "logo.png");
+        Directory.CreateDirectory(Path.GetDirectoryName(fotoYolu)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(logoYolu)!);
+        await File.WriteAllTextAsync(fotoYolu, "foto");
+        await File.WriteAllTextAsync(logoYolu, "logo");
 
         using (var scope = Factory.Services.CreateScope())
         {
@@ -95,7 +111,10 @@ public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(
                 .PurgeAsync(t.TenantId, CancellationToken.None);
         }
 
-        File.Exists(fullPath).Should().BeFalse("purge fiziksel evrak dosyasını da silmeli (KVKK)");
+        File.Exists(evrakYolu).Should().BeFalse("purge fiziksel evrak dosyasını da silmeli (KVKK)");
+        File.Exists(fotoYolu).Should().BeFalse("çalışan fotoğrafı da silinmeli");
+        File.Exists(logoYolu).Should().BeFalse("şirket logosu da silinmeli");
+        Directory.Exists(kiraciKlasoru).Should().BeFalse("kiracının tüm dosya alanı gitmeli");
     }
 
     [Fact]
@@ -103,26 +122,13 @@ public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(
     {
         var t = await ProvisionAndActivateAsync("Bozuk Dosya A.Ş.", $"b-{Guid.NewGuid():N}@purge.local");
 
-        await SeedInTenantAsync(t.TenantId, async db =>
-        {
-            var dept = new Department { Name = "Bozuk-Dept" };
-            db.Departments.Add(dept);
-            await db.SaveChangesAsync();
-            var emp = new Employee
-            {
-                FirstName = "Bora", LastName = "Bozuk", Title = "Uzman",
-                DepartmentId = dept.Id, HireDate = new DateOnly(2024, 1, 1),
-            };
-            db.Employees.Add(emp);
-            await db.SaveChangesAsync();
-
-            // Kök dışına kaçan yol → LocalFileStorage.DeleteAsync fırlatır; purge yine de bitmeli.
-            db.EmployeeDocuments.Add(new EmployeeDocument
-            {
-                EmployeeId = emp.Id, DocumentType = "Sözleşme",
-                FileName = "x.pdf", FilePath = $"../kacan-{Guid.NewGuid():N}.pdf", SizeBytes = 1,
-            });
-        });
+        // Kiracı alanında AÇIK TUTULAN bir dosya: Directory.Delete başarısız olur.
+        // Dosyalar silinemese bile veri temizliği yarıda kesilmemeli; hata loglanır.
+        var kiraciKlasoru = Path.Combine(Factory.StorageRoot, LocalFileStorage.TenantFolder(t.TenantId));
+        Directory.CreateDirectory(kiraciKlasoru);
+        await using var kilit = new FileStream(
+            Path.Combine(kiraciKlasoru, "kilitli.bin"),
+            FileMode.Create, FileAccess.Write, FileShare.None);
 
         var purge = async () =>
         {
@@ -130,7 +136,7 @@ public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(
             await scope.ServiceProvider.GetRequiredService<ITenantPurger>()
                 .PurgeAsync(t.TenantId, CancellationToken.None);
         };
-        await purge.Should().NotThrowAsync("silinemeyen bir dosya purge'ü yarıda kesmemeli");
+        await purge.Should().NotThrowAsync("silinemeyen dosya alanı purge'ü yarıda kesmemeli");
 
         using var check = Factory.Services.CreateScope();
         var db2 = check.ServiceProvider.GetRequiredService<AppDbContext>();
