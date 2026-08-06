@@ -23,6 +23,25 @@ Tasarım: `docs/superpowers/specs/2026-08-05-kiraci-dosya-bolumleme-design.md`
 
 ---
 
+## Uygulama durumu (2026-08-06)
+
+| Görev | Durum |
+| --- | --- |
+| 1 · Depo katmanı kiracıya bağlanır | ✅ Tamam |
+| 2 · Purge tüm dosya türlerini kapsar | ✅ Tamam |
+| 3 · Mevcut dosyaları taşıyan migrasyon | ⛔ **Yapılmadı — gerek kalmadı** |
+| 4 · Kiracı başına yedek arşivi | ✅ Tamam |
+
+**Görev 3 neden atlandı:** Mevcut kiracılar demo amaçlı sahte veriydi. Taşımak
+yerine veritabanı düşürülüp yeniden kuruldu ve depo klasörü silindi; uygulama
+açılışta taze seed üretti. Gerçek veri taşıma ihtiyacı doğarsa plandaki script
+tasarımı hâlâ geçerlidir.
+
+**Plan dışı eklenenler:** doğrulama sırasında kiracı tablolarında `TenantId`
+indeksi bulunmadığı görüldü ve eklendi (29 tablo + 2 Identity tablosu).
+
+---
+
 ## File Structure
 
 | Dosya | Sorumluluk |
