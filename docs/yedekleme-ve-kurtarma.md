@@ -118,7 +118,7 @@ pwsh scripts/backup-restore-drill.ps1 `
 
 | Bileşen | Parametre | Ne sağlar |
 | --- | --- | --- |
-| Evrak dosyaları | `-StoragePath` | Özlük evrakları/fotoğraflar zip'lenip yedeğe eklenir. **Veritabanı tek başına yetmez:** DB yalnız dosya yollarını tutar, dosyalar diskte durur. |
+| Evrak dosyaları | `-StoragePath` | **Kiracı başına ayrı zip** üretilir (`{db}-tenant-{id}-{damga}.zip`). Tek müşterinin dosyalarını diğerlerine dokunmadan geri yükleyebilir, müşteri ayrıldığında KVKK gereği **yalnız onun yedeğini imha edebilirsiniz**. **Veritabanı tek başına yetmez:** DB yalnız dosya yollarını tutar, dosyalar diskte durur. |
 | Off-site kopya | `-OffsitePath` | Yedek ikinci konuma kopyalanır ve boyut olarak doğrulanır. Aynı diskteki yedek, disk arızasında veriyle birlikte gider. |
 | Denetim izi | `-LogPath` | Her koşum JSON satırı olarak eklenir (başarı **ve** başarısızlık). |
 | Uyarı | `-AlertWebhookUrl` | Başarısızlıkta POST edilir (Slack/Teams uyumlu). Sessiz başarısızlık en tehlikeli durumdur. |
@@ -159,3 +159,7 @@ Kaldırmak için: `Unregister-ScheduledTask -TaskName IKPro-YedekTatbikati -Conf
   doğrulanmalı.
 - ⬜ **Log dosyası kimse tarafından izlenmiyor** — webhook kurulana kadar
   `tatbikat.jsonl` dosyasına düzenli bakılmalı.
+- ⬜ **Veritabanı kiracı bazına bölünmüyor** — dosyalar kiracı başına arşivleniyor
+  ama DB tek parça yedekleniyor. Yani "şu müşteriyi dünkü hâline döndür" talebi
+  yarım çözülür: dosyalar evet, veritabanı satırları hayır. Tam müşteri bazlı
+  geri yükleme ayrı bir tasarım gerektirir (FK sırası, IDENTITY_INSERT, tatbikat).
