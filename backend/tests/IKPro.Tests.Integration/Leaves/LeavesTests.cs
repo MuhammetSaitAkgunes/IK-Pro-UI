@@ -110,10 +110,19 @@ public sealed class LeavesTests(IKProApiFactory factory)
         var client = await AuthedClientAsync("ahmet.yilmaz@hrmaster.local");
         var mazeret = await GetTypeAsync(client, "Mazeret");
 
-        (await CreateAsync(client, mazeret.Id, "2026-08-10", "2026-08-11"))
+        // Tarihler GÖRELİ ve uzak: sabit tarih kullanmak, aynı çalışana bugüne göre
+        // izin oluşturan diğer testle (yukarıdaki "soon" penceresi) takvim ilerledikçe
+        // çakışıyordu ve ilk oluşturma 409 dönüyordu. Uzak pencere hem o testten hem
+        // ekim/aralık aralıklarından ayrık kalır.
+        var baslangic = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(300);
+        var orta = baslangic.AddDays(1);
+        var bitis = baslangic.AddDays(2);
+        static string G(DateOnly d) => d.ToString("yyyy-MM-dd");
+
+        (await CreateAsync(client, mazeret.Id, G(baslangic), G(orta)))
             .StatusCode.Should().Be(HttpStatusCode.Created);
 
-        (await CreateAsync(client, mazeret.Id, "2026-08-11", "2026-08-12"))
+        (await CreateAsync(client, mazeret.Id, G(orta), G(bitis)))
             .StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
