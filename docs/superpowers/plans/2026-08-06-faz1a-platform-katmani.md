@@ -853,15 +853,17 @@ public class TenantDirectoryEntry
         });
 ```
 
-- [ ] **Step 5: Kullanıcı oluşturulurken dizine yaz**
+- [ ] **Step 5: Dizin yazımını tek bir yardımcıda topla**
 
-`IdentityService` içinde, kullanıcı oluşturan her yolda (`RegisterAsync`, `CreateTenantAdminAsync`, personel daveti) `userManager.CreateAsync` BAŞARILI olduktan hemen sonra çağrılacak özel bir yardımcı ekle:
+`IdentityService` içine şu özel yardımcıyı ekle. **Dizine yazan tek yer burasıdır** — başka hiçbir yerde `platform.Directory.Add` çağrılmaz:
 
 ```csharp
     /// <summary>
-    /// Kullanıcıyı yönlendirme dizinine yazar. Dizin türetilmiş olduğu için
-    /// çakışma bir çakışmadan fazlasıdır: aynı e-postanın iki kiracıda
-    /// bulunamayacağı kuralının uygulandığı yer burasıdır.
+    /// Kullanıcıyı yönlendirme dizinine yazar ve ÇAKIŞMAYI 409'a çevirir.
+    ///
+    /// Dizinin birincil anahtarı e-postadır; çakışma "bu adres zaten bir
+    /// kiracıya ait" demektir. Kural burada, veritabanı seviyesinde uygulanır —
+    /// önceden yapılan bir kontrol eşzamanlı iki kaydı ayıramazdı.
     /// </summary>
     private async Task DizineYazAsync(string email, int tenantId, CancellationToken cancellationToken)
     {
@@ -870,42 +872,51 @@ public class TenantDirectoryEntry
             NormalizedEmail = TenantDirectoryEntry.Normalize(email),
             TenantId = tenantId,
         });
-        await platform.SaveChangesAsync(cancellationToken);
-    }
-```
 
-Ve kullanıcı silinen yolda (varsa) karşılığını sil.
-
-- [ ] **Step 6: Provizyonda e-postayı ÖNCEDEN rezerve et**
-
-`TenantOnboarding.CreateWithAdminAsync` içinde, `identityService.EmailExistsAsync` kontrolünden sonra ve `CreateTenantAdminAsync` çağrısından ÖNCE, kiracı kaydedildikten hemen sonra dizin satırını yaz:
-
-```csharp
-        // E-posta kiracıyla AYNI transaction'da rezerve edilir: eşzamanlı iki
-        // kayıt aynı adresi alamaz. Rezervasyonu kullanıcı oluşturmaya bıraksaydık
-        // iki müşteri yarışabilirdi.
-        platform.Directory.Add(new TenantDirectoryEntry
-        {
-            NormalizedEmail = TenantDirectoryEntry.Normalize(adminEmail),
-            TenantId = tenant.Id,
-        });
-        await platform.SaveChangesAsync(cancellationToken);
-```
-
-Birincil anahtar çakışmasını 409'a çeviren sarmalayıcı ekle:
-
-```csharp
         try
         {
             await platform.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateException)
         {
-            throw new ConflictException($"'{adminEmail}' e-postasıyla kayıtlı bir hesap zaten var.");
+            throw new ConflictException($"'{email}' e-postasıyla kayıtlı bir hesap zaten var.");
         }
+    }
 ```
 
-Bu rezervasyon yapıldığı için `DizineYazAsync`, admin oluşturma yolunda İKİNCİ kez çağrılmamalıdır — `CreateTenantAdminAsync` içinde dizin yazımı atlanır.
+Bunu `IIdentityService` arayüzüne de **açık** bir üye olarak ekle, çünkü Step 6
+onu Application katmanından çağıracak:
+
+```csharp
+    /// <summary>E-postayı kiracıya rezerve eder; adres başka bir kiracıdaysa 409.</summary>
+    Task ReserveEmailAsync(string email, int tenantId, CancellationToken cancellationToken);
+```
+
+`IdentityService` içindeki uygulaması yalnız `DizineYazAsync`'i çağırır.
+
+Kullanıcı oluşturan diğer yollarda (`RegisterAsync`, personel daveti)
+`userManager.CreateAsync` BAŞARILI olduktan hemen sonra `DizineYazAsync`
+çağrılır. Kullanıcı silen bir yol varsa karşılık gelen dizin satırı silinir.
+
+- [ ] **Step 6: Provizyonda e-postayı ÖNCEDEN rezerve et**
+
+`TenantOnboarding.CreateWithAdminAsync` içinde, kiracı kaydedildikten hemen
+sonra ve `identityService.CreateTenantAdminAsync` çağrısından ÖNCE:
+
+```csharp
+        // E-posta, admin kullanıcı oluşturulmadan ÖNCE rezerve edilir: eşzamanlı
+        // iki kayıt aynı adresi alamaz. Rezervasyonu kullanıcı oluşturmaya
+        // bıraksaydık iki müşteri yarışabilirdi.
+        await identityService.ReserveEmailAsync(adminEmail, tenant.Id, cancellationToken);
+```
+
+**Önemli:** rezervasyon burada yapıldığı için `CreateTenantAdminAsync` içinde
+dizine İKİNCİ kez yazılmaz — o yol yalnız kullanıcıyı oluşturur. Aksi halde
+birincil anahtar çakışması kendi provizyonumuzu 409'a düşürürdü.
+
+Metodun başındaki mevcut `identityService.EmailExistsAsync` ön kontrolü
+**kalır**: kullanıcıya erken ve net hata verir, ancak yarış koşulunu
+kapatan şey rezervasyondur.
 
 - [ ] **Step 7: Migration üret ve uygula**
 
