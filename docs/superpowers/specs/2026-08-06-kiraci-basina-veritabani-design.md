@@ -52,11 +52,16 @@ kiracı seçimi eklenmesi.
 
 **`IKProPlatform`** — tek adet. `PlatformDbContext`.
 
-| Tablo | İçerik |
-| --- | --- |
-| `Tenants` | Ad, slug, **DatabaseName**, **Status**, oluşturma zamanı |
-| `TenantDirectory` | Normalize e-posta (PK) → TenantId |
-| `Subscriptions` | Abonelik ve faturalama |
+| Tablo / sütun | İçerik | Ne zaman |
+| --- | --- | --- |
+| `Tenants` | Ad, slug, **Status**, oluşturma zamanı | Faz 1a |
+| `TenantDirectory` | Normalize e-posta (PK) → TenantId | Faz 1a |
+| `Tenants.DatabaseName` | Kiracının veritabanı adı | **Faz 2** |
+| `Subscriptions` | Abonelik ve faturalama | **Faz 2** |
+
+`DatabaseName`, kiracı veritabanları gerçekten ayrılana kadar hiçbir şey ifade
+etmez; kullanılmayan bir sütunu erken eklemek yerine ihtiyaç doğduğu fazda
+eklenir.
 
 **`IKPro_{slug}`** — müşteri başına bir adet. Bugünkü `AppDbContext`, değişmeden.
 
@@ -118,6 +123,10 @@ sunucu, farklı `Database=`; bağlantı dizeleri yalnız katalog adında farklı
 Her istekte platform DB'sine gitmek, tek veritabanına dolambaçlı bir dönüş
 olurdu. Durum değiştiğinde ilgili kayıt **anında** düşürülür — süre dolması
 beklenmez.
+
+> **Fazlara göre:** Faz 1b'de kütük yalnız `Status` tutar ve çözücü herkese aynı
+> bağlantıyı döndürür; `DatabaseName` Faz 2'de hem sütun hem kütük alanı olarak
+> eklenir. Bu bölüm bitmiş hâli anlatır.
 
 ### Login
 
@@ -341,10 +350,18 @@ açıklanamaz şekilde bozar.
 
 | Faz | İçerik | Geri dönüş |
 | --- | --- | --- |
-| 1 · Tesisat | Platform DB, dizin, bağlantı çözücü, kütük, durum kapısı. Çözücü **herkese aynı veritabanını** döndürür — hiçbir şey değişmemiş gibi çalışır, 158 test geçmeye devam eder. | Mümkün |
-| 2 · Ayrılma | Provizyon gerçek DB kurar; demo kiracılar yeni yoldan yeniden oluşturulur. | Zor — asıl eşik |
-| 3 · Yedekleme | Tatbikat, yedek planı, dizin yeniden kurma komutu, migration koşucusu. | — |
+| 1a · Platform katmanı | Platform DB, `Tenants` taşınması, `TenantStatus`, yönlendirme dizini, dizin yeniden kurma, provizyon durum makinesi, çapraz-DB purge. | Mümkün |
+| 1b · Bağlantı tesisatı | Bağlantı çözücü, kiracı kütüğü, durum kapısı, kiracıya sabitlenmiş kapsam fabrikası. Çözücü **herkese aynı veritabanını** döndürür — hiçbir şey değişmemiş gibi çalışır. | Mümkün |
+| 2 · Ayrılma | Provizyon gerçek DB kurar; `Subscriptions` platforma taşınır; demo kiracılar yeni yoldan yeniden oluşturulur. | Zor — asıl eşik |
+| 3 · Yedekleme | Tatbikat, yedek planı, migration koşucusu. | — |
 | 4 · Temizlik (isteğe bağlı) | Yol B: `TenantId` ve filtrelerin kaldırılması. Üretimde oturduktan sonra, ayrı karar. | — |
+
+Faz 1 iki plana bölündü: 1a kiracı **kimliğini** ayırır, 1b kiracıdan
+**bağlantıya** giden yolu kurar. Tek planda toplamak, 1a sonundaki doğrulama
+noktasını kaybettirirdi.
+
+`Subscriptions` Faz 2'ye alındı: kiracı veritabanları gerçekten ayrılana kadar
+merkezî olmasının faydası yok, taşımanın riski ise bugünden alınmış olurdu.
 
 Faz 1, riskli tesisatı veri taşımasından ayırır ve tek başına doğrulanabilir
 kılar. Gerçek müşteri verisi olmadığı için Faz 2'de taşıma işi yoktur — geçişi
