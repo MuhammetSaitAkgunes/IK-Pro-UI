@@ -23,7 +23,8 @@ public sealed class IdentityService(
     ICurrentTenant currentTenant,
     IEmailSender emailSender,
     IConfiguration configuration,
-    AppDbContext context) : IIdentityService
+    AppDbContext context,
+    IPlatformDbContext platform) : IIdentityService
 {
     private const string InvalidCredentialsMessage = "E-posta veya şifre hatalı.";
 
@@ -49,7 +50,8 @@ public sealed class IdentityService(
         }
 
         // Multi-tenant: kullanıcının kiracısı (şirketi) askıya alınmışsa girişe izin verilmez.
-        var tenant = await context.Tenants.FirstOrDefaultAsync(t => t.Id == user.TenantId, cancellationToken);
+        // Kiracı kimliği platform veritabanındadır.
+        var tenant = await platform.Tenants.FirstOrDefaultAsync(t => t.Id == user.TenantId, cancellationToken);
         if (tenant is null || !tenant.IsActive)
         {
             throw new UnauthorizedException("Şirket hesabı aktif değil. Yöneticinizle iletişime geçin.");
@@ -147,12 +149,12 @@ public sealed class IdentityService(
 
         // Şifre belirlendi = e-posta doğrulandı. Self-servis kayıtta pasif oluşturulan kiracıyı
         // ilk admin kabulünde etkinleştir. Aktif kiracıda (provizyon, personel daveti) no-op.
-        var tenant = await context.Tenants.FirstOrDefaultAsync(
+        var tenant = await platform.Tenants.FirstOrDefaultAsync(
             t => t.Id == user.TenantId, cancellationToken);
         if (tenant is { IsActive: false })
         {
             tenant.IsActive = true;
-            await context.SaveChangesAsync(cancellationToken);
+            await platform.SaveChangesAsync(cancellationToken);
         }
     }
 
@@ -271,7 +273,7 @@ public sealed class IdentityService(
 
     /// <summary>Kiracının görünen adı — /me ve auth yanıtlarında şirket bağlamı için.</summary>
     private async Task<string> TenantNameAsync(int tenantId, CancellationToken cancellationToken) =>
-        await context.Tenants
+        await platform.Tenants
             .Where(t => t.Id == tenantId)
             .Select(t => t.Name)
             .FirstOrDefaultAsync(cancellationToken) ?? string.Empty;
@@ -294,7 +296,7 @@ public sealed class IdentityService(
 
     /// <summary>Varsayılan (ilk) kiracı — anonim kayıtta kullanılır (Faz 1'de değişecek).</summary>
     private async Task<int> DefaultTenantIdAsync(CancellationToken cancellationToken) =>
-        await context.Tenants
+        await platform.Tenants
             .OrderBy(t => t.Id)
             .Select(t => t.Id)
             .FirstAsync(cancellationToken);

@@ -26,6 +26,7 @@ namespace IKPro.Infrastructure.Persistence;
 public class AppDbContextInitializer(
     ILogger<AppDbContextInitializer> logger,
     AppDbContext context,
+    IPlatformDbContext platform,
     UserManager<ApplicationUser> userManager,
     RoleManager<IdentityRole> roleManager,
     ICurrentTenant currentTenant,
@@ -149,7 +150,7 @@ public class AppDbContextInitializer(
     {
         // Migration backfill zaten bir varsayılan kiracı oluşturur; taze/farklı yolda
         // yoksa burada güvence altına al. Sonra impersone et.
-        var tenant = await context.Tenants.OrderBy(t => t.Id).FirstOrDefaultAsync();
+        var tenant = await platform.Tenants.OrderBy(t => t.Id).FirstOrDefaultAsync();
         if (tenant is null)
         {
             tenant = new Tenant
@@ -159,8 +160,8 @@ public class AppDbContextInitializer(
                 IsActive = true,
                 CreatedAtUtc = DateTime.UtcNow,
             };
-            context.Tenants.Add(tenant);
-            await context.SaveChangesAsync();
+            platform.Tenants.Add(tenant);
+            await platform.SaveChangesAsync(default);
         }
 
         currentTenant.Impersonate(tenant.Id);
@@ -174,7 +175,7 @@ public class AppDbContextInitializer(
     private async Task SeedSecondDemoTenantAsync()
     {
         const string slug = "globex";
-        if (await context.Tenants.AnyAsync(t => t.Slug == slug)) return;
+        if (await platform.Tenants.AnyAsync(t => t.Slug == slug)) return;
 
         var tenant = new Tenant
         {
@@ -183,8 +184,8 @@ public class AppDbContextInitializer(
             IsActive = true,
             CreatedAtUtc = DateTime.UtcNow,
         };
-        context.Tenants.Add(tenant);
-        await context.SaveChangesAsync();
+        platform.Tenants.Add(tenant);
+        await platform.SaveChangesAsync(default);
 
         // Bundan sonra tüm yazımlar Globex'e damgalanır (interceptor + global filtre).
         currentTenant.Impersonate(tenant.Id);

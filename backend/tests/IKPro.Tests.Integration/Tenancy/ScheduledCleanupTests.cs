@@ -1,6 +1,6 @@
 using FluentAssertions;
 using IKPro.API.Services;
-using IKPro.Infrastructure.Persistence;
+using IKPro.Application.Common.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -30,11 +30,11 @@ public sealed class ScheduledCleanupTests(IKProApiFactory factory) : TenancyTest
         int unverifiedId;
         using (var scope = Factory.Services.CreateScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var t = await db.Tenants.FirstAsync(x => x.Name == "Zamanlı Temizlik A.Ş.");
+            var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+            var t = await platform.Tenants.FirstAsync(x => x.Name == "Zamanlı Temizlik A.Ş.");
             unverifiedId = t.Id;
             t.CreatedAtUtc = DateTime.UtcNow.AddDays(-40);
-            await db.SaveChangesAsync();
+            await platform.SaveChangesAsync(CancellationToken.None);
         }
 
         var kept = await ProvisionAndActivateAsync("Zamanlı Aktif A.Ş.", $"k-{Guid.NewGuid():N}@cleanup.local");
@@ -53,9 +53,9 @@ public sealed class ScheduledCleanupTests(IKProApiFactory factory) : TenancyTest
 
         using (var scope = Factory.Services.CreateScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            (await db.Tenants.AnyAsync(x => x.Id == unverifiedId)).Should().BeFalse("doğrulanmamış temizlenmeli");
-            (await db.Tenants.AnyAsync(x => x.Id == kept.TenantId)).Should().BeTrue("aktif kiracı korunmalı");
+            var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+            (await platform.Tenants.AnyAsync(x => x.Id == unverifiedId)).Should().BeFalse("doğrulanmamış temizlenmeli");
+            (await platform.Tenants.AnyAsync(x => x.Id == kept.TenantId)).Should().BeTrue("aktif kiracı korunmalı");
         }
     }
 

@@ -37,15 +37,16 @@ public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(
             var sp = scope.ServiceProvider;
             sp.GetRequiredService<ICurrentTenant>().Impersonate(b.TenantId);
             var db = sp.GetRequiredService<AppDbContext>();
+            var platform = sp.GetRequiredService<IPlatformDbContext>();
 
-            (await db.Tenants.AnyAsync(t => t.Id == a.TenantId)).Should().BeFalse("kiracı satırı silinmeli");
+            (await platform.Tenants.AnyAsync(t => t.Id == a.TenantId)).Should().BeFalse("kiracı satırı silinmeli");
             (await db.Set<ApplicationUser>().AnyAsync(u => u.TenantId == a.TenantId))
                 .Should().BeFalse("kiracının kullanıcıları silinmeli");
             (await db.Departments.IgnoreQueryFilters().AnyAsync(d => d.TenantId == a.TenantId))
                 .Should().BeFalse("kiracının verisi silinmeli");
 
             (await db.Departments.AnyAsync(d => d.Name == "B-Dept")).Should().BeTrue("başka kiracı korunmalı");
-            (await db.Tenants.AnyAsync(t => t.Id == b.TenantId)).Should().BeTrue();
+            (await platform.Tenants.AnyAsync(t => t.Id == b.TenantId)).Should().BeTrue();
         }
     }
 
@@ -139,8 +140,8 @@ public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(
         await purge.Should().NotThrowAsync("silinemeyen dosya alanı purge'ü yarıda kesmemeli");
 
         using var check = Factory.Services.CreateScope();
-        var db2 = check.ServiceProvider.GetRequiredService<AppDbContext>();
-        (await db2.Tenants.AnyAsync(x => x.Id == t.TenantId)).Should().BeFalse("kiracı verisi yine de silinmeli");
+        var platform2 = check.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+        (await platform2.Tenants.AnyAsync(x => x.Id == t.TenantId)).Should().BeFalse("kiracı verisi yine de silinmeli");
     }
 
     [Fact]
@@ -152,8 +153,8 @@ public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(
         resp.StatusCode.Should().Be(HttpStatusCode.Conflict);
 
         using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        (await db.Tenants.AnyAsync(x => x.Id == t.TenantId)).Should().BeTrue("yanlış slug'da silinmemeli");
+        var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+        (await platform.Tenants.AnyAsync(x => x.Id == t.TenantId)).Should().BeTrue("yanlış slug'da silinmemeli");
     }
 
     [Fact]
@@ -172,8 +173,8 @@ public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
 
         using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        (await db.Tenants.AnyAsync(x => x.Id == t.TenantId)).Should().BeFalse("silinmiş olmalı");
+        var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+        (await platform.Tenants.AnyAsync(x => x.Id == t.TenantId)).Should().BeFalse("silinmiş olmalı");
     }
 
     [Fact]
@@ -189,11 +190,11 @@ public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(
         int unverifiedId;
         using (var scope = Factory.Services.CreateScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var t = await db.Tenants.FirstAsync(x => x.Name == "Doğrulanmamış A.Ş.");
+            var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+            var t = await platform.Tenants.FirstAsync(x => x.Name == "Doğrulanmamış A.Ş.");
             unverifiedId = t.Id;
             t.CreatedAtUtc = DateTime.UtcNow.AddDays(-30);
-            await db.SaveChangesAsync();
+            await platform.SaveChangesAsync(CancellationToken.None);
         }
 
         // Doğrulanmış aktif kiracı (korunmalı).
@@ -204,9 +205,9 @@ public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(
 
         using (var scope = Factory.Services.CreateScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            (await db.Tenants.AnyAsync(x => x.Id == unverifiedId)).Should().BeFalse("doğrulanmamış temizlenmeli");
-            (await db.Tenants.AnyAsync(x => x.Id == kept.TenantId)).Should().BeTrue("aktif kiracı korunmalı");
+            var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+            (await platform.Tenants.AnyAsync(x => x.Id == unverifiedId)).Should().BeFalse("doğrulanmamış temizlenmeli");
+            (await platform.Tenants.AnyAsync(x => x.Id == kept.TenantId)).Should().BeTrue("aktif kiracı korunmalı");
         }
     }
 }

@@ -1,6 +1,6 @@
 using FluentAssertions;
+using IKPro.Application.Common.Interfaces;
 using IKPro.Application.Features.Departments;
-using IKPro.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
@@ -59,8 +59,8 @@ public sealed class SelfServiceSignupTests(IKProApiFactory factory) : TenancyTes
             .StatusCode.Should().Be(HttpStatusCode.Created);
 
         using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var slugs = await db.Tenants.Where(t => t.Name == "Paralel A.Ş.")
+        var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+        var slugs = await platform.Tenants.Where(t => t.Name == "Paralel A.Ş.")
             .Select(t => t.Slug).ToListAsync();
         slugs.Should().HaveCountGreaterThanOrEqualTo(2);
         slugs.Should().OnlyHaveUniqueItems("aynı ad için slug'lar benzersiz türetilmeli");
@@ -78,8 +78,8 @@ public sealed class SelfServiceSignupTests(IKProApiFactory factory) : TenancyTes
         responses.Should().OnlyContain(r => r.StatusCode == HttpStatusCode.Created);
 
         using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var slugs = await db.Tenants.Where(t => t.Name == "Eşzamanlı A.Ş.")
+        var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+        var slugs = await platform.Tenants.Where(t => t.Name == "Eşzamanlı A.Ş.")
             .Select(t => t.Slug).ToListAsync();
         slugs.Should().HaveCount(4).And.OnlyHaveUniqueItems("eşzamanlı kayıtlarda slug'lar benzersiz olmalı");
     }

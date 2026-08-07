@@ -63,4 +63,35 @@ public class PlatformKatmaniTests(IKProApiFactory factory) : TenancyTestBase(fac
 
         return Task.CompletedTask;
     }
+
+    [Fact]
+    public Task KiraciSatiri_UygulamaVeritabaninda_ARTIK_YOK()
+    {
+        // Awaitlenecek bir şey yok (senkron model kontrolü) — async işaretlemek
+        // CS1998 uyarısı doğurur ve derleme uyarısız olmalı (CI -warnaserror).
+        using var scope = Factory.Services.CreateScope();
+        var uygulama = (DbContext)scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
+
+        var tenantsTablosuVar = uygulama.Model.GetEntityTypes()
+            .Any(e => e.GetTableName() == "Tenants");
+
+        tenantsTablosuVar.Should().BeFalse(
+            "kiracı kimliği platform veritabanına taşındı; uygulama modelinde kalması iki doğruluk kaynağı demektir");
+
+        return Task.CompletedTask;
+    }
+
+    [Fact]
+    public async Task ProvizyonlananKiraci_PlatformVeritabaninda_Gorunur()
+    {
+        var kiraci = await ProvisionAndActivateAsync("PlatformKiraci", $"pk-{Guid.NewGuid():N}@ornek.local");
+
+        using var scope = Factory.Services.CreateScope();
+        var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+
+        var kayit = await platform.Tenants.FirstOrDefaultAsync(t => t.Id == kiraci.TenantId);
+
+        kayit.Should().NotBeNull();
+        kayit!.Slug.Should().Be(kiraci.Slug);
+    }
 }

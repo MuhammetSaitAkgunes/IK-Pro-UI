@@ -1,4 +1,5 @@
 using FluentAssertions;
+using IKPro.Application.Common.Interfaces;
 using IKPro.Application.Features.Auth;
 using IKPro.Application.Features.Departments;
 using IKPro.Infrastructure.Persistence;
@@ -85,10 +86,10 @@ public sealed class TenantProvisioningTests(IKProApiFactory factory) : TenancyTe
         // Kiracıyı doğrudan pasife al.
         using (var scope = Factory.Services.CreateScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var entity = await db.Tenants.FindAsync(tenant.TenantId);
+            var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+            var entity = await platform.Tenants.FindAsync(tenant.TenantId);
             entity!.IsActive = false;
-            await db.SaveChangesAsync();
+            await platform.SaveChangesAsync(CancellationToken.None);
         }
 
         var anonymous = Factory.CreateClient();

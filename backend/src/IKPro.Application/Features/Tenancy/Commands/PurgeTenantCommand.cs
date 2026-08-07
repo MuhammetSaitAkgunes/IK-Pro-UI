@@ -23,12 +23,12 @@ public sealed class PurgeTenantCommandValidator : AbstractValidator<PurgeTenantC
     }
 }
 
-public sealed class PurgeTenantCommandHandler(IApplicationDbContext context, ITenantPurger purger)
+public sealed class PurgeTenantCommandHandler(IPlatformDbContext platform, ITenantPurger purger)
     : IRequestHandler<PurgeTenantCommand, PurgeTenantResult>
 {
     public async Task<PurgeTenantResult> Handle(PurgeTenantCommand request, CancellationToken cancellationToken)
     {
-        var tenant = await context.Tenants.FirstOrDefaultAsync(t => t.Id == request.TenantId, cancellationToken)
+        var tenant = await platform.Tenants.FirstOrDefaultAsync(t => t.Id == request.TenantId, cancellationToken)
             ?? throw new NotFoundException("Kiracı", request.TenantId);
 
         if (!string.Equals(tenant.Slug, request.ConfirmSlug.Trim(), StringComparison.OrdinalIgnoreCase))

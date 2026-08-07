@@ -33,14 +33,14 @@ public sealed class ProvisionTenantCommandValidator : AbstractValidator<Provisio
     }
 }
 
-public sealed class ProvisionTenantCommandHandler(IApplicationDbContext context, IIdentityService identityService)
+public sealed class ProvisionTenantCommandHandler(IPlatformDbContext platform, IIdentityService identityService)
     : IRequestHandler<ProvisionTenantCommand, ProvisionTenantResult>
 {
     public async Task<ProvisionTenantResult> Handle(
         ProvisionTenantCommand request, CancellationToken cancellationToken)
     {
         var slug = request.Slug.Trim().ToLowerInvariant();
-        if (await context.Tenants.AnyAsync(t => t.Slug == slug, cancellationToken))
+        if (await platform.Tenants.AnyAsync(t => t.Slug == slug, cancellationToken))
         {
             throw new ConflictException($"'{slug}' kısa adıyla bir şirket zaten var.");
         }
@@ -48,7 +48,7 @@ public sealed class ProvisionTenantCommandHandler(IApplicationDbContext context,
         // Provizyon (platform-key) güvenilir → kiracı aktif oluşturulur. Self-servis kayıt
         // ise pasif oluşturur (bkz. RegisterTenantCommand); ortak adımlar TenantOnboarding'de.
         var tenant = await TenantOnboarding.CreateWithAdminAsync(
-            context, identityService,
+            platform, identityService,
             request.CompanyName.Trim(), slug,
             request.AdminName.Trim(), request.AdminEmail.Trim(),
             isActive: true, cancellationToken);

@@ -27,7 +27,7 @@ public sealed class RegisterTenantCommandValidator : AbstractValidator<RegisterT
     }
 }
 
-public sealed class RegisterTenantCommandHandler(IApplicationDbContext context, IIdentityService identityService)
+public sealed class RegisterTenantCommandHandler(IPlatformDbContext platform, IIdentityService identityService)
     : IRequestHandler<RegisterTenantCommand, RegisterTenantResult>
 {
     private const int MaxSlugAttempts = 5;
@@ -66,16 +66,16 @@ public sealed class RegisterTenantCommandHandler(IApplicationDbContext context, 
                 IsActive = false,
                 CreatedAtUtc = DateTime.UtcNow,
             };
-            context.Tenants.Add(tenant);
+            platform.Tenants.Add(tenant);
             try
             {
-                await context.SaveChangesAsync(cancellationToken);
+                await platform.SaveChangesAsync(cancellationToken);
                 return tenant;
             }
             catch (DbUpdateException) when (attempt < MaxSlugAttempts)
             {
                 // Added durumundaki başarısız eklemeyi bırak (Remove → Detached, silme SQL'i üretmez).
-                context.Tenants.Remove(tenant);
+                platform.Tenants.Remove(tenant);
             }
         }
     }
@@ -94,7 +94,7 @@ public sealed class RegisterTenantCommandHandler(IApplicationDbContext context, 
         // İlk deneme: temiz base; sıralı çakışmada "-2", "-3", ...
         var candidate = baseSlug;
         var suffix = 2;
-        while (await context.Tenants.AnyAsync(t => t.Slug == candidate, cancellationToken))
+        while (await platform.Tenants.AnyAsync(t => t.Slug == candidate, cancellationToken))
         {
             candidate = $"{baseSlug}-{suffix++}";
         }

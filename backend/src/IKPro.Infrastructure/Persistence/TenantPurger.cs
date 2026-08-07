@@ -14,6 +14,7 @@ namespace IKPro.Infrastructure.Persistence;
 /// </summary>
 public sealed class TenantPurger(
     AppDbContext context,
+    IPlatformDbContext platform,
     ICurrentTenant currentTenant,
     IFileStorage fileStorage,
     ILogger<TenantPurger> logger) : ITenantPurger
@@ -30,7 +31,6 @@ public sealed class TenantPurger(
         // Tablo adları metadata'dan çözülür (Identity tabloları yeniden adlandırılmış: Users/UserRoles…).
         var refreshTokenTable = QualifiedTableName(typeof(RefreshToken));
         var userTable = QualifiedTableName(typeof(ApplicationUser));
-        var tenantTable = QualifiedTableName(typeof(Domain.Entities.Tenancy.Tenant));
 
         await using var tx = await context.Database.BeginTransactionAsync(cancellationToken);
 
@@ -51,13 +51,20 @@ public sealed class TenantPurger(
             $"DELETE FROM {refreshTokenTable} WHERE [TenantId] = {{0}}", new object[] { tenantId }, cancellationToken);
         await context.Database.ExecuteSqlRawAsync(
             $"DELETE FROM {userTable} WHERE [TenantId] = {{0}}", new object[] { tenantId }, cancellationToken);
-
-        // 3) Kiracı satırı.
-        await context.Database.ExecuteSqlRawAsync(
-            $"DELETE FROM {tenantTable} WHERE [Id] = {{0}}", new object[] { tenantId }, cancellationToken);
 #pragma warning restore EF1002
 
         await tx.CommitAsync(cancellationToken);
+
+        // 3) Kiracı satırı platform veritabanındadır — uygulama transaction'ı onu kapsamaz.
+        // Bu yüzden ayrı silinir. Buradan önce patlarsa kiracı satırı kalır ama verisi
+        // gitmiştir; durum Purging'de kaldığı için kiracı erişilemez olarak durur
+        // (bkz. Task 6) ve operatör yeniden çalıştırabilir.
+        var tenantRow = await platform.Tenants.FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken);
+        if (tenantRow is not null)
+        {
+            platform.Tenants.Remove(tenantRow);
+            await platform.SaveChangesAsync(cancellationToken);
+        }
 
         // 4) Fiziksel dosyalar (DB tutarlılığından SONRA — rollback olursa dosya kaybı olmasın).
         // Kiracının TÜM dosya alanı silinir. Eskiden yalnız EmployeeDocuments yolları tek tek
@@ -80,7 +87,7 @@ public sealed class TenantPurger(
     public async Task<int> PurgeUnverifiedAsync(DateTime createdBeforeUtc, CancellationToken cancellationToken)
     {
         // Pasif + eski kiracı adayları (Tenant filtresizdir).
-        var candidateIds = await context.Tenants
+        var candidateIds = await platform.Tenants
             .Where(t => !t.IsActive && t.CreatedAtUtc < createdBeforeUtc)
             .Select(t => t.Id)
             .ToListAsync(cancellationToken);

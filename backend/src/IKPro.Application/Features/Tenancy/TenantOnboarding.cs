@@ -12,7 +12,7 @@ namespace IKPro.Application.Features.Tenancy;
 public static class TenantOnboarding
 {
     public static async Task<Tenant> CreateWithAdminAsync(
-        IApplicationDbContext context,
+        IPlatformDbContext platform,
         IIdentityService identityService,
         string companyName,
         string slug,
@@ -34,8 +34,8 @@ public static class TenantOnboarding
             IsActive = isActive,
             CreatedAtUtc = DateTime.UtcNow,
         };
-        context.Tenants.Add(tenant);
-        await context.SaveChangesAsync(cancellationToken);
+        platform.Tenants.Add(tenant);
+        await platform.SaveChangesAsync(cancellationToken);
 
         await identityService.CreateTenantAdminAsync(tenant.Id, adminName, adminEmail, tenant.Name, cancellationToken);
         return tenant;
