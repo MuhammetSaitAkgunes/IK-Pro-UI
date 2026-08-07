@@ -1,5 +1,6 @@
 using IKPro.Application.Common.Interfaces;
 using IKPro.Domain.Common;
+using IKPro.Domain.Entities.Tenancy;
 using IKPro.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -86,9 +87,9 @@ public sealed class TenantPurger(
 
     public async Task<int> PurgeUnverifiedAsync(DateTime createdBeforeUtc, CancellationToken cancellationToken)
     {
-        // Pasif + eski kiracı adayları (Tenant filtresizdir).
+        // Doğrulanmamış + eski kiracı adayları (Tenant filtresizdir).
         var candidateIds = await platform.Tenants
-            .Where(t => !t.IsActive && t.CreatedAtUtc < createdBeforeUtc)
+            .Where(t => t.Status == TenantStatus.Provisioning && t.CreatedAtUtc < createdBeforeUtc)
             .Select(t => t.Id)
             .ToListAsync(cancellationToken);
         if (candidateIds.Count == 0) return 0;

@@ -15,8 +15,10 @@ public class Tenant
     /// <summary>URL/alt alan dostu benzersiz kısa ad, ör. "acme".</summary>
     public string Slug { get; set; } = string.Empty;
 
-    /// <summary>Pasif kiracıya giriş yapılamaz (abonelik bitti/askıya alındı).</summary>
-    public bool IsActive { get; set; } = true;
+    /// <summary>
+    /// Yaşam döngüsü durumu. Yalnız <see cref="TenantStatus.Active"/> erişime izin verir.
+    /// </summary>
+    public TenantStatus Status { get; set; } = TenantStatus.Provisioning;
 
     public DateTime CreatedAtUtc { get; set; }
 }

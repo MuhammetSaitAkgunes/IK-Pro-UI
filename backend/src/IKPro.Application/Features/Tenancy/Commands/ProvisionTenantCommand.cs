@@ -1,6 +1,7 @@
 using FluentValidation;
 using IKPro.Application.Common.Exceptions;
 using IKPro.Application.Common.Interfaces;
+using IKPro.Domain.Entities.Tenancy;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -46,12 +47,13 @@ public sealed class ProvisionTenantCommandHandler(IPlatformDbContext platform, I
         }
 
         // Provizyon (platform-key) güvenilir → kiracı aktif oluşturulur. Self-servis kayıt
-        // ise pasif oluşturur (bkz. RegisterTenantCommand); ortak adımlar TenantOnboarding'de.
+        // ise Provisioning durumunda oluşturur (bkz. RegisterTenantCommand); ortak adımlar
+        // TenantOnboarding'de.
         var tenant = await TenantOnboarding.CreateWithAdminAsync(
             platform, identityService,
             request.CompanyName.Trim(), slug,
             request.AdminName.Trim(), request.AdminEmail.Trim(),
-            isActive: true, cancellationToken);
+            hedefDurum: TenantStatus.Active, cancellationToken);
 
         return new ProvisionTenantResult(tenant.Id, tenant.Slug, request.AdminEmail.Trim());
     }

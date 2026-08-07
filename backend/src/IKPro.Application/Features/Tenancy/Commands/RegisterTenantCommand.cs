@@ -63,7 +63,7 @@ public sealed class RegisterTenantCommandHandler(IPlatformDbContext platform, II
             {
                 Name = companyName,
                 Slug = slug,
-                IsActive = false,
+                Status = TenantStatus.Provisioning,
                 CreatedAtUtc = DateTime.UtcNow,
             };
             platform.Tenants.Add(tenant);

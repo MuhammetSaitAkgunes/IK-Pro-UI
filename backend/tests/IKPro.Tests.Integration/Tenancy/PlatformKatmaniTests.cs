@@ -3,6 +3,8 @@ using IKPro.Application.Common.Interfaces;
 using IKPro.Domain.Entities.Tenancy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using System.Net;
+using System.Net.Http.Json;
 using Xunit;
 
 namespace IKPro.Tests.Integration.Tenancy;
@@ -28,7 +30,7 @@ public class PlatformKatmaniTests(IKProApiFactory factory) : TenancyTestBase(fac
             {
                 Name = "Platform Test A.Ş.",
                 Slug = slug,
-                IsActive = true,
+                Status = TenantStatus.Active,
                 CreatedAtUtc = DateTime.UtcNow,
             });
             await yazma.SaveChangesAsync(CancellationToken.None);
@@ -41,7 +43,7 @@ public class PlatformKatmaniTests(IKProApiFactory factory) : TenancyTestBase(fac
         var kiraci = await okuma.Tenants.SingleAsync(t => t.Slug == slug);
 
         kiraci.Name.Should().Be("Platform Test A.Ş.");
-        kiraci.IsActive.Should().BeTrue();
+        kiraci.Status.Should().Be(TenantStatus.Active);
 
         // Temizlik — test veritabanını sonraki testler için kirletmeden bırak.
         okuma.Tenants.Remove(kiraci);
@@ -93,5 +95,32 @@ public class PlatformKatmaniTests(IKProApiFactory factory) : TenancyTestBase(fac
 
         kayit.Should().NotBeNull();
         kayit!.Slug.Should().Be(kiraci.Slug);
+    }
+
+    [Fact]
+    public async Task DondurulmusKiraci_GirisYapamaz()
+    {
+        var eposta = $"donduk-{Guid.NewGuid():N}@ornek.local";
+        var kiraci = await ProvisionAndActivateAsync("Donduk", eposta);
+
+        // Giriş önce çalışıyor olmalı — testin anlamlı olması için.
+        _ = await AuthedClientAsync(eposta);
+
+        await DurumuDegistirAsync(kiraci.TenantId, TenantStatus.Frozen);
+
+        var anonim = Factory.CreateClient();
+        var yanit = await anonim.PostAsJsonAsync("/api/auth/login", new { email = eposta, password = DefaultPassword });
+
+        yanit.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
+            "dondurulmuş kiracıya giriş yapılamamalı");
+    }
+
+    private async Task DurumuDegistirAsync(int tenantId, TenantStatus durum)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+        var kiraci = await platform.Tenants.FirstAsync(t => t.Id == tenantId);
+        kiraci.Status = durum;
+        await platform.SaveChangesAsync(default);
     }
 }

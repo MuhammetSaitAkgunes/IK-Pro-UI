@@ -26,6 +26,9 @@ public class PlatformDbContext(DbContextOptions<PlatformDbContext> options)
             b.Property(t => t.Name).IsRequired().HasMaxLength(200);
             b.Property(t => t.Slug).IsRequired().HasMaxLength(64);
             b.HasIndex(t => t.Slug).IsUnique();
+
+            // Okunabilirlik: durum veritabanında metin olarak durur (AppDbContext ile aynı kural).
+            b.Property(t => t.Status).HasConversion<string>().HasMaxLength(32);
         });
     }
 }

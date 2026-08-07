@@ -7,7 +7,7 @@ namespace IKPro.Application.Features.Tenancy;
 /// <summary>
 /// Kiracı + ilk hr-admin oluşturmanın ortak adımları (provizyon ve self-servis paylaşır).
 /// Admin ŞİFRESİZ oluşturulur; davet e-postası CreateTenantAdminAsync içinde gönderilir.
-/// Çağıran slug'ı (provizyonda istemciden, kayıtta türetilmiş) ve aktiflik durumunu belirler.
+/// Çağıran slug'ı (provizyonda istemciden, kayıtta türetilmiş) ve hedef durumu belirler.
 /// </summary>
 public static class TenantOnboarding
 {
@@ -18,7 +18,7 @@ public static class TenantOnboarding
         string slug,
         string adminName,
         string adminEmail,
-        bool isActive,
+        TenantStatus hedefDurum,
         CancellationToken cancellationToken)
     {
         // Admin e-postasını önce doğrula — kiracı yazılmadan çakışmayı yakala (orphan önlenir).
@@ -31,7 +31,7 @@ public static class TenantOnboarding
         {
             Name = companyName,
             Slug = slug,
-            IsActive = isActive,
+            Status = hedefDurum,
             CreatedAtUtc = DateTime.UtcNow,
         };
         platform.Tenants.Add(tenant);

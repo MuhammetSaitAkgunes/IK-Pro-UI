@@ -157,7 +157,7 @@ public class AppDbContextInitializer(
             {
                 Name = "Demo Şirket",
                 Slug = "demo",
-                IsActive = true,
+                Status = TenantStatus.Active,
                 CreatedAtUtc = DateTime.UtcNow,
             };
             platform.Tenants.Add(tenant);
@@ -181,7 +181,7 @@ public class AppDbContextInitializer(
         {
             Name = "Globex Bilişim A.Ş.",
             Slug = slug,
-            IsActive = true,
+            Status = TenantStatus.Active,
             CreatedAtUtc = DateTime.UtcNow,
         };
         platform.Tenants.Add(tenant);

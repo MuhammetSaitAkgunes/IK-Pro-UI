@@ -4,6 +4,7 @@ using IKPro.Application.Common.Exceptions;
 using IKPro.Application.Common.Interfaces;
 using IKPro.Application.Features.Auth;
 using IKPro.Domain.Constants;
+using IKPro.Domain.Entities.Tenancy;
 using IKPro.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -52,7 +53,7 @@ public sealed class IdentityService(
         // Multi-tenant: kullanıcının kiracısı (şirketi) askıya alınmışsa girişe izin verilmez.
         // Kiracı kimliği platform veritabanındadır.
         var tenant = await platform.Tenants.FirstOrDefaultAsync(t => t.Id == user.TenantId, cancellationToken);
-        if (tenant is null || !tenant.IsActive)
+        if (tenant is null || tenant.Status != TenantStatus.Active)
         {
             throw new UnauthorizedException("Şirket hesabı aktif değil. Yöneticinizle iletişime geçin.");
         }
@@ -147,13 +148,13 @@ public sealed class IdentityService(
                 .Select(e => new ValidationFailure("token", e.Description)));
         }
 
-        // Şifre belirlendi = e-posta doğrulandı. Self-servis kayıtta pasif oluşturulan kiracıyı
-        // ilk admin kabulünde etkinleştir. Aktif kiracıda (provizyon, personel daveti) no-op.
+        // Şifre belirlendi = e-posta doğrulandı. Self-servis kayıtta Provisioning
+        // durumunda oluşturulan kiracıyı ilk admin kabulünde etkinleştir.
         var tenant = await platform.Tenants.FirstOrDefaultAsync(
             t => t.Id == user.TenantId, cancellationToken);
-        if (tenant is { IsActive: false })
+        if (tenant is { Status: TenantStatus.Provisioning })
         {
-            tenant.IsActive = true;
+            tenant.Status = TenantStatus.Active;
             await platform.SaveChangesAsync(cancellationToken);
         }
     }
