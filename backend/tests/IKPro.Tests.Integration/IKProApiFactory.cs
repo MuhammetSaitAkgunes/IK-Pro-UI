@@ -16,6 +16,7 @@ namespace IKPro.Tests.Integration;
 public sealed class IKProApiFactory : WebApplicationFactory<Program>
 {
     private const string TestDatabaseName = "IKProDb_Test";
+    private const string PlatformTestDatabaseName = "IKProPlatform_Test";
 
     /// <summary>Testlerde kiracı provizyon ucunu çağırmak için platform anahtarı.</summary>
     public const string PlatformKey = "test-platform-key";
@@ -40,32 +41,35 @@ public sealed class IKProApiFactory : WebApplicationFactory<Program>
         }.ConnectionString;
 
     private static readonly string TestConnectionString = ConnectionFor(TestDatabaseName);
+    private static readonly string PlatformTestConnectionString = ConnectionFor(PlatformTestDatabaseName);
 
     public IKProApiFactory()
     {
         StorageRoot = Path.Combine(Path.GetTempPath(), "ikpro-test-storage", Guid.NewGuid().ToString("N"));
 
         Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", TestConnectionString);
+        Environment.SetEnvironmentVariable("ConnectionStrings__PlatformConnection", PlatformTestConnectionString);
         Environment.SetEnvironmentVariable("Platform__ProvisioningKey", PlatformKey);
         // Testler çok sayıda login/provizyon/kayıt yapar → rate limit'leri etkisiz kıl.
         Environment.SetEnvironmentVariable("RateLimiting__AuthPermitPerMinute", "1000000");
         Environment.SetEnvironmentVariable("RateLimiting__SignupPermitPerHour", "1000000");
         Environment.SetEnvironmentVariable("Storage__Root", StorageRoot);
 
-        DropTestDatabase();
+        DropDatabase(TestDatabaseName);
+        DropDatabase(PlatformTestDatabaseName);
     }
 
-    private static void DropTestDatabase()
+    private static void DropDatabase(string databaseName)
     {
         using var connection = new SqlConnection(ConnectionFor("master"));
         connection.Open();
 
         using var command = connection.CreateCommand();
         command.CommandText = $"""
-            IF DB_ID('{TestDatabaseName}') IS NOT NULL
+            IF DB_ID('{databaseName}') IS NOT NULL
             BEGIN
-                ALTER DATABASE [{TestDatabaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-                DROP DATABASE [{TestDatabaseName}];
+                ALTER DATABASE [{databaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                DROP DATABASE [{databaseName}];
             END
             """;
         command.ExecuteNonQuery();

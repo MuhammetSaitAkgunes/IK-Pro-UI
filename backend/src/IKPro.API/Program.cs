@@ -152,6 +152,11 @@ try
     if (app.Environment.IsDevelopment())
     {
         using var scope = app.Services.CreateScope();
+
+        var platformInitializer = scope.ServiceProvider
+            .GetRequiredService<IKPro.Infrastructure.Persistence.PlatformDbInitializer>();
+        await platformInitializer.InitialiseAsync();
+
         var initializer = scope.ServiceProvider.GetRequiredService<IKPro.Infrastructure.Persistence.AppDbContextInitializer>();
         await initializer.InitialiseAsync();
         await initializer.SeedAsync();
