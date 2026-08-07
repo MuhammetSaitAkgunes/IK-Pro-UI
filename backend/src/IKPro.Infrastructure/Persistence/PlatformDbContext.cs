@@ -17,6 +17,8 @@ public class PlatformDbContext(DbContextOptions<PlatformDbContext> options)
 {
     public DbSet<Tenant> Tenants => Set<Tenant>();
 
+    public DbSet<TenantDirectoryEntry> Directory => Set<TenantDirectoryEntry>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -29,6 +31,13 @@ public class PlatformDbContext(DbContextOptions<PlatformDbContext> options)
 
             // Okunabilirlik: durum veritabanında metin olarak durur (AppDbContext ile aynı kural).
             b.Property(t => t.Status).HasConversion<string>().HasMaxLength(32);
+        });
+
+        builder.Entity<TenantDirectoryEntry>(b =>
+        {
+            b.HasKey(d => d.NormalizedEmail);
+            b.Property(d => d.NormalizedEmail).HasMaxLength(256);
+            b.HasIndex(d => d.TenantId);
         });
     }
 }

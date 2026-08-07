@@ -14,5 +14,7 @@ public interface IPlatformDbContext
 {
     DbSet<Tenant> Tenants { get; }
 
+    DbSet<TenantDirectoryEntry> Directory { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }

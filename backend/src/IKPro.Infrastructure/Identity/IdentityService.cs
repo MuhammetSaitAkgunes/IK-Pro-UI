@@ -90,6 +90,7 @@ public sealed class IdentityService(
                 .Select(e => new ValidationFailure("password", e.Description)));
         }
 
+        await DizineYazAsync(email, user.TenantId, cancellationToken);
         await userManager.AddToRoleAsync(user, role);
 
         return await IssueTokensAsync(user, cancellationToken);
@@ -97,6 +98,9 @@ public sealed class IdentityService(
 
     public async Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken)
         => await userManager.FindByEmailAsync(email) is not null;
+
+    public async Task ReserveEmailAsync(string email, int tenantId, CancellationToken cancellationToken)
+        => await DizineYazAsync(email, tenantId, cancellationToken);
 
     public async Task CreateTenantAdminAsync(
         int tenantId, string name, string email, string companyName, CancellationToken cancellationToken)
@@ -110,7 +114,12 @@ public sealed class IdentityService(
             Initials = DeriveInitials(name),
             TenantId = tenantId,
         };
-        await CreateInvitedUserAsync(user, Roles.HrAdmin, companyName, cancellationToken);
+
+        // Dizin yazımı burada YAPILMAZ: TenantOnboarding.CreateWithAdminAsync bu
+        // çağrıdan ÖNCE ReserveEmailAsync ile rezervasyonu zaten yaptı. Burada
+        // ikinci kez yazsaydık birincil anahtar çakışır ve kendi provizyonumuz
+        // 409'a düşerdi.
+        await CreateInvitedUserAsync(user, Roles.HrAdmin, companyName, dizineYaz: false, cancellationToken);
     }
 
     public async Task CreateEmployeeLoginAsync(
@@ -131,7 +140,7 @@ public sealed class IdentityService(
             EmployeeId = employeeId,
             TenantId = tenantId,
         };
-        await CreateInvitedUserAsync(user, Roles.Employee, companyName, cancellationToken);
+        await CreateInvitedUserAsync(user, Roles.Employee, companyName, dizineYaz: true, cancellationToken);
     }
 
     public async Task AcceptInviteAsync(
@@ -162,9 +171,12 @@ public sealed class IdentityService(
     /// <summary>
     /// Kullanıcıyı ŞİFRESİZ oluşturur, rol atar ve şifre-belirleme (davet) token'ını
     /// e-postayla gönderir. Kullanıcı <c>accept-invite</c> ile hesabını etkinleştirir.
+    ///
+    /// <paramref name="dizineYaz"/> false ise dizine yazılmaz: çağıran (kiracı
+    /// provizyonu) e-postayı kullanıcı oluşturulmadan ÖNCE zaten rezerve etti.
     /// </summary>
     private async Task CreateInvitedUserAsync(
-        ApplicationUser user, string role, string companyName, CancellationToken cancellationToken)
+        ApplicationUser user, string role, string companyName, bool dizineYaz, CancellationToken cancellationToken)
     {
         if (await userManager.FindByEmailAsync(user.Email!) is not null)
         {
@@ -178,10 +190,43 @@ public sealed class IdentityService(
                 .Select(e => new ValidationFailure("email", e.Description)));
         }
 
+        if (dizineYaz)
+        {
+            await DizineYazAsync(user.Email!, user.TenantId, cancellationToken);
+        }
+
         await userManager.AddToRoleAsync(user, role);
 
         var token = await userManager.GeneratePasswordResetTokenAsync(user);
         await SendInviteEmailAsync(user.DisplayName, user.Email!, companyName, token, cancellationToken);
+    }
+
+    /// <summary>
+    /// Kullanıcıyı yönlendirme dizinine yazar ve ÇAKIŞMAYI 409'a çevirir.
+    ///
+    /// Dizinin birincil anahtarı e-postadır; çakışma "bu adres zaten bir
+    /// kiracıya ait" demektir. Kural burada, veritabanı seviyesinde uygulanır —
+    /// önceden yapılan bir kontrol eşzamanlı iki kaydı ayıramazdı.
+    ///
+    /// DİZİNE YAZAN TEK YER burasıdır — başka hiçbir yerde
+    /// <c>platform.Directory.Add</c> çağrılmaz.
+    /// </summary>
+    private async Task DizineYazAsync(string email, int tenantId, CancellationToken cancellationToken)
+    {
+        platform.Directory.Add(new TenantDirectoryEntry
+        {
+            NormalizedEmail = TenantDirectoryEntry.Normalize(email),
+            TenantId = tenantId,
+        });
+
+        try
+        {
+            await platform.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            throw new ConflictException($"'{email}' e-postasıyla kayıtlı bir hesap zaten var.");
+        }
     }
 
     private async Task SendInviteEmailAsync(

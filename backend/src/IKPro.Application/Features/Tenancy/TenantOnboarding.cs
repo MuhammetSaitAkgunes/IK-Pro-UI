@@ -37,6 +37,11 @@ public static class TenantOnboarding
         platform.Tenants.Add(tenant);
         await platform.SaveChangesAsync(cancellationToken);
 
+        // E-posta, admin kullanıcı oluşturulmadan ÖNCE rezerve edilir: eşzamanlı
+        // iki kayıt aynı adresi alamaz. Rezervasyonu kullanıcı oluşturmaya
+        // bıraksaydık iki müşteri yarışabilirdi.
+        await identityService.ReserveEmailAsync(adminEmail, tenant.Id, cancellationToken);
+
         await identityService.CreateTenantAdminAsync(tenant.Id, adminName, adminEmail, tenant.Name, cancellationToken);
         return tenant;
     }

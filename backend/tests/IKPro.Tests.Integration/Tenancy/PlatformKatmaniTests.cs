@@ -123,4 +123,38 @@ public class PlatformKatmaniTests(IKProApiFactory factory) : TenancyTestBase(fac
         kiraci.Status = durum;
         await platform.SaveChangesAsync(default);
     }
+
+    [Fact]
+    public async Task KullaniciOlusturulunca_DizineYazilir()
+    {
+        var eposta = $"dizin-{Guid.NewGuid():N}@ornek.local";
+        var kiraci = await ProvisionAndActivateAsync("Dizin", eposta);
+
+        using var scope = Factory.Services.CreateScope();
+        var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+
+        var kayit = await platform.Directory
+            .FirstOrDefaultAsync(d => d.NormalizedEmail == TenantDirectoryEntry.Normalize(eposta));
+
+        kayit.Should().NotBeNull("admin oluşturulduğunda dizine yazılmalı");
+        kayit!.TenantId.Should().Be(kiraci.TenantId);
+    }
+
+    [Fact]
+    public async Task AyniEposta_IkinciKiracida_Reddedilir()
+    {
+        var eposta = $"tekil-{Guid.NewGuid():N}@ornek.local";
+        await ProvisionAndActivateAsync("Birinci", eposta);
+
+        var yanit = await ProvisionRawAsync(new
+        {
+            companyName = "Ikinci",
+            slug = $"ikinci{Guid.NewGuid():N}"[..20],
+            adminName = "Ikinci Yonetici",
+            adminEmail = eposta,
+        });
+
+        yanit.StatusCode.Should().Be(HttpStatusCode.Conflict,
+            "tek e-posta = tek kiracı kuralı dizin birincil anahtarıyla korunmalı");
+    }
 }
