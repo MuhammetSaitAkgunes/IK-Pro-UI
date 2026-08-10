@@ -30,7 +30,8 @@ public class AppDbContextInitializer(
     UserManager<ApplicationUser> userManager,
     RoleManager<IdentityRole> roleManager,
     ICurrentTenant currentTenant,
-    IConfiguration configuration)
+    IConfiguration configuration,
+    IIdentityService identityService)
 {
     public async Task InitialiseAsync()
     {
@@ -271,6 +272,10 @@ public class AppDbContextInitializer(
                     string.Join(", ", result.Errors.Select(e => e.Description)));
             }
 
+            // Demo kullanıcılar da normal kullanıcı oluşturma yollarıyla aynı kuralı izler:
+            // dizine yazılmadan hiçbir hesap "var" sayılmaz (Faz 1b login'i buradan çözecek).
+            await identityService.ReserveEmailAsync(user.Email!, tenant.Id, default);
+
             await userManager.AddToRoleAsync(user, role);
             if (employee is not null)
             {
@@ -334,6 +339,10 @@ public class AppDbContextInitializer(
                     $"Demo kullanıcı oluşturulamadı ({user.Email}): " +
                     string.Join(", ", result.Errors.Select(e => e.Description)));
             }
+
+            // Demo kullanıcılar da normal kullanıcı oluşturma yollarıyla aynı kuralı izler:
+            // dizine yazılmadan hiçbir hesap "var" sayılmaz (Faz 1b login'i buradan çözecek).
+            await identityService.ReserveEmailAsync(user.Email!, tenantId, default);
 
             await userManager.AddToRoleAsync(user, role);
 

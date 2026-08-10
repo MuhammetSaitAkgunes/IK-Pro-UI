@@ -141,8 +141,14 @@ public class PlatformKatmaniTests(IKProApiFactory factory) : TenancyTestBase(fac
     }
 
     [Fact]
-    public async Task AyniEposta_IkinciKiracida_Reddedilir()
+    public async Task AyniEposta_IkinciKiracida_OnKontrolReddeder()
     {
+        // Bu test yalnız kullanıcının gördüğü sonucu doğrular: ikinci kayıt denemesi
+        // 409 alır. YOL ise burada Identity'nin FindByEmailAsync ön kontrolüdür
+        // (TenantOnboarding.EmailExistsAsync) — dizinin birincil anahtar kısıtı hiç
+        // devreye girmez, çünkü ilk admin zaten Identity'de bulunur ve provizyon
+        // kiracı/kullanıcı oluşturmadan ÖNCE erken döner. Kısıtın kendisi ayrı testte
+        // (AyniEposta_DizindeBaskaKiraciyaAitse_RezervasyondaReddedilir) sınanır.
         var eposta = $"tekil-{Guid.NewGuid():N}@ornek.local";
         await ProvisionAndActivateAsync("Birinci", eposta);
 
@@ -155,6 +161,40 @@ public class PlatformKatmaniTests(IKProApiFactory factory) : TenancyTestBase(fac
         });
 
         yanit.StatusCode.Should().Be(HttpStatusCode.Conflict,
-            "tek e-posta = tek kiracı kuralı dizin birincil anahtarıyla korunmalı");
+            "tek e-posta = tek kiracı kuralı en azından ön kontrolle korunmalı");
+    }
+
+    [Fact]
+    public async Task AyniEposta_DizindeBaskaKiraciyaAitse_RezervasyondaReddedilir()
+    {
+        // Yarış koşulunun simülasyonu: dizinde Identity'de karşılığı OLMAYAN bir satır
+        // elle oluşturulur. Böylece EmailExistsAsync (Identity sorgusu) false döner ve
+        // ön kontrolü geçer — ama ReserveEmailAsync'in yazdığı DizineYazAsync, dizinde
+        // BAŞKA bir kiracıya ait aynı e-postayı bulur ve ConflictException fırlatır.
+        // Bu, veritabanı seviyesindeki "tek e-posta = tek kiracı" kısıtını gerçekten
+        // sınayan yoldur (ön kontrol devre dışı kalınca ne olduğu).
+        var eposta = $"yaris-{Guid.NewGuid():N}@ornek.local";
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+            platform.Directory.Add(new TenantDirectoryEntry
+            {
+                NormalizedEmail = TenantDirectoryEntry.Normalize(eposta),
+                TenantId = -1, // gerçek bir kiracıya ait değil; yalnız PK çakışmasını tetikler.
+            });
+            await platform.SaveChangesAsync(CancellationToken.None);
+        }
+
+        var yanit = await ProvisionRawAsync(new
+        {
+            companyName = "Yarisan",
+            slug = $"yarisan{Guid.NewGuid():N}"[..20],
+            adminName = "Yarisan Yonetici",
+            adminEmail = eposta,
+        });
+
+        yanit.StatusCode.Should().Be(HttpStatusCode.Conflict,
+            "e-posta dizinde başka bir kiracıya ait olduğunda rezervasyon veritabanı kısıtına çarpmalı");
     }
 }

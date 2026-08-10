@@ -44,6 +44,12 @@ public sealed class RegisterTenantCommandHandler(IPlatformDbContext platform, II
         var companyName = request.CompanyName.Trim();
         var tenant = await CreateTenantWithUniqueSlugAsync(companyName, cancellationToken);
 
+        // E-posta, admin kullanıcı oluşturulmadan ÖNCE rezerve edilir — TenantOnboarding
+        // ile aynı desen (bkz. TenantOnboarding.CreateWithAdminAsync): eşzamanlı iki kayıt
+        // aynı adresi alamaz. CreateTenantAdminAsync'in içindeki dizin yazımı idempotent
+        // olduğu için burada rezerve edilmiş olması onu 409'a düşürmez (aynı kiracı → no-op).
+        await identityService.ReserveEmailAsync(adminEmail, tenant.Id, cancellationToken);
+
         await identityService.CreateTenantAdminAsync(
             tenant.Id, request.AdminName.Trim(), adminEmail, tenant.Name, cancellationToken);
 

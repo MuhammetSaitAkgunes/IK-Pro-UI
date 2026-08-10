@@ -2,6 +2,7 @@ using FluentAssertions;
 using IKPro.Infrastructure.Storage;
 using IKPro.Application.Common.Interfaces;
 using IKPro.Domain.Entities.Organization;
+using IKPro.Domain.Entities.Tenancy;
 using IKPro.Infrastructure.Identity;
 using IKPro.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -48,6 +49,49 @@ public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(
             (await db.Departments.AnyAsync(d => d.Name == "B-Dept")).Should().BeTrue("başka kiracı korunmalı");
             (await platform.Tenants.AnyAsync(t => t.Id == b.TenantId)).Should().BeTrue();
         }
+    }
+
+    [Fact]
+    public async Task Purge_RemovesDirectoryEntry_AllowsEmailReuse()
+    {
+        // İnceleme bulgusu #3: purge Directory satırlarını silmezse aynı e-posta
+        // KALICI KİLİTLENİR — Identity'de kullanıcı kalmaz (EmailExistsAsync false)
+        // ama dizinin birincil anahtarı hâlâ eski (silinmiş) kiracıyı gösterdiğinden
+        // yeniden kayıt/provizyon denemesi rezervasyonda 409'a çarpar.
+        var eposta = $"yeniden-{Guid.NewGuid():N}@purge.local";
+        var t = await ProvisionAndActivateAsync("Dizin Purge A.Ş.", eposta);
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+            (await platform.Directory.AnyAsync(d => d.TenantId == t.TenantId))
+                .Should().BeTrue("purge öncesi dizin satırı var olmalı (kurulumun kontrolü)");
+        }
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<ITenantPurger>()
+                .PurgeAsync(t.TenantId, CancellationToken.None);
+        }
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+            (await platform.Directory.AnyAsync(d => d.NormalizedEmail == TenantDirectoryEntry.Normalize(eposta)))
+                .Should().BeFalse("purge dizin satırını da silmeli — aksi halde e-posta kalıcı kilitlenir");
+        }
+
+        // Asıl doğrulama: aynı e-posta ile yeniden provizyon artık 409 ALMAMALI.
+        var yeniden = await ProvisionRawAsync(new
+        {
+            companyName = "Yeniden A.Ş.",
+            slug = $"yeniden{Guid.NewGuid():N}"[..20],
+            adminName = "Yeniden Yonetici",
+            adminEmail = eposta,
+        });
+
+        yeniden.StatusCode.Should().Be(HttpStatusCode.Created,
+            "purge sonrası e-posta serbest kalmalı, kalıcı kilitlenmemeli");
     }
 
     private HttpClient PlatformClient()

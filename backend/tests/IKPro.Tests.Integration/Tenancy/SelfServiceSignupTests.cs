@@ -1,6 +1,7 @@
 using FluentAssertions;
 using IKPro.Application.Common.Interfaces;
 using IKPro.Application.Features.Departments;
+using IKPro.Domain.Entities.Tenancy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
@@ -40,6 +41,25 @@ public sealed class SelfServiceSignupTests(IKProApiFactory factory) : TenancyTes
         var admin = await AuthedClientAsync(email);
         var depts = await GetAsync<List<DepartmentDto>>(admin, "/api/departments");
         depts.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Signup_YaziliAdmin_DizineYazilir()
+    {
+        // İnceleme bulgusu #1: RegisterTenantCommandHandler kendi kiracı oluşturma
+        // döngüsünü yazıp doğrudan CreateTenantAdminAsync'e gidiyordu ve dizine hiç
+        // yazmıyordu. Faz 1b login'i dizinden çözeceği için bu, self-servis kayıtla
+        // gelen hiçbir kullanıcının giriş yapamayacağı anlamına gelirdi.
+        var email = $"dizin-signup-{Guid.NewGuid():N}@yenisirket.local";
+        var response = await SignupAsync("Dizin Signup A.Ş.", email);
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        using var scope = Factory.Services.CreateScope();
+        var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+        var kayit = await platform.Directory
+            .FirstOrDefaultAsync(d => d.NormalizedEmail == TenantDirectoryEntry.Normalize(email));
+
+        kayit.Should().NotBeNull("self-servis kayıtla oluşan admin de dizine yazılmalı");
     }
 
     [Fact]

@@ -56,14 +56,31 @@ public sealed class TenantPurger(
 
         await tx.CommitAsync(cancellationToken);
 
-        // 3) Kiracı satırı platform veritabanındadır — uygulama transaction'ı onu kapsamaz.
-        // Bu yüzden ayrı silinir. Buradan önce patlarsa kiracı satırı kalır ama verisi
-        // gitmiştir; durum Purging'de kaldığı için kiracı erişilemez olarak durur
-        // (bkz. Task 6) ve operatör yeniden çalıştırabilir.
+        // 3) Kiracı satırı ve dizin kayıtları platform veritabanındadır — uygulama
+        // transaction'ı onları kapsamaz. Bu yüzden ayrı silinir. Dizin satırları
+        // silinmezse e-posta KALICI KİLİTLENİR: purge sonrası Identity'de kullanıcı
+        // kalmadığından EmailExistsAsync false döner ama dizinin birincil anahtarı hâlâ
+        // eski kiracıyı gösterir → aynı e-postayla yeniden kayıt/provizyon denemesi
+        // rezervasyonda 409'a çarpar ve asla açılamaz. Buradan önce patlarsa kiracı
+        // satırı/dizin kalır ama uygulama verisi gitmiştir; durum Purging'de kaldığı
+        // için kiracı erişilemez olarak durur (bkz. Task 6) ve operatör yeniden
+        // çalıştırabilir (dizin silme de idempotenttir — kayıt yoksa no-op).
+        var dizinSatirlari = await platform.Directory
+            .Where(d => d.TenantId == tenantId)
+            .ToListAsync(cancellationToken);
+        if (dizinSatirlari.Count > 0)
+        {
+            platform.Directory.RemoveRange(dizinSatirlari);
+        }
+
         var tenantRow = await platform.Tenants.FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken);
         if (tenantRow is not null)
         {
             platform.Tenants.Remove(tenantRow);
+        }
+
+        if (dizinSatirlari.Count > 0 || tenantRow is not null)
+        {
             await platform.SaveChangesAsync(cancellationToken);
         }
 
