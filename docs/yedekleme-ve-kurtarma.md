@@ -158,6 +158,7 @@ pwsh scripts/register-backup-task.ps1 -Database IKProDb -BackupPath "C:\SQLYedek
 
 # 2) YÖNETİCİ PowerShell'de kaydet:
 pwsh scripts/register-backup-task.ps1 -Database IKProDb -BackupPath "C:\SQLYedek" `
+  -TaskName "IKPro-YedekTatbikati-Db" `
   -StoragePath "C:\IKPro\App_Data\storage" -OffsitePath "\\yedek-sunucu\ikpro" `
   -LogPath "C:\SQLYedek\tatbikat.jsonl"
 ```
@@ -170,21 +171,35 @@ pwsh scripts/register-backup-task.ps1 -Database IKProPlatform -BackupPath "C:\SQ
 
 # 2) YÖNETİCİ PowerShell'de kaydet:
 pwsh scripts/register-backup-task.ps1 -Database IKProPlatform -BackupPath "C:\SQLYedek" `
+  -TaskName "IKPro-YedekTatbikati-Platform" `
   -OffsitePath "\\yedek-sunucu\ikpro" -LogPath "C:\SQLYedek\tatbikat.jsonl"
 ```
 
-Zamanlanmış görevleri hemen tetikleyip doğrula:
+Zamanlanmış görevleri hemen tetikleyip doğrula — **her iki görev de başarılı dönmelidir:**
 
 ```powershell
-# 3) Her iki görev de başarılı dönmeli (çıkış kodu 0):
-Start-ScheduledTask -TaskName IKPro-YedekTatbikati
-Get-ScheduledTaskInfo -TaskName IKPro-YedekTatbikati | Select LastRunTime, LastTaskResult
+# 3) Kiracı verisi zamanlaması:
+Start-ScheduledTask -TaskName IKPro-YedekTatbikati-Db
+Get-ScheduledTaskInfo -TaskName IKPro-YedekTatbikati-Db | Select LastRunTime, LastTaskResult
+
+# 4) Platform zamanlaması:
+Start-ScheduledTask -TaskName IKPro-YedekTatbikati-Platform
+Get-ScheduledTaskInfo -TaskName IKPro-YedekTatbikati-Platform | Select LastRunTime, LastTaskResult
 ```
 
-`LastTaskResult` **0** = başarılı. Görev SYSTEM hesabıyla kaydedilir, çünkü SQL
+`LastTaskResult` **0** = başarılı. Görevler SYSTEM hesabıyla kaydedilir, çünkü SQL
 Server yedek dizinine yazma izni kullanıcı hesabında genelde yoktur.
 
-Kaldırmak için: `Unregister-ScheduledTask -TaskName IKPro-YedekTatbikati -Confirm:$false`
+**Neden ayrı görev adları:** Script `Register-ScheduledTask ... -Force` ile çağırıyor
+(satır ~97). Aynı ad kullanılırsa `-Force`, ikinci çağrı birinci görevi sessizce siler.
+Operatör bu adımları izlerse kiracı verisi zamanlaması kaybolur.
+
+Kaldırmak için her iki görevi de silin:
+
+```powershell
+Unregister-ScheduledTask -TaskName IKPro-YedekTatbikati-Db -Confirm:$false
+Unregister-ScheduledTask -TaskName IKPro-YedekTatbikati-Platform -Confirm:$false
+```
 
 > **Not:** Zamanlanmış görev bu depoda **kaydedilmedi** — sistemde kalıcı
 > yapılandırma oluşturduğu ve yönetici hakkı gerektirdiği için bilinçli olarak
