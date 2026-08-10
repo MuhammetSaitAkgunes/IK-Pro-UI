@@ -34,6 +34,10 @@ kararlaştırılmalıdır.
 | Fark (DIFFERENTIAL) | 6 saatte bir | 7 gün | Geri yükleme süresini kısaltır |
 | İşlem günlüğü (LOG) | RPO'ya göre (ör. saatlik) | 7 gün | Yalnız FULL recovery model'de |
 
+> **İki veritabanı:** `IKProDb` (kiracı verisi) ve `IKProPlatform` (kiracı
+> kimliği ve yönlendirme). İkisi de yedek planına dahildir — platform küçüktür
+> ama onsuz hiçbir kullanıcı giriş yapamaz.
+
 **Kritik kural:** Yedekler veritabanı sunucusuyla **aynı diskte tutulmaz.**
 Üretimde ayrı fiziksel konum (ayrı sunucu / nesne depolama) zorunludur. Aynı
 diskteki yedek, disk arızasında veriyle birlikte gider.
@@ -159,7 +163,7 @@ Kaldırmak için: `Unregister-ScheduledTask -TaskName IKPro-YedekTatbikati -Conf
   doğrulanmalı.
 - ⬜ **Log dosyası kimse tarafından izlenmiyor** — webhook kurulana kadar
   `tatbikat.jsonl` dosyasına düzenli bakılmalı.
-- ⬜ **Veritabanı kiracı bazına bölünmüyor** — dosyalar kiracı başına arşivleniyor
-  ama DB tek parça yedekleniyor. Yani "şu müşteriyi dünkü hâline döndür" talebi
-  yarım çözülür: dosyalar evet, veritabanı satırları hayır. Tam müşteri bazlı
-  geri yükleme ayrı bir tasarım gerektirir (FK sırası, IDENTITY_INSERT, tatbikat).
+- 🔄 **Kiracı bazına bölme sürüyor** — Faz 1a tamamlandı: kiracı kimliği
+  `IKProPlatform` veritabanına ayrıldı. Kiracı VERİSİ hâlâ tek `IKProDb`
+  içindedir; tek müşteriyi geri yükleme yeteneği Faz 2'de gelir.
+  Tasarım: `docs/superpowers/specs/2026-08-06-kiraci-basina-veritabani-design.md`

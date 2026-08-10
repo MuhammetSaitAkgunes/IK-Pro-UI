@@ -28,6 +28,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: "Development"
       ConnectionStrings__DefaultConnection: "Server=mssql,1433;Database=IKProDb;User Id=sa;Password=Your_strong_Pass123;TrustServerCertificate=True;Encrypt=False"
+      ConnectionStrings__PlatformConnection: "Server=mssql,1433;Database=IKProPlatform;User Id=sa;Password=Your_strong_Pass123;TrustServerCertificate=True;Encrypt=False"
     ports:
       - "8080:8080"
 
