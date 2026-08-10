@@ -174,8 +174,11 @@ public class PlatformKatmaniTests(IKProApiFactory factory) : TenancyTestBase(fac
         // elle oluşturulur. Böylece EmailExistsAsync (Identity sorgusu) false döner ve
         // ön kontrolü geçer — ama ReserveEmailAsync'in yazdığı DizineYazAsync, dizinde
         // BAŞKA bir kiracıya ait aynı e-postayı bulur ve ConflictException fırlatır.
-        // Bu, veritabanı seviyesindeki "tek e-posta = tek kiracı" kısıtını gerçekten
-        // sınayan yoldur (ön kontrol devre dışı kalınca ne olduğu).
+        // DÜRÜST NOT: bu test DizineYazAsync'in OKUMA-SONRA-KARAR dalını tetikler
+        // (mevcut satır bulunur, TenantId eşleşmez → throw); alttaki gerçek
+        // veritabanı-seviyesi kısıtı sınayan `catch (DbUpdateException)` dalı BURADAN
+        // koşmaz — o yalnız GERÇEK eşzamanlı iki isteğin INSERT'i aynı anda
+        // PK'ya çarptırdığı TOCTOU senaryosunda tetiklenir ve bu testte simüle edilmez.
         var eposta = $"yaris-{Guid.NewGuid():N}@ornek.local";
 
         using (var scope = Factory.Services.CreateScope())
@@ -311,6 +314,44 @@ public class PlatformKatmaniTests(IKProApiFactory factory) : TenancyTestBase(fac
 
         yanit.StatusCode.Should().Be(HttpStatusCode.NotFound,
             "Purge ile tutarlı olmalı: var olmayan kiracı için 404");
+    }
+
+    [Fact]
+    public async Task DizinYenidenKurma_ArdArdaIkiKezCalisirsaAyniSonucuUretir()
+    {
+        // Tasarım belgesi (2026-08-06-kiraci-basina-veritabani-design.md, test listesi)
+        // "dizin yeniden kurmanın aynı sonucu üretmesi"ni açıkça ister. Bu aynı zamanda
+        // RemoveRange + aynı PK'yı yeniden Add eden yolu GERÇEKTEN koşturan tek testtir:
+        // yukarıdaki iki rebuild testi (SilinenKaydiGeriGetirir, BaskaKiraciyaAitCakismaVarsa)
+        // rebuild'den ÖNCE dizin satırını silip/başka kiracıya taşıdığı için 'mevcut'
+        // (silinecek satır listesi) her ikisinde de BOŞ kalıyor — RemoveRange hiç koşmuyor.
+        // Burada rebuild bilerek İKİ KEZ art arda çağrılır: ikinci koşumda mevcut'ta
+        // birinci koşumun yazdığı satır bulunur, silinip aynı normalize e-postayla yeniden
+        // eklenir — geri yükleme prosedürünün en sık koşacağı ve zorunlu adımı budur.
+        var eposta = $"tekrar-{Guid.NewGuid():N}@ornek.local";
+        var kiraci = await ProvisionAndActivateAsync("Tekrarli", eposta);
+        var anahtar = TenantDirectoryEntry.Normalize(eposta);
+
+        var client = Factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Platform-Key", IKProApiFactory.PlatformKey);
+
+        var ilkYanit = await client.PostAsync($"/api/tenants/{kiraci.TenantId}/rebuild-directory", null);
+        ilkYanit.StatusCode.Should().Be(HttpStatusCode.OK);
+        var ilkSonuc = (await ilkYanit.Content.ReadFromJsonAsync<RebuildDirectoryResult>())!;
+
+        var ikinciYanit = await client.PostAsync($"/api/tenants/{kiraci.TenantId}/rebuild-directory", null);
+        ikinciYanit.StatusCode.Should().Be(HttpStatusCode.OK,
+            "ikinci art arda koşum da başarılı olmalı (RemoveRange + aynı PK ile yeniden Add çakışmamalı)");
+        var ikinciSonuc = (await ikinciYanit.Content.ReadFromJsonAsync<RebuildDirectoryResult>())!;
+
+        ikinciSonuc.YazilanKayit.Should().Be(ilkSonuc.YazilanKayit, "iki koşum aynı sayıda kayıt yazmalı");
+        ikinciSonuc.CakisanEpostalar.Should().BeEquivalentTo(ilkSonuc.CakisanEpostalar,
+            "iki koşum aynı çakışma sonucunu üretmeli");
+
+        using var scope = Factory.Services.CreateScope();
+        var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+        (await platform.Directory.CountAsync(d => d.TenantId == kiraci.TenantId && d.NormalizedEmail == anahtar))
+            .Should().Be(1, "ikinci koşum satırı çoğaltmamalı, yalnız yeniden kurmalı");
     }
 
     [Fact]
