@@ -20,7 +20,7 @@ public sealed class TenantPurger(
     IFileStorage fileStorage,
     ILogger<TenantPurger> logger) : ITenantPurger
 {
-    public async Task PurgeAsync(int tenantId, CancellationToken cancellationToken)
+    public async Task<bool> PurgeAsync(int tenantId, CancellationToken cancellationToken)
     {
         // Silme başlar başlamaz kiracı erişilemez olur ve öyle KALIR. Aşağıdaki
         // adımlardan biri patlarsa kiracı Purging'de takılı kalır — yarım silinmiş
@@ -101,16 +101,20 @@ public sealed class TenantPurger(
         // siliniyordu; bu, çalışan fotoğraflarını ve şirket logosunu KAÇIRIYORDU. Alan silme
         // ileride eklenecek her dosya türünü de otomatik kapsar.
         // Hata sessizce yutulmaz: DB temizlenip dosyalar kalırsa KVKK açısından PII riski
-        // sürer, elle temizlik için LOUD loglanır. Hata purge'ü yarıda kesmez.
+        // sürer, elle temizlik için LOUD loglanır. Hata purge'ü yarıda kesmez — ama artık
+        // çağırana da sessiz kalmaz: dönüş değeri (false) operatöre "200 OK ama dosyalar
+        // hâlâ diskte" durumunu görünür kılar (bkz. ITenantPurger.PurgeAsync sözleşmesi).
         try
         {
             await fileStorage.DeleteTenantSpaceAsync(tenantId, cancellationToken);
+            return true;
         }
         catch (Exception ex)
         {
             logger.LogError(ex,
                 "Kiracı {TenantId} purge: dosya alanı silinemedi — elle temizlik gerekiyor.",
                 tenantId);
+            return false;
         }
     }
 
@@ -133,6 +137,9 @@ public sealed class TenantPurger(
         var toPurge = candidateIds.Except(verifiedTenantIds).ToList();
         foreach (var id in toPurge)
         {
+            // Bu yol (cron/otomatik temizlik) etkileşimli bir operatörü olmadığından dönüş
+            // değerini bir sonuca taşımaz; yine de dosya silme başarısızlığı burada da
+            // LOUD loglanır (PurgeAsync içinde) — sessizce kaybolmaz.
             await PurgeAsync(id, cancellationToken);
         }
         return toPurge.Count;

@@ -12,7 +12,13 @@ namespace IKPro.Application.Features.Tenancy.Commands;
 /// </summary>
 public sealed record PurgeTenantCommand(int TenantId, string ConfirmSlug) : IRequest<PurgeTenantResult>;
 
-public sealed record PurgeTenantResult(int TenantId, string Slug);
+/// <param name="DosyalarSilinemedi">
+/// <c>true</c> ise kiracının veritabanı verisi silindi ama fiziksel dosya alanı
+/// SİLİNEMEDİ — diskte PII kalmış olabilir, elle temizlik gerekir (hata sunucu
+/// loglarına LOUD yazılmıştır, bkz. <see cref="ITenantPurger.PurgeAsync"/>).
+/// Operatör 200 OK'i "her şey silindi" diye okumamalı; bu alanı kontrol etmeli.
+/// </param>
+public sealed record PurgeTenantResult(int TenantId, string Slug, bool DosyalarSilinemedi = false);
 
 public sealed class PurgeTenantCommandValidator : AbstractValidator<PurgeTenantCommand>
 {
@@ -37,7 +43,7 @@ public sealed class PurgeTenantCommandHandler(IPlatformDbContext platform, ITena
         }
 
         var slug = tenant.Slug;
-        await purger.PurgeAsync(tenant.Id, cancellationToken);
-        return new PurgeTenantResult(request.TenantId, slug);
+        var dosyalarSilindi = await purger.PurgeAsync(tenant.Id, cancellationToken);
+        return new PurgeTenantResult(request.TenantId, slug, DosyalarSilinemedi: !dosyalarSilindi);
     }
 }

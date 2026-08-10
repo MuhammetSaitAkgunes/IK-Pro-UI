@@ -1,6 +1,7 @@
 using FluentAssertions;
 using IKPro.Infrastructure.Storage;
 using IKPro.Application.Common.Interfaces;
+using IKPro.Application.Features.Tenancy.Commands;
 using IKPro.Domain.Entities.Organization;
 using IKPro.Domain.Entities.Tenancy;
 using IKPro.Infrastructure.Identity;
@@ -163,25 +164,32 @@ public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(
     }
 
     [Fact]
-    public async Task Purge_WithUndeletableFile_DoesNotThrow_AndStillPurges()
+    public async Task Purge_WithUndeletableFile_DoesNotThrow_AndStillPurges_ButReportsFailure()
     {
         var t = await ProvisionAndActivateAsync("Bozuk Dosya A.Ş.", $"b-{Guid.NewGuid():N}@purge.local");
 
         // Kiracı alanında AÇIK TUTULAN bir dosya: Directory.Delete başarısız olur.
-        // Dosyalar silinemese bile veri temizliği yarıda kesilmemeli; hata loglanır.
+        // Dosyalar silinemese bile veri temizliği yarıda kesilmemeli; hata loglanır
+        // VE çağırana dönüş değeriyle (false) görünür kılınır — sessiz kalınmaz
+        // (İnceleme bulgusu #3: aksi halde operatör 200 OK'i "her şey silindi"
+        // sanır, oysa kiracının PII dosyaları diskte kalmış olabilir).
         var kiraciKlasoru = Path.Combine(Factory.StorageRoot, LocalFileStorage.TenantFolder(t.TenantId));
         Directory.CreateDirectory(kiraciKlasoru);
         await using var kilit = new FileStream(
             Path.Combine(kiraciKlasoru, "kilitli.bin"),
             FileMode.Create, FileAccess.Write, FileShare.None);
 
+        bool dosyalarSilindi = true;
         var purge = async () =>
         {
             using var scope = Factory.Services.CreateScope();
-            await scope.ServiceProvider.GetRequiredService<ITenantPurger>()
+            dosyalarSilindi = await scope.ServiceProvider.GetRequiredService<ITenantPurger>()
                 .PurgeAsync(t.TenantId, CancellationToken.None);
         };
         await purge.Should().NotThrowAsync("silinemeyen dosya alanı purge'ü yarıda kesmemeli");
+
+        dosyalarSilindi.Should().BeFalse(
+            "dosya alanı silinemediğinde PurgeAsync bunu çağırana bildirmeli, sessiz kalmamalı");
 
         using var check = Factory.Services.CreateScope();
         var platform2 = check.ServiceProvider.GetRequiredService<IPlatformDbContext>();
@@ -215,6 +223,12 @@ public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(
         var t = await ProvisionAndActivateAsync("Doğru Onay A.Ş.", $"ok-{Guid.NewGuid():N}@purge.local");
         var resp = await PlatformClient().DeleteAsync($"/api/tenants/{t.TenantId}?confirmSlug={t.Slug}");
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Normal (dosya silme başarılı) yolda operatöre "DosyalarSilinemedi: false" dönmeli —
+        // İnceleme bulgusu #3 alanının API sözleşmesinde de göründüğünü doğrular.
+        var body = await resp.Content.ReadFromJsonAsync<PurgeTenantResult>();
+        body.Should().NotBeNull();
+        body!.DosyalarSilinemedi.Should().BeFalse("dosya alanı normal koşulda başarıyla silinmeli");
 
         using var scope = Factory.Services.CreateScope();
         var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
