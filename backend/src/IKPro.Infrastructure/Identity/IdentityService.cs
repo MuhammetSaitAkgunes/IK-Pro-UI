@@ -82,6 +82,17 @@ public sealed class IdentityService(
             TenantId = currentTenant.TenantId ?? await DefaultTenantIdAsync(cancellationToken),
         };
 
+        // Dizine ÖNCE yaz, kullanıcıyı SONRA oluştur — sıra bilinçli olarak budur (bkz.
+        // DizineYazAsync xmldoc + CreateInvitedUserAsync'teki aynı gerekçe). userManager.CreateAsync
+        // hemen commit eder ve geri alınamaz; sıra tersi olsaydı ve DizineYazAsync arada
+        // ConflictException fırlatsaydı (TOCTOU — başka bir istek aynı e-postayı kaptı),
+        // kullanıcı uygulama DB'sinde KALICI olarak var ama dizinde YOK kalırdı: Faz 1b'de
+        // asla giriş yapamaz, rolü de atanmamış olur, ve EmailExistsAsync artık true
+        // döndüğünden aynı e-postayla yeniden deneme sonsuza kadar 409 alır. Dizine önce
+        // yazmak bu sınıf hatayı imkansız kılar: DizineYazAsync başarısız olursa CreateAsync
+        // hiç çağrılmaz, ortada yarım kalan kullanıcı olmaz.
+        await DizineYazAsync(email, user.TenantId, cancellationToken);
+
         var createResult = await userManager.CreateAsync(user, password);
         if (!createResult.Succeeded)
         {
@@ -90,7 +101,6 @@ public sealed class IdentityService(
                 .Select(e => new ValidationFailure("password", e.Description)));
         }
 
-        await DizineYazAsync(email, user.TenantId, cancellationToken);
         await userManager.AddToRoleAsync(user, role);
 
         return await IssueTokensAsync(user, cancellationToken);
@@ -174,9 +184,17 @@ public sealed class IdentityService(
     /// Kullanıcıyı ŞİFRESİZ oluşturur, rol atar ve şifre-belirleme (davet) token'ını
     /// e-postayla gönderir. Kullanıcı <c>accept-invite</c> ile hesabını etkinleştirir.
     ///
-    /// Kullanıcı oluşturma başarılı olur olmaz KOŞULSUZ dizine yazar (bkz.
+    /// Dizine KOŞULSUZ ÖNCE yazar, kullanıcıyı SONRA oluşturur (bkz.
     /// <see cref="DizineYazAsync"/> — idempotenttir, çağıran önceden rezervasyon
-    /// yapmışsa aynı kiracı için sessizce no-op'tur).
+    /// yapmışsa aynı kiracı için sessizce no-op'tur). Sıra bilinçlidir: userManager.CreateAsync
+    /// hemen commit eder ve geri alınamaz. Ters sırada (önce CreateAsync, sonra
+    /// DizineYazAsync) DizineYazAsync bir ConflictException fırlatırsa (TOCTOU — başka
+    /// bir istek arada aynı e-postayı kaptı) kullanıcı uygulama DB'sinde KALICI olarak
+    /// var ama dizinde YOK kalırdı: Faz 1b'de asla giriş yapamaz, rolü de atanmamış
+    /// olur, ve EmailExistsAsync artık true döndüğünden aynı kişiyi yeniden işe alma
+    /// denemesi (en çok <c>CreateEmployeeLoginAsync</c> üzerinden — ürünün en yüksek
+    /// hacimli kullanıcı yaratma yolu) sonsuza kadar 409 alır. Dizine önce yazmak bu
+    /// sınıf hatayı imkansız kılar.
     /// </summary>
     private async Task CreateInvitedUserAsync(
         ApplicationUser user, string role, string companyName, CancellationToken cancellationToken)
@@ -186,14 +204,14 @@ public sealed class IdentityService(
             throw new ConflictException($"'{user.Email}' e-postasıyla kayıtlı bir hesap zaten var.");
         }
 
+        await DizineYazAsync(user.Email!, user.TenantId, cancellationToken);
+
         var createResult = await userManager.CreateAsync(user); // şifresiz → davet gerektirir
         if (!createResult.Succeeded)
         {
             throw new ValidationException(createResult.Errors
                 .Select(e => new ValidationFailure("email", e.Description)));
         }
-
-        await DizineYazAsync(user.Email!, user.TenantId, cancellationToken);
 
         await userManager.AddToRoleAsync(user, role);
 
