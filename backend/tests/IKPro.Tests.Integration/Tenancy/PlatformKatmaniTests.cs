@@ -353,4 +353,47 @@ public class PlatformKatmaniTests(IKProApiFactory factory) : TenancyTestBase(fac
         takililar.Should().Contain(t => t.TenantId == tenantId,
             "yarıda kalan provizyon görünür olmalı — sessiz enkaz bırakılmaz");
     }
+
+    [Fact]
+    public async Task PurgingKiraci_YasindanBagimsizGorunur_TazeProvisioningGorunmez()
+    {
+        // Yaş eşiği YALNIZ Provisioning'e uygulanmalı. İki kiracı da YENİ oluşturulmuş
+        // (eşiğin çok altında) — biri Purging, biri Provisioning. Purging her zaman
+        // listede olmalı (silme saniyeler sürer, orada kalmış olmak zaten anormaldir);
+        // taze Provisioning ise davet kabulünü bekliyor olabilir, henüz "takılı" değil.
+        int purgingId;
+        int provisioningId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+
+            var purging = new Tenant
+            {
+                Name = "TazePurging",
+                Slug = $"tazepurging{Guid.NewGuid():N}"[..20],
+                Status = TenantStatus.Purging,
+                CreatedAtUtc = DateTime.UtcNow, // taze — eşiğin çok altında.
+            };
+            var provisioning = new Tenant
+            {
+                Name = "TazeProvisioning",
+                Slug = $"tazeprovision{Guid.NewGuid():N}"[..20],
+                Status = TenantStatus.Provisioning,
+                CreatedAtUtc = DateTime.UtcNow, // aynı yaş — ama Provisioning için eşik geçerli.
+            };
+            platform.Tenants.AddRange(purging, provisioning);
+            await platform.SaveChangesAsync(default);
+            purgingId = purging.Id;
+            provisioningId = provisioning.Id;
+        }
+
+        var client = Factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Platform-Key", IKProApiFactory.PlatformKey);
+        var takililar = await GetAsync<List<StuckTenantDto>>(client, "/api/tenants/stuck?olderThanMinutes=60");
+
+        takililar.Should().Contain(t => t.TenantId == purgingId,
+            "Purging durumundaki kiracı yaşına bakılmaksızın her zaman görünmeli — orada kalmış olmak zaten anormaldir");
+        takililar.Should().NotContain(t => t.TenantId == provisioningId,
+            "taze Provisioning kiracı henüz takılı sayılmaz — eşik yalnız Provisioning'e uygulanır");
+    }
 }

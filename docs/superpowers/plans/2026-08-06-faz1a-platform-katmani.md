@@ -1267,8 +1267,16 @@ public sealed class GetStuckTenantsQueryHandler(IPlatformDbContext platform)
         var esik = DateTime.UtcNow.AddMinutes(-request.OlderThanMinutes);
 
         return await platform.Tenants
-            .Where(t => (t.Status == TenantStatus.Provisioning || t.Status == TenantStatus.Purging)
-                        && t.CreatedAtUtc < esik)
+            // Eşik YALNIZ Provisioning'e uygulanır. Purging'de kalmış bir kiracı
+            // tanımı gereği anormaldir — silme tek istek içinde saniyeler sürer —
+            // dolayısıyla yaşına bakılmaz. Provizyon ise davet kabulü beklerken
+            // meşru olarak Provisioning'de durabilir, orada eşik gerekir.
+            //
+            // [Uygulama sırasında düzeltildi] Bu kod önce eşiği ikisine birden
+            // uyguluyordu; CreatedAtUtc kiracının aylar önceki oluşturulma tarihi
+            // olduğu için sağlıklı ilerleyen her silme "takılı" görünüyordu.
+            .Where(t => (t.Status == TenantStatus.Provisioning && t.CreatedAtUtc < esik)
+                        || t.Status == TenantStatus.Purging)
             .OrderBy(t => t.CreatedAtUtc)
             .Select(t => new StuckTenantDto(t.Id, t.Slug, t.Status, t.CreatedAtUtc))
             .ToListAsync(cancellationToken);
