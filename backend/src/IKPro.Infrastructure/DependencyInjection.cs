@@ -106,6 +106,7 @@ public static class DependencyInjection
         services.AddSingleton<Application.Features.Payroll.Payslips.IPayslipGenerator, Pdf.QuestPdfPayslipGenerator>();
         services.AddScoped<JwtTokenService>();
         services.AddScoped<IIdentityService, IdentityService>();
+        services.AddScoped<IUserDirectorySource, Identity.UserDirectorySource>();
         services.AddScoped<ITenantPurger, Persistence.TenantPurger>();
         // Kiracıya bağlı olduğu için SCOPED: singleton olsaydı ilk isteğin kiracısı
         // sonsuza kadar yapışırdı (captive dependency).

@@ -197,4 +197,34 @@ public class PlatformKatmaniTests(IKProApiFactory factory) : TenancyTestBase(fac
         yanit.StatusCode.Should().Be(HttpStatusCode.Conflict,
             "e-posta dizinde başka bir kiracıya ait olduğunda rezervasyon veritabanı kısıtına çarpmalı");
     }
+
+    [Fact]
+    public async Task DizinYenidenKurma_SilinenKaydiGeriGetirir()
+    {
+        var eposta = $"kur-{Guid.NewGuid():N}@ornek.local";
+        var kiraci = await ProvisionAndActivateAsync("Kurtar", eposta);
+        var anahtar = TenantDirectoryEntry.Normalize(eposta);
+
+        // Sapmayı simüle et: dizin kaydını sil.
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+            var kayit = await platform.Directory.FirstAsync(d => d.NormalizedEmail == anahtar);
+            platform.Directory.Remove(kayit);
+            await platform.SaveChangesAsync(default);
+        }
+
+        var client = Factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Platform-Key", IKProApiFactory.PlatformKey);
+        var yanit = await client.PostAsync($"/api/tenants/{kiraci.TenantId}/rebuild-directory", null);
+
+        yanit.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+            (await platform.Directory.AnyAsync(d => d.NormalizedEmail == anahtar))
+                .Should().BeTrue("dizin kiracı veritabanındaki kullanıcılardan yeniden kurulmalı");
+        }
+    }
 }
