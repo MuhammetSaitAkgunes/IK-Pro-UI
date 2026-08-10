@@ -149,8 +149,10 @@ public class AppDbContextInitializer(
 
     private async Task SeedDefaultTenantAsync()
     {
-        // Migration backfill zaten bir varsayılan kiracı oluşturur; taze/farklı yolda
-        // yoksa burada güvence altına al. Sonra impersone et.
+        // Platform veritabanında (IKProPlatform) bir migration backfill'i YOKTUR — kiracı
+        // kimliği bu daldan (kiracı-başına-veritabanı, Faz 1a) itibaren ayrı bir DB'de.
+        // Bu yüzden varsayılan kiracıyı burada doğrudan güvence altına alıyoruz: yoksa
+        // oluştur, sonra impersone et.
         var tenant = await platform.Tenants.OrderBy(t => t.Id).FirstOrDefaultAsync();
         if (tenant is null)
         {
@@ -176,7 +178,25 @@ public class AppDbContextInitializer(
     private async Task SeedSecondDemoTenantAsync()
     {
         const string slug = "globex";
+        const string adminEmail = "globex-admin@globex.local";
         if (await platform.Tenants.AnyAsync(t => t.Slug == slug)) return;
+
+        // İkinci koruma: platform DB'si (IKProPlatform) taze/boş doğduğunda yukarıdaki
+        // slug kontrolü tutmaz (platformda "globex" yok) ama uygulama DB'si (IKProDb)
+        // eski bir çalıştırmadan kalmışsa Identity'de globex-admin ZATEN vardır. Bu
+        // durumda userManager.CreateAsync var olan kullanıcıya çarpar → istisna →
+        // açılış çöker. Admin e-postası zaten varsa seed'i atla; doğru yükseltme
+        // prosedürü iki veritabanını da BİRLİKTE düşürmektir (bkz.
+        // docs/rehberler/07-veritabani-ve-migrationlar.md, "Yükseltme notu").
+        if (await identityService.EmailExistsAsync(adminEmail, default))
+        {
+            logger.LogWarning(
+                "Globex demo kiracısı platform veritabanında yok ama {AdminEmail} uygulama " +
+                "veritabanında zaten var; seed atlandı. Bu genelde IKProPlatform düşürülüp " +
+                "IKProDb düşürülmediğinde oluşur — ikisini birlikte düşürüp yeniden başlatın.",
+                adminEmail);
+            return;
+        }
 
         var tenant = new Tenant
         {
@@ -243,7 +263,7 @@ public class AppDbContextInitializer(
         {
             (new ApplicationUser
             {
-                UserName = "globex-admin@globex.local", Email = "globex-admin@globex.local",
+                UserName = adminEmail, Email = adminEmail,
                 EmailConfirmed = true, DisplayName = "Globex Yöneticisi", Initials = "GY",
                 TenantId = tenant.Id,
             }, Roles.HrAdmin, null),
