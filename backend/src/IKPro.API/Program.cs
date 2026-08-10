@@ -132,9 +132,13 @@ try
         });
     });
 
-    // Health checks (self + veritabanı bağlantısı).
+    // Health checks (self + iki veritabanı bağlantısı). Yalnız AppDbContext kontrol edilirse
+    // platform DB (IKProPlatform — Tenants/TenantDirectoryEntries) düşükken /health yine de
+    // yeşil kalır ama hiç kimse giriş yapamaz (LoginAsync kiracı durumunu platform DB'sinden
+    // okur). İkisi de kontrol edilmeli.
     builder.Services.AddHealthChecks()
-        .AddDbContextCheck<IKPro.Infrastructure.Persistence.AppDbContext>("database");
+        .AddDbContextCheck<IKPro.Infrastructure.Persistence.AppDbContext>("database")
+        .AddDbContextCheck<IKPro.Infrastructure.Persistence.PlatformDbContext>("platform");
 
     // Doğrulanmamış kiracıların uygulama-içi periyodik temizliği (varsayılan kapalı; opt-in).
     builder.Services.Configure<UnverifiedTenantCleanupOptions>(
