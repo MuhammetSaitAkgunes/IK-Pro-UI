@@ -1,6 +1,8 @@
 using FluentAssertions;
 using IKPro.Application.Common.Interfaces;
+using IKPro.Application.Features.Tenancy.Commands;
 using IKPro.Domain.Entities.Tenancy;
+using IKPro.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
@@ -226,5 +228,87 @@ public class PlatformKatmaniTests(IKProApiFactory factory) : TenancyTestBase(fac
             (await platform.Directory.AnyAsync(d => d.NormalizedEmail == anahtar))
                 .Should().BeTrue("dizin kiracı veritabanındaki kullanıcılardan yeniden kurulmalı");
         }
+    }
+
+    [Fact]
+    public async Task DizinYenidenKurma_BaskaKiraciyaAitCakismaVarsa_AtlarKalaniniYazarVeRaporlar()
+    {
+        // Geri yükleme sonrası sapma senaryosu: kiraciA'nın gerçek admin e-postası
+        // (epostaA1) dizinde HÂLÂ kiraciB'ye kayıtlı görünüyor — restore sonrası
+        // platform veritabanı geri sarılmadığı için oluşan tam olarak bu durum.
+        // kiraciA'nın ikinci bir kullanıcısı (epostaA2) ise hiç çakışmıyor.
+        var epostaA1 = $"cakisan-{Guid.NewGuid():N}@ornek.local";
+        var epostaA2 = $"temiz-{Guid.NewGuid():N}@ornek.local";
+        var epostaB = $"digerkiraci-{Guid.NewGuid():N}@ornek.local";
+
+        var kiraciA = await ProvisionAndActivateAsync("CakismaA", epostaA1);
+        var kiraciB = await ProvisionAndActivateAsync("CakismaB", epostaB);
+
+        // kiraciA'ya ikinci bir kullanıcı ekle (Users tablosuna doğrudan) — dizinden
+        // BAĞIMSIZ olarak, yeniden kurmanın kiracı veritabanından okuduğunu kanıtlar.
+        var anahtarA2 = TenantDirectoryEntry.Normalize(epostaA2);
+        await SeedInTenantAsync(kiraciA.TenantId, db =>
+        {
+            db.Users.Add(new ApplicationUser
+            {
+                Id = Guid.NewGuid().ToString(),
+                UserName = epostaA2,
+                NormalizedUserName = epostaA2.ToUpperInvariant(),
+                Email = epostaA2,
+                NormalizedEmail = anahtarA2,
+                EmailConfirmed = true,
+                SecurityStamp = Guid.NewGuid().ToString(),
+                ConcurrencyStamp = Guid.NewGuid().ToString(),
+                TenantId = kiraciA.TenantId,
+                DisplayName = "Temiz Kullanici",
+                IsActive = true,
+            });
+            return Task.CompletedTask;
+        });
+
+        var anahtarA1 = TenantDirectoryEntry.Normalize(epostaA1);
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+            var kayit = await platform.Directory.FirstAsync(d => d.NormalizedEmail == anahtarA1);
+            kayit.TenantId = kiraciB.TenantId; // sapmayı simüle et: satır artık B'ye ait görünüyor.
+            await platform.SaveChangesAsync(default);
+        }
+
+        var client = Factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Platform-Key", IKProApiFactory.PlatformKey);
+        var yanit = await client.PostAsync($"/api/tenants/{kiraciA.TenantId}/rebuild-directory", null);
+
+        yanit.StatusCode.Should().Be(HttpStatusCode.OK,
+            "tek satırlık çakışma tüm işlemi 500'e düşürmemeli");
+
+        var sonuc = (await yanit.Content.ReadFromJsonAsync<RebuildDirectoryResult>())!;
+        sonuc.YazilanKayit.Should().Be(1, "yalnız çakışmayan epostaA2 yazılmalı");
+        sonuc.CakisanEpostalar.Should().ContainSingle(e => e == anahtarA1,
+            "çakışan epostaA1 operatöre açıkça raporlanmalı");
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+
+            (await platform.Directory.AnyAsync(d => d.NormalizedEmail == anahtarA2 && d.TenantId == kiraciA.TenantId))
+                .Should().BeTrue("çakışmayan kayıt yazılmalı — tek bozuk satır diğerlerini iptal etmemeli");
+
+            var halaB = await platform.Directory.FirstAsync(d => d.NormalizedEmail == anahtarA1);
+            halaB.TenantId.Should().Be(kiraciB.TenantId,
+                "çakışan e-posta kiraciA'ya çalınmamalı — 'tek e-posta = tek kiracı' kuralı gevşetilmez");
+        }
+    }
+
+    [Fact]
+    public async Task DizinYenidenKurma_VarOlmayanKiraci_404Doner()
+    {
+        var client = Factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Platform-Key", IKProApiFactory.PlatformKey);
+
+        var yanit = await client.PostAsync("/api/tenants/999999999/rebuild-directory", null);
+
+        yanit.StatusCode.Should().Be(HttpStatusCode.NotFound,
+            "Purge ile tutarlı olmalı: var olmayan kiracı için 404");
     }
 }

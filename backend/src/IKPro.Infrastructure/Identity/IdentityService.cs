@@ -221,8 +221,12 @@ public sealed class IdentityService(
     /// asıl güvence alttaki <c>catch</c>'tir — INSERT birincil anahtara çarparsa da
     /// 409'a çevrilir.
     ///
-    /// DİZİNE YAZAN TEK YER burasıdır — başka hiçbir yerde
-    /// <c>platform.Directory.Add</c> çağrılmaz.
+    /// Dizine yazan TEK YER burası DEĞİLDİR: <c>RebuildDirectoryCommand</c> de
+    /// <c>platform.Directory.Add</c> çağırır. İkisinin semantiği kasıtlı olarak
+    /// FARKLIDIR — burası kullanıcı OLUŞTURURKEN çakışmayı 409'a çevirip reddeder
+    /// (yetkisiz bir yazının başka kiracıyı ele geçirmesini önler), yeniden kurma
+    /// ise zaten yetkili kaynaktan (kiracının kendi Users tablosu) yazdığı için
+    /// çakışan satırları reddetmek yerine atlar ve raporlar.
     /// </summary>
     private async Task DizineYazAsync(string email, int tenantId, CancellationToken cancellationToken)
     {

@@ -72,6 +72,7 @@ public sealed class TenancyController(ISender sender, IConfiguration configurati
     [HttpPost("{id:int}/rebuild-directory")]
     [ProducesResponseType<RebuildDirectoryResult>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<RebuildDirectoryResult>> RebuildDirectory(
         int id, CancellationToken cancellationToken)
     {
