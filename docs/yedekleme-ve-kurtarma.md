@@ -154,7 +154,8 @@ Kiracı verisi veritabanı:
 
 ```powershell
 # 1) Önce ne yapacağını gör (sistemi değiştirmez):
-pwsh scripts/register-backup-task.ps1 -Database IKProDb -BackupPath "C:\SQLYedek" -WhatIf
+pwsh scripts/register-backup-task.ps1 -Database IKProDb -BackupPath "C:\SQLYedek" `
+  -TaskName "IKPro-YedekTatbikati-Db" -WhatIf
 
 # 2) YÖNETİCİ PowerShell'de kaydet:
 pwsh scripts/register-backup-task.ps1 -Database IKProDb -BackupPath "C:\SQLYedek" `
@@ -167,7 +168,8 @@ Platform veritabanı (kiracı kimliği ve yönlendirme):
 
 ```powershell
 # 1) Önce ne yapacağını gör (sistemi değiştirmez):
-pwsh scripts/register-backup-task.ps1 -Database IKProPlatform -BackupPath "C:\SQLYedek" -WhatIf
+pwsh scripts/register-backup-task.ps1 -Database IKProPlatform -BackupPath "C:\SQLYedek" `
+  -TaskName "IKPro-YedekTatbikati-Platform" -WhatIf
 
 # 2) YÖNETİCİ PowerShell'de kaydet:
 pwsh scripts/register-backup-task.ps1 -Database IKProPlatform -BackupPath "C:\SQLYedek" `
