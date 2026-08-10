@@ -1,4 +1,5 @@
 using IKPro.Application.Features.Tenancy.Commands;
+using IKPro.Application.Features.Tenancy.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -82,6 +83,21 @@ public sealed class TenancyController(ISender sender, IConfiguration configurati
         }
 
         return Ok(await sender.Send(new RebuildDirectoryCommand(id), cancellationToken));
+    }
+
+    /// <remarks>Provizyonu/silmesi yarıda kalmış kiracılar (operatör görünürlüğü).</remarks>
+    [HttpGet("stuck")]
+    [ProducesResponseType<IReadOnlyList<StuckTenantDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<IReadOnlyList<StuckTenantDto>>> Stuck(
+        [FromQuery] int olderThanMinutes = 60, CancellationToken cancellationToken = default)
+    {
+        if (!PlatformKeyValid())
+        {
+            return Unauthorized(new { title = "Platform anahtarı geçersiz veya eksik." });
+        }
+
+        return Ok(await sender.Send(new GetStuckTenantsQuery(olderThanMinutes), cancellationToken));
     }
 
     private bool PlatformKeyValid()

@@ -27,11 +27,14 @@ public static class TenantOnboarding
             throw new ConflictException($"'{adminEmail}' e-postasıyla kayıtlı bir hesap zaten var.");
         }
 
+        // Kiracı satırı ve uygulama verisi (admin kullanıcı) iki ayrı veritabanındadır,
+        // dolayısıyla tek transaction değildir. Kiracı burada DAİMA Provisioning ile
+        // yazılır — hedefDurum yalnız aşağıda, admin oluşturulduktan SONRA uygulanır.
         var tenant = new Tenant
         {
             Name = companyName,
             Slug = slug,
-            Status = hedefDurum,
+            Status = TenantStatus.Provisioning,
             CreatedAtUtc = DateTime.UtcNow,
         };
         platform.Tenants.Add(tenant);
@@ -43,6 +46,13 @@ public static class TenantOnboarding
         await identityService.ReserveEmailAsync(adminEmail, tenant.Id, cancellationToken);
 
         await identityService.CreateTenantAdminAsync(tenant.Id, adminName, adminEmail, tenant.Name, cancellationToken);
+
+        // Son adım: kiracı ancak burada kullanılabilir hale gelir. Araya giren
+        // bir hata kiracıyı Provisioning'de bırakır — erişilemez ama GÖRÜNÜR,
+        // ve operatör yeniden deneyebilir ya da geri alabilir.
+        tenant.Status = hedefDurum;
+        await platform.SaveChangesAsync(cancellationToken);
+
         return tenant;
     }
 }

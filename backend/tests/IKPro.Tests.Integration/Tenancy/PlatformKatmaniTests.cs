@@ -1,6 +1,7 @@
 using FluentAssertions;
 using IKPro.Application.Common.Interfaces;
 using IKPro.Application.Features.Tenancy.Commands;
+using IKPro.Application.Features.Tenancy.Queries;
 using IKPro.Domain.Entities.Tenancy;
 using IKPro.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -310,5 +311,46 @@ public class PlatformKatmaniTests(IKProApiFactory factory) : TenancyTestBase(fac
 
         yanit.StatusCode.Should().Be(HttpStatusCode.NotFound,
             "Purge ile tutarlı olmalı: var olmayan kiracı için 404");
+    }
+
+    [Fact]
+    public async Task ProvizyonBasarili_DurumuActiveBirakir()
+    {
+        var kiraci = await ProvisionTenantAsync("Asama", $"asama-{Guid.NewGuid():N}@ornek.local");
+
+        using var scope = Factory.Services.CreateScope();
+        var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+        var kayit = await platform.Tenants.FirstAsync(t => t.Id == kiraci.TenantId);
+
+        kayit.Status.Should().Be(TenantStatus.Active,
+            "başarılı provizyon sonunda kiracı kullanılabilir olmalı");
+    }
+
+    [Fact]
+    public async Task YaridaKalanProvizyon_TakiliListesindeGorunur()
+    {
+        // Yarıda kalmayı simüle et: kiracıyı Provisioning'de ve eski tarihli bırak.
+        int tenantId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+            var takili = new Tenant
+            {
+                Name = "Takili",
+                Slug = $"takili{Guid.NewGuid():N}"[..20],
+                Status = TenantStatus.Provisioning,
+                CreatedAtUtc = DateTime.UtcNow.AddHours(-2),
+            };
+            platform.Tenants.Add(takili);
+            await platform.SaveChangesAsync(default);
+            tenantId = takili.Id;
+        }
+
+        var client = Factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Platform-Key", IKProApiFactory.PlatformKey);
+        var takililar = await GetAsync<List<StuckTenantDto>>(client, "/api/tenants/stuck?olderThanMinutes=60");
+
+        takililar.Should().Contain(t => t.TenantId == tenantId,
+            "yarıda kalan provizyon görünür olmalı — sessiz enkaz bırakılmaz");
     }
 }

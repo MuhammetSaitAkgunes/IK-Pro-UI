@@ -22,6 +22,17 @@ public sealed class TenantPurger(
 {
     public async Task PurgeAsync(int tenantId, CancellationToken cancellationToken)
     {
+        // Silme başlar başlamaz kiracı erişilemez olur ve öyle KALIR. Aşağıdaki
+        // adımlardan biri patlarsa kiracı Purging'de takılı kalır — yarım silinmiş
+        // bir kiracı asla erişilebilir bırakılmaz.
+        var tenantRow = await platform.Tenants
+            .FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken);
+        if (tenantRow is not null)
+        {
+            tenantRow.Status = TenantStatus.Purging;
+            await platform.SaveChangesAsync(cancellationToken);
+        }
+
         // Global filtre için impersone et: aradaki sorgular kiracı filtresine tabidir.
         // Dosya yollarını önceden toplamaya gerek yok — silme, kiracının tüm alanı üzerinden
         // yapılır (bkz. adım 4).
@@ -73,7 +84,8 @@ public sealed class TenantPurger(
             platform.Directory.RemoveRange(dizinSatirlari);
         }
 
-        var tenantRow = await platform.Tenants.FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken);
+        // tenantRow üstte, Purging'e geçirilirken zaten çekildi ve DbContext'te
+        // izleniyor (bkz. metod başı) — burada yeniden sorgulamaya gerek yok.
         if (tenantRow is not null)
         {
             platform.Tenants.Remove(tenantRow);
