@@ -46,10 +46,16 @@ diskteki yedek, disk arızasında veriyle birlikte gider.
 
 `scripts/backup-restore-drill.ps1` yedek alır, **ayrı bir veritabanı adına**
 (`<ad>_RestoreDrill`) geri yükler, tablo satır sayılarını kaynakla karşılaştırır
-ve kopyayı düşürür.
+ve kopyayı düşürür. **İki veritabanı da tatbik edilmelidir** — platform küçüktür
+ama kiracı kimliğini ve e-posta→kiracı yönlendirmesini tuttuğu için, o olmadan
+geri yüklenen kiracı verisine kimse erişemez.
 
 ```powershell
+# Kiracı verisi
 pwsh scripts/backup-restore-drill.ps1 -Database IKProDb -BackupPath C:\yedek
+
+# Platform veritabanı (kiracı kimliği ve yönlendirme)
+pwsh scripts/backup-restore-drill.ps1 -Database IKProPlatform -BackupPath C:\yedek
 ```
 
 > **Tuzak — yedek klasörü izni:** `BackupPath`, sizin değil **SQL Server servis
@@ -110,6 +116,8 @@ politikası uygulanmaz.
 
 ## Tam kurulum (dört bileşen birlikte)
 
+Kiracı verisi veritabanı:
+
 ```powershell
 pwsh scripts/backup-restore-drill.ps1 `
   -Database IKProDb `
@@ -120,6 +128,19 @@ pwsh scripts/backup-restore-drill.ps1 `
   -AlertWebhookUrl "https://hooks.slack.com/services/..."
 ```
 
+Platform veritabanı (kiracı kimliği ve yönlendirme — dosya bileşeni yok):
+
+```powershell
+pwsh scripts/backup-restore-drill.ps1 `
+  -Database IKProPlatform `
+  -BackupPath "C:\SQLYedek" `
+  -OffsitePath "\\yedek-sunucu\ikpro" `
+  -LogPath "C:\SQLYedek\tatbikat.jsonl" `
+  -AlertWebhookUrl "https://hooks.slack.com/services/..."
+```
+
+**İkisinin de başarılı olması gerekmektedir.** Platform olmadan, geri yüklenen verilere kimse erişemez.
+
 | Bileşen | Parametre | Ne sağlar |
 | --- | --- | --- |
 | Evrak dosyaları | `-StoragePath` | **Kiracı başına ayrı zip** üretilir (`{db}-tenant-{id}-{damga}.zip`). Tek müşterinin dosyalarını diğerlerine dokunmadan geri yükleyebilir, müşteri ayrıldığında KVKK gereği **yalnız onun yedeğini imha edebilirsiniz**. **Veritabanı tek başına yetmez:** DB yalnız dosya yollarını tutar, dosyalar diskte durur. |
@@ -129,6 +150,8 @@ pwsh scripts/backup-restore-drill.ps1 `
 
 ## Otomatik zamanlama
 
+Kiracı verisi veritabanı:
+
 ```powershell
 # 1) Önce ne yapacağını gör (sistemi değiştirmez):
 pwsh scripts/register-backup-task.ps1 -Database IKProDb -BackupPath "C:\SQLYedek" -WhatIf
@@ -137,8 +160,23 @@ pwsh scripts/register-backup-task.ps1 -Database IKProDb -BackupPath "C:\SQLYedek
 pwsh scripts/register-backup-task.ps1 -Database IKProDb -BackupPath "C:\SQLYedek" `
   -StoragePath "C:\IKPro\App_Data\storage" -OffsitePath "\\yedek-sunucu\ikpro" `
   -LogPath "C:\SQLYedek\tatbikat.jsonl"
+```
 
-# 3) Hemen tetikleyip doğrula:
+Platform veritabanı (kiracı kimliği ve yönlendirme):
+
+```powershell
+# 1) Önce ne yapacağını gör (sistemi değiştirmez):
+pwsh scripts/register-backup-task.ps1 -Database IKProPlatform -BackupPath "C:\SQLYedek" -WhatIf
+
+# 2) YÖNETİCİ PowerShell'de kaydet:
+pwsh scripts/register-backup-task.ps1 -Database IKProPlatform -BackupPath "C:\SQLYedek" `
+  -OffsitePath "\\yedek-sunucu\ikpro" -LogPath "C:\SQLYedek\tatbikat.jsonl"
+```
+
+Zamanlanmış görevleri hemen tetikleyip doğrula:
+
+```powershell
+# 3) Her iki görev de başarılı dönmeli (çıkış kodu 0):
 Start-ScheduledTask -TaskName IKPro-YedekTatbikati
 Get-ScheduledTaskInfo -TaskName IKPro-YedekTatbikati | Select LastRunTime, LastTaskResult
 ```
