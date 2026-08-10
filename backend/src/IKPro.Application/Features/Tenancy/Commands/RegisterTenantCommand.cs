@@ -10,7 +10,8 @@ namespace IKPro.Application.Features.Tenancy.Commands;
 /// <summary>
 /// Self-servis kayıt: müşteri kendi şirketini ve ilk hr-admin'ini public formdan oluşturur.
 /// Platform anahtarı GEREKMEZ; kötüye kullanım 'signup' rate-limit'iyle sınırlanır.
-/// Kiracı PASİF oluşturulur; admin davet e-postasını kabul edince (accept-invite) etkinleşir.
+/// Kiracı <see cref="TenantStatus.Provisioning"/> ile oluşturulur; admin davet e-postasını
+/// kabul edince (accept-invite) <see cref="TenantStatus.Active"/>'e geçer.
 /// </summary>
 public sealed record RegisterTenantCommand(string CompanyName, string AdminName, string AdminEmail)
     : IRequest<RegisterTenantResult>;

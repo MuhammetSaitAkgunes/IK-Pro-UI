@@ -108,7 +108,8 @@ public sealed class TenancyController(ISender sender, IConfiguration configurati
     }
 
     /// <remarks>Self-servis kayıt (public, platform anahtarı yok, 'signup' rate-limit'li).
-    /// Kiracı pasif oluşturulur; admin davet e-postasını kabul edince etkinleşir.</remarks>
+    /// Kiracı Provisioning durumunda oluşturulur; admin davet e-postasını kabul edince
+    /// (accept-invite) Active'e geçer.</remarks>
     [HttpPost("signup")]
     [EnableRateLimiting("signup")]
     [ProducesResponseType<RegisterTenantResult>(StatusCodes.Status201Created)]

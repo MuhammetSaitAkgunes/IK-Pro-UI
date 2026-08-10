@@ -5,9 +5,14 @@ using IKPro.Domain.Entities.Tenancy;
 namespace IKPro.Application.Features.Tenancy;
 
 /// <summary>
-/// Kiracı + ilk hr-admin oluşturmanın ortak adımları (provizyon ve self-servis paylaşır).
-/// Admin ŞİFRESİZ oluşturulur; davet e-postası CreateTenantAdminAsync içinde gönderilir.
-/// Çağıran slug'ı (provizyonda istemciden, kayıtta türetilmiş) ve hedef durumu belirler.
+/// Kiracı + ilk hr-admin oluşturmanın adımları — <c>ProvisionTenantCommand</c> (platform-key'li
+/// operatör provizyonu) bunu doğrudan çağırır. Admin ŞİFRESİZ oluşturulur; davet e-postası
+/// CreateTenantAdminAsync içinde gönderilir. Çağıran slug'ı (istemciden) ve hedef durumu belirler.
+///
+/// DİKKAT — İKİ KOPYA VAR: <c>RegisterTenantCommand</c> (public self-servis kayıt) bu metodu
+/// ÇAĞIRMAZ; slug-çakışmasında yeniden deneme döngüsü (<c>CreateTenantWithUniqueSlugAsync</c>)
+/// gerektiği için aynı "önce rezerve et, sonra admin oluştur" sırasını kendi içinde ayrıca
+/// uygular. İki yolu değiştirirken ikisini de güncellemeyi unutma.
 /// </summary>
 public static class TenantOnboarding
 {
