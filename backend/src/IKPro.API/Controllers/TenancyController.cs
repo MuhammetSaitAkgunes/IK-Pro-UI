@@ -85,6 +85,43 @@ public sealed class TenancyController(ISender sender, IConfiguration configurati
         return Ok(await sender.Send(new RebuildDirectoryCommand(id), cancellationToken));
     }
 
+    /// <remarks>Kiracıyı Active'den Frozen'a alır ve kütüğü ANINDA düşürür (bakım/geri
+    /// yükleme öncesi zorunlu adım — bkz. yedekleme-ve-kurtarma.md). Provisioning/Purging
+    /// durumundaki bir kiracı dondurulamaz.</remarks>
+    [HttpPost("{id:int}/freeze")]
+    [ProducesResponseType<TenantStatusResult>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<TenantStatusResult>> Freeze(
+        int id, CancellationToken cancellationToken)
+    {
+        if (!PlatformKeyValid())
+        {
+            return Unauthorized(new { title = "Platform anahtarı geçersiz veya eksik." });
+        }
+
+        return Ok(await sender.Send(new FreezeTenantCommand(id), cancellationToken));
+    }
+
+    /// <remarks>Kiracıyı Frozen'dan Active'e döndürür ve kütüğü ANINDA düşürür.
+    /// Provisioning/Purging durumundaki bir kiracı bu uçla çözülemez.</remarks>
+    [HttpPost("{id:int}/unfreeze")]
+    [ProducesResponseType<TenantStatusResult>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<TenantStatusResult>> Unfreeze(
+        int id, CancellationToken cancellationToken)
+    {
+        if (!PlatformKeyValid())
+        {
+            return Unauthorized(new { title = "Platform anahtarı geçersiz veya eksik." });
+        }
+
+        return Ok(await sender.Send(new UnfreezeTenantCommand(id), cancellationToken));
+    }
+
     /// <remarks>Provizyonu/silmesi yarıda kalmış kiracılar (operatör görünürlüğü).</remarks>
     [HttpGet("stuck")]
     [ProducesResponseType<IReadOnlyList<StuckTenantDto>>(StatusCodes.Status200OK)]
