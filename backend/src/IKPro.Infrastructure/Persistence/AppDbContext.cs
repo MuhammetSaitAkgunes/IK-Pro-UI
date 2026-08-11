@@ -9,7 +9,6 @@ using IKPro.Domain.Entities.Organization;
 using IKPro.Domain.Entities.Payroll;
 using IKPro.Domain.Entities.Recruitment;
 using IKPro.Domain.Entities.Settings;
-using IKPro.Domain.Entities.Tenancy;
 using IKPro.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -32,9 +31,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentTenant
     /// doğru kiracıyı sabitler.
     /// </summary>
     private int CurrentTenantId => currentTenant?.TenantId ?? 0;
-
-    // Tenancy
-    public DbSet<Tenant> Tenants => Set<Tenant>();
 
     // Organization
     public DbSet<Department> Departments => Set<Department>();
@@ -127,9 +123,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentTenant
                 }
             }
         }
-
-        // Kiracı: benzersiz slug.
-        builder.Entity<Tenant>().HasIndex(t => t.Slug).IsUnique();
 
         // Multi-tenant global query filter: kiracı-kapsamlı (ITenantScoped) HER tip —
         // kalıcı varlıklar VE SQL view read-model'leri — aktif kiracıya otomatik izole

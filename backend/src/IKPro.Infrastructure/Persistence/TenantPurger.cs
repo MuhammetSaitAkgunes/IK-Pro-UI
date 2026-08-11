@@ -1,5 +1,6 @@
 using IKPro.Application.Common.Interfaces;
 using IKPro.Domain.Common;
+using IKPro.Domain.Entities.Tenancy;
 using IKPro.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -14,12 +15,24 @@ namespace IKPro.Infrastructure.Persistence;
 /// </summary>
 public sealed class TenantPurger(
     AppDbContext context,
+    IPlatformDbContext platform,
     ICurrentTenant currentTenant,
     IFileStorage fileStorage,
     ILogger<TenantPurger> logger) : ITenantPurger
 {
-    public async Task PurgeAsync(int tenantId, CancellationToken cancellationToken)
+    public async Task<bool> PurgeAsync(int tenantId, CancellationToken cancellationToken)
     {
+        // Silme başlar başlamaz kiracı erişilemez olur ve öyle KALIR. Aşağıdaki
+        // adımlardan biri patlarsa kiracı Purging'de takılı kalır — yarım silinmiş
+        // bir kiracı asla erişilebilir bırakılmaz.
+        var tenantRow = await platform.Tenants
+            .FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken);
+        if (tenantRow is not null)
+        {
+            tenantRow.Status = TenantStatus.Purging;
+            await platform.SaveChangesAsync(cancellationToken);
+        }
+
         // Global filtre için impersone et: aradaki sorgular kiracı filtresine tabidir.
         // Dosya yollarını önceden toplamaya gerek yok — silme, kiracının tüm alanı üzerinden
         // yapılır (bkz. adım 4).
@@ -30,7 +43,6 @@ public sealed class TenantPurger(
         // Tablo adları metadata'dan çözülür (Identity tabloları yeniden adlandırılmış: Users/UserRoles…).
         var refreshTokenTable = QualifiedTableName(typeof(RefreshToken));
         var userTable = QualifiedTableName(typeof(ApplicationUser));
-        var tenantTable = QualifiedTableName(typeof(Domain.Entities.Tenancy.Tenant));
 
         await using var tx = await context.Database.BeginTransactionAsync(cancellationToken);
 
@@ -51,37 +63,66 @@ public sealed class TenantPurger(
             $"DELETE FROM {refreshTokenTable} WHERE [TenantId] = {{0}}", new object[] { tenantId }, cancellationToken);
         await context.Database.ExecuteSqlRawAsync(
             $"DELETE FROM {userTable} WHERE [TenantId] = {{0}}", new object[] { tenantId }, cancellationToken);
-
-        // 3) Kiracı satırı.
-        await context.Database.ExecuteSqlRawAsync(
-            $"DELETE FROM {tenantTable} WHERE [Id] = {{0}}", new object[] { tenantId }, cancellationToken);
 #pragma warning restore EF1002
 
         await tx.CommitAsync(cancellationToken);
+
+        // 3) Kiracı satırı ve dizin kayıtları platform veritabanındadır — uygulama
+        // transaction'ı onları kapsamaz. Bu yüzden ayrı silinir. Dizin satırları
+        // silinmezse e-posta KALICI KİLİTLENİR: purge sonrası Identity'de kullanıcı
+        // kalmadığından EmailExistsAsync false döner ama dizinin birincil anahtarı hâlâ
+        // eski kiracıyı gösterir → aynı e-postayla yeniden kayıt/provizyon denemesi
+        // rezervasyonda 409'a çarpar ve asla açılamaz. Buradan önce patlarsa kiracı
+        // satırı/dizin kalır ama uygulama verisi gitmiştir; durum Purging'de kaldığı
+        // için kiracı erişilemez olarak durur (bkz. Task 6) ve operatör yeniden
+        // çalıştırabilir (dizin silme de idempotenttir — kayıt yoksa no-op).
+        var dizinSatirlari = await platform.Directory
+            .Where(d => d.TenantId == tenantId)
+            .ToListAsync(cancellationToken);
+        if (dizinSatirlari.Count > 0)
+        {
+            platform.Directory.RemoveRange(dizinSatirlari);
+        }
+
+        // tenantRow üstte, Purging'e geçirilirken zaten çekildi ve DbContext'te
+        // izleniyor (bkz. metod başı) — burada yeniden sorgulamaya gerek yok.
+        if (tenantRow is not null)
+        {
+            platform.Tenants.Remove(tenantRow);
+        }
+
+        if (dizinSatirlari.Count > 0 || tenantRow is not null)
+        {
+            await platform.SaveChangesAsync(cancellationToken);
+        }
 
         // 4) Fiziksel dosyalar (DB tutarlılığından SONRA — rollback olursa dosya kaybı olmasın).
         // Kiracının TÜM dosya alanı silinir. Eskiden yalnız EmployeeDocuments yolları tek tek
         // siliniyordu; bu, çalışan fotoğraflarını ve şirket logosunu KAÇIRIYORDU. Alan silme
         // ileride eklenecek her dosya türünü de otomatik kapsar.
         // Hata sessizce yutulmaz: DB temizlenip dosyalar kalırsa KVKK açısından PII riski
-        // sürer, elle temizlik için LOUD loglanır. Hata purge'ü yarıda kesmez.
+        // sürer, elle temizlik için LOUD loglanır. Hata purge'ü yarıda kesmez — ama artık
+        // çağırana da sessiz kalmaz: dönüş değeri (false) operatöre "200 OK ama dosyalar
+        // hâlâ diskte" durumunu görünür kılar (bkz. ITenantPurger.PurgeAsync sözleşmesi).
         try
         {
             await fileStorage.DeleteTenantSpaceAsync(tenantId, cancellationToken);
+            return true;
         }
         catch (Exception ex)
         {
             logger.LogError(ex,
                 "Kiracı {TenantId} purge: dosya alanı silinemedi — elle temizlik gerekiyor.",
                 tenantId);
+            return false;
         }
     }
 
     public async Task<int> PurgeUnverifiedAsync(DateTime createdBeforeUtc, CancellationToken cancellationToken)
     {
-        // Pasif + eski kiracı adayları (Tenant filtresizdir).
-        var candidateIds = await context.Tenants
-            .Where(t => !t.IsActive && t.CreatedAtUtc < createdBeforeUtc)
+        // Doğrulanmamış + eski kiracı adayları (Tenant filtresizdir).
+        var candidateIds = await platform.Tenants
+            .Where(t => t.Status == TenantStatus.Provisioning && t.CreatedAtUtc < createdBeforeUtc)
             .Select(t => t.Id)
             .ToListAsync(cancellationToken);
         if (candidateIds.Count == 0) return 0;
@@ -96,6 +137,9 @@ public sealed class TenantPurger(
         var toPurge = candidateIds.Except(verifiedTenantIds).ToList();
         foreach (var id in toPurge)
         {
+            // Bu yol (cron/otomatik temizlik) etkileşimli bir operatörü olmadığından dönüş
+            // değerini bir sonuca taşımaz; yine de dosya silme başarısızlığı burada da
+            // LOUD loglanır (PurgeAsync içinde) — sessizce kaybolmaz.
             await PurgeAsync(id, cancellationToken);
         }
         return toPurge.Count;

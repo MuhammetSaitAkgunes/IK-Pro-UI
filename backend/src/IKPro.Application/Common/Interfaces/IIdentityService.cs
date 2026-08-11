@@ -45,4 +45,7 @@ public interface IIdentityService
     Task ChangePasswordAsync(string userId, string currentPassword, string newPassword, CancellationToken cancellationToken);
 
     Task<UserDto?> GetUserAsync(string userId, CancellationToken cancellationToken);
+
+    /// <summary>E-postayı kiracıya rezerve eder; adres başka bir kiracıdaysa 409.</summary>
+    Task ReserveEmailAsync(string email, int tenantId, CancellationToken cancellationToken);
 }

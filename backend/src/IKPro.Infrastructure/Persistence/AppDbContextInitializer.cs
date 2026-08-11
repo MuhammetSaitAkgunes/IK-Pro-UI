@@ -26,10 +26,12 @@ namespace IKPro.Infrastructure.Persistence;
 public class AppDbContextInitializer(
     ILogger<AppDbContextInitializer> logger,
     AppDbContext context,
+    IPlatformDbContext platform,
     UserManager<ApplicationUser> userManager,
     RoleManager<IdentityRole> roleManager,
     ICurrentTenant currentTenant,
-    IConfiguration configuration)
+    IConfiguration configuration,
+    IIdentityService identityService)
 {
     public async Task InitialiseAsync()
     {
@@ -147,20 +149,22 @@ public class AppDbContextInitializer(
 
     private async Task SeedDefaultTenantAsync()
     {
-        // Migration backfill zaten bir varsayılan kiracı oluşturur; taze/farklı yolda
-        // yoksa burada güvence altına al. Sonra impersone et.
-        var tenant = await context.Tenants.OrderBy(t => t.Id).FirstOrDefaultAsync();
+        // Platform veritabanında (IKProPlatform) bir migration backfill'i YOKTUR — kiracı
+        // kimliği bu daldan (kiracı-başına-veritabanı, Faz 1a) itibaren ayrı bir DB'de.
+        // Bu yüzden varsayılan kiracıyı burada doğrudan güvence altına alıyoruz: yoksa
+        // oluştur, sonra impersone et.
+        var tenant = await platform.Tenants.OrderBy(t => t.Id).FirstOrDefaultAsync();
         if (tenant is null)
         {
             tenant = new Tenant
             {
                 Name = "Demo Şirket",
                 Slug = "demo",
-                IsActive = true,
+                Status = TenantStatus.Active,
                 CreatedAtUtc = DateTime.UtcNow,
             };
-            context.Tenants.Add(tenant);
-            await context.SaveChangesAsync();
+            platform.Tenants.Add(tenant);
+            await platform.SaveChangesAsync(default);
         }
 
         currentTenant.Impersonate(tenant.Id);
@@ -174,17 +178,35 @@ public class AppDbContextInitializer(
     private async Task SeedSecondDemoTenantAsync()
     {
         const string slug = "globex";
-        if (await context.Tenants.AnyAsync(t => t.Slug == slug)) return;
+        const string adminEmail = "globex-admin@globex.local";
+        if (await platform.Tenants.AnyAsync(t => t.Slug == slug)) return;
+
+        // İkinci koruma: platform DB'si (IKProPlatform) taze/boş doğduğunda yukarıdaki
+        // slug kontrolü tutmaz (platformda "globex" yok) ama uygulama DB'si (IKProDb)
+        // eski bir çalıştırmadan kalmışsa Identity'de globex-admin ZATEN vardır. Bu
+        // durumda userManager.CreateAsync var olan kullanıcıya çarpar → istisna →
+        // açılış çöker. Admin e-postası zaten varsa seed'i atla; doğru yükseltme
+        // prosedürü iki veritabanını da BİRLİKTE düşürmektir (bkz.
+        // docs/rehberler/07-veritabani-ve-migrationlar.md, "Yükseltme notu").
+        if (await identityService.EmailExistsAsync(adminEmail, default))
+        {
+            logger.LogWarning(
+                "Globex demo kiracısı platform veritabanında yok ama {AdminEmail} uygulama " +
+                "veritabanında zaten var; seed atlandı. Bu genelde IKProPlatform düşürülüp " +
+                "IKProDb düşürülmediğinde oluşur — ikisini birlikte düşürüp yeniden başlatın.",
+                adminEmail);
+            return;
+        }
 
         var tenant = new Tenant
         {
             Name = "Globex Bilişim A.Ş.",
             Slug = slug,
-            IsActive = true,
+            Status = TenantStatus.Active,
             CreatedAtUtc = DateTime.UtcNow,
         };
-        context.Tenants.Add(tenant);
-        await context.SaveChangesAsync();
+        platform.Tenants.Add(tenant);
+        await platform.SaveChangesAsync(default);
 
         // Bundan sonra tüm yazımlar Globex'e damgalanır (interceptor + global filtre).
         currentTenant.Impersonate(tenant.Id);
@@ -241,7 +263,7 @@ public class AppDbContextInitializer(
         {
             (new ApplicationUser
             {
-                UserName = "globex-admin@globex.local", Email = "globex-admin@globex.local",
+                UserName = adminEmail, Email = adminEmail,
                 EmailConfirmed = true, DisplayName = "Globex Yöneticisi", Initials = "GY",
                 TenantId = tenant.Id,
             }, Roles.HrAdmin, null),
@@ -269,6 +291,10 @@ public class AppDbContextInitializer(
                     $"Globex demo kullanıcı oluşturulamadı ({user.Email}): " +
                     string.Join(", ", result.Errors.Select(e => e.Description)));
             }
+
+            // Demo kullanıcılar da normal kullanıcı oluşturma yollarıyla aynı kuralı izler:
+            // dizine yazılmadan hiçbir hesap "var" sayılmaz (Faz 1b login'i buradan çözecek).
+            await identityService.ReserveEmailAsync(user.Email!, tenant.Id, default);
 
             await userManager.AddToRoleAsync(user, role);
             if (employee is not null)
@@ -333,6 +359,10 @@ public class AppDbContextInitializer(
                     $"Demo kullanıcı oluşturulamadı ({user.Email}): " +
                     string.Join(", ", result.Errors.Select(e => e.Description)));
             }
+
+            // Demo kullanıcılar da normal kullanıcı oluşturma yollarıyla aynı kuralı izler:
+            // dizine yazılmadan hiçbir hesap "var" sayılmaz (Faz 1b login'i buradan çözecek).
+            await identityService.ReserveEmailAsync(user.Email!, tenantId, default);
 
             await userManager.AddToRoleAsync(user, role);
 

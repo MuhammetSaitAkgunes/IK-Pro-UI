@@ -1,7 +1,9 @@
 using FluentAssertions;
 using IKPro.Infrastructure.Storage;
 using IKPro.Application.Common.Interfaces;
+using IKPro.Application.Features.Tenancy.Commands;
 using IKPro.Domain.Entities.Organization;
+using IKPro.Domain.Entities.Tenancy;
 using IKPro.Infrastructure.Identity;
 using IKPro.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -37,16 +39,60 @@ public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(
             var sp = scope.ServiceProvider;
             sp.GetRequiredService<ICurrentTenant>().Impersonate(b.TenantId);
             var db = sp.GetRequiredService<AppDbContext>();
+            var platform = sp.GetRequiredService<IPlatformDbContext>();
 
-            (await db.Tenants.AnyAsync(t => t.Id == a.TenantId)).Should().BeFalse("kiracı satırı silinmeli");
+            (await platform.Tenants.AnyAsync(t => t.Id == a.TenantId)).Should().BeFalse("kiracı satırı silinmeli");
             (await db.Set<ApplicationUser>().AnyAsync(u => u.TenantId == a.TenantId))
                 .Should().BeFalse("kiracının kullanıcıları silinmeli");
             (await db.Departments.IgnoreQueryFilters().AnyAsync(d => d.TenantId == a.TenantId))
                 .Should().BeFalse("kiracının verisi silinmeli");
 
             (await db.Departments.AnyAsync(d => d.Name == "B-Dept")).Should().BeTrue("başka kiracı korunmalı");
-            (await db.Tenants.AnyAsync(t => t.Id == b.TenantId)).Should().BeTrue();
+            (await platform.Tenants.AnyAsync(t => t.Id == b.TenantId)).Should().BeTrue();
         }
+    }
+
+    [Fact]
+    public async Task Purge_RemovesDirectoryEntry_AllowsEmailReuse()
+    {
+        // İnceleme bulgusu #3: purge Directory satırlarını silmezse aynı e-posta
+        // KALICI KİLİTLENİR — Identity'de kullanıcı kalmaz (EmailExistsAsync false)
+        // ama dizinin birincil anahtarı hâlâ eski (silinmiş) kiracıyı gösterdiğinden
+        // yeniden kayıt/provizyon denemesi rezervasyonda 409'a çarpar.
+        var eposta = $"yeniden-{Guid.NewGuid():N}@purge.local";
+        var t = await ProvisionAndActivateAsync("Dizin Purge A.Ş.", eposta);
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+            (await platform.Directory.AnyAsync(d => d.TenantId == t.TenantId))
+                .Should().BeTrue("purge öncesi dizin satırı var olmalı (kurulumun kontrolü)");
+        }
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<ITenantPurger>()
+                .PurgeAsync(t.TenantId, CancellationToken.None);
+        }
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+            (await platform.Directory.AnyAsync(d => d.NormalizedEmail == TenantDirectoryEntry.Normalize(eposta)))
+                .Should().BeFalse("purge dizin satırını da silmeli — aksi halde e-posta kalıcı kilitlenir");
+        }
+
+        // Asıl doğrulama: aynı e-posta ile yeniden provizyon artık 409 ALMAMALI.
+        var yeniden = await ProvisionRawAsync(new
+        {
+            companyName = "Yeniden A.Ş.",
+            slug = $"yeniden{Guid.NewGuid():N}"[..20],
+            adminName = "Yeniden Yonetici",
+            adminEmail = eposta,
+        });
+
+        yeniden.StatusCode.Should().Be(HttpStatusCode.Created,
+            "purge sonrası e-posta serbest kalmalı, kalıcı kilitlenmemeli");
     }
 
     private HttpClient PlatformClient()
@@ -118,29 +164,36 @@ public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(
     }
 
     [Fact]
-    public async Task Purge_WithUndeletableFile_DoesNotThrow_AndStillPurges()
+    public async Task Purge_WithUndeletableFile_DoesNotThrow_AndStillPurges_ButReportsFailure()
     {
         var t = await ProvisionAndActivateAsync("Bozuk Dosya A.Ş.", $"b-{Guid.NewGuid():N}@purge.local");
 
         // Kiracı alanında AÇIK TUTULAN bir dosya: Directory.Delete başarısız olur.
-        // Dosyalar silinemese bile veri temizliği yarıda kesilmemeli; hata loglanır.
+        // Dosyalar silinemese bile veri temizliği yarıda kesilmemeli; hata loglanır
+        // VE çağırana dönüş değeriyle (false) görünür kılınır — sessiz kalınmaz
+        // (İnceleme bulgusu #3: aksi halde operatör 200 OK'i "her şey silindi"
+        // sanır, oysa kiracının PII dosyaları diskte kalmış olabilir).
         var kiraciKlasoru = Path.Combine(Factory.StorageRoot, LocalFileStorage.TenantFolder(t.TenantId));
         Directory.CreateDirectory(kiraciKlasoru);
         await using var kilit = new FileStream(
             Path.Combine(kiraciKlasoru, "kilitli.bin"),
             FileMode.Create, FileAccess.Write, FileShare.None);
 
+        bool dosyalarSilindi = true;
         var purge = async () =>
         {
             using var scope = Factory.Services.CreateScope();
-            await scope.ServiceProvider.GetRequiredService<ITenantPurger>()
+            dosyalarSilindi = await scope.ServiceProvider.GetRequiredService<ITenantPurger>()
                 .PurgeAsync(t.TenantId, CancellationToken.None);
         };
         await purge.Should().NotThrowAsync("silinemeyen dosya alanı purge'ü yarıda kesmemeli");
 
+        dosyalarSilindi.Should().BeFalse(
+            "dosya alanı silinemediğinde PurgeAsync bunu çağırana bildirmeli, sessiz kalmamalı");
+
         using var check = Factory.Services.CreateScope();
-        var db2 = check.ServiceProvider.GetRequiredService<AppDbContext>();
-        (await db2.Tenants.AnyAsync(x => x.Id == t.TenantId)).Should().BeFalse("kiracı verisi yine de silinmeli");
+        var platform2 = check.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+        (await platform2.Tenants.AnyAsync(x => x.Id == t.TenantId)).Should().BeFalse("kiracı verisi yine de silinmeli");
     }
 
     [Fact]
@@ -152,8 +205,8 @@ public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(
         resp.StatusCode.Should().Be(HttpStatusCode.Conflict);
 
         using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        (await db.Tenants.AnyAsync(x => x.Id == t.TenantId)).Should().BeTrue("yanlış slug'da silinmemeli");
+        var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+        (await platform.Tenants.AnyAsync(x => x.Id == t.TenantId)).Should().BeTrue("yanlış slug'da silinmemeli");
     }
 
     [Fact]
@@ -171,9 +224,15 @@ public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(
         var resp = await PlatformClient().DeleteAsync($"/api/tenants/{t.TenantId}?confirmSlug={t.Slug}");
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
 
+        // Normal (dosya silme başarılı) yolda operatöre "DosyalarSilinemedi: false" dönmeli —
+        // İnceleme bulgusu #3 alanının API sözleşmesinde de göründüğünü doğrular.
+        var body = await resp.Content.ReadFromJsonAsync<PurgeTenantResult>();
+        body.Should().NotBeNull();
+        body!.DosyalarSilinemedi.Should().BeFalse("dosya alanı normal koşulda başarıyla silinmeli");
+
         using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        (await db.Tenants.AnyAsync(x => x.Id == t.TenantId)).Should().BeFalse("silinmiş olmalı");
+        var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+        (await platform.Tenants.AnyAsync(x => x.Id == t.TenantId)).Should().BeFalse("silinmiş olmalı");
     }
 
     [Fact]
@@ -189,11 +248,11 @@ public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(
         int unverifiedId;
         using (var scope = Factory.Services.CreateScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var t = await db.Tenants.FirstAsync(x => x.Name == "Doğrulanmamış A.Ş.");
+            var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+            var t = await platform.Tenants.FirstAsync(x => x.Name == "Doğrulanmamış A.Ş.");
             unverifiedId = t.Id;
             t.CreatedAtUtc = DateTime.UtcNow.AddDays(-30);
-            await db.SaveChangesAsync();
+            await platform.SaveChangesAsync(CancellationToken.None);
         }
 
         // Doğrulanmış aktif kiracı (korunmalı).
@@ -204,9 +263,9 @@ public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(
 
         using (var scope = Factory.Services.CreateScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            (await db.Tenants.AnyAsync(x => x.Id == unverifiedId)).Should().BeFalse("doğrulanmamış temizlenmeli");
-            (await db.Tenants.AnyAsync(x => x.Id == kept.TenantId)).Should().BeTrue("aktif kiracı korunmalı");
+            var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+            (await platform.Tenants.AnyAsync(x => x.Id == unverifiedId)).Should().BeFalse("doğrulanmamış temizlenmeli");
+            (await platform.Tenants.AnyAsync(x => x.Id == kept.TenantId)).Should().BeTrue("aktif kiracı korunmalı");
         }
     }
 }

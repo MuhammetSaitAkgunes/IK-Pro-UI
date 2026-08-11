@@ -34,6 +34,10 @@ kararlaştırılmalıdır.
 | Fark (DIFFERENTIAL) | 6 saatte bir | 7 gün | Geri yükleme süresini kısaltır |
 | İşlem günlüğü (LOG) | RPO'ya göre (ör. saatlik) | 7 gün | Yalnız FULL recovery model'de |
 
+> **İki veritabanı:** `IKProDb` (kiracı verisi) ve `IKProPlatform` (kiracı
+> kimliği ve yönlendirme). İkisi de yedek planına dahildir — platform küçüktür
+> ama onsuz hiçbir kullanıcı giriş yapamaz.
+
 **Kritik kural:** Yedekler veritabanı sunucusuyla **aynı diskte tutulmaz.**
 Üretimde ayrı fiziksel konum (ayrı sunucu / nesne depolama) zorunludur. Aynı
 diskteki yedek, disk arızasında veriyle birlikte gider.
@@ -42,10 +46,16 @@ diskteki yedek, disk arızasında veriyle birlikte gider.
 
 `scripts/backup-restore-drill.ps1` yedek alır, **ayrı bir veritabanı adına**
 (`<ad>_RestoreDrill`) geri yükler, tablo satır sayılarını kaynakla karşılaştırır
-ve kopyayı düşürür.
+ve kopyayı düşürür. **İki veritabanı da tatbik edilmelidir** — platform küçüktür
+ama kiracı kimliğini ve e-posta→kiracı yönlendirmesini tuttuğu için, o olmadan
+geri yüklenen kiracı verisine kimse erişemez.
 
 ```powershell
+# Kiracı verisi
 pwsh scripts/backup-restore-drill.ps1 -Database IKProDb -BackupPath C:\yedek
+
+# Platform veritabanı (kiracı kimliği ve yönlendirme)
+pwsh scripts/backup-restore-drill.ps1 -Database IKProPlatform -BackupPath C:\yedek
 ```
 
 > **Tuzak — yedek klasörü izni:** `BackupPath`, sizin değil **SQL Server servis
@@ -106,6 +116,8 @@ politikası uygulanmaz.
 
 ## Tam kurulum (dört bileşen birlikte)
 
+Kiracı verisi veritabanı:
+
 ```powershell
 pwsh scripts/backup-restore-drill.ps1 `
   -Database IKProDb `
@@ -116,6 +128,19 @@ pwsh scripts/backup-restore-drill.ps1 `
   -AlertWebhookUrl "https://hooks.slack.com/services/..."
 ```
 
+Platform veritabanı (kiracı kimliği ve yönlendirme — dosya bileşeni yok):
+
+```powershell
+pwsh scripts/backup-restore-drill.ps1 `
+  -Database IKProPlatform `
+  -BackupPath "C:\SQLYedek" `
+  -OffsitePath "\\yedek-sunucu\ikpro" `
+  -LogPath "C:\SQLYedek\tatbikat.jsonl" `
+  -AlertWebhookUrl "https://hooks.slack.com/services/..."
+```
+
+**İkisinin de başarılı olması gerekmektedir.** Platform olmadan, geri yüklenen verilere kimse erişemez.
+
 | Bileşen | Parametre | Ne sağlar |
 | --- | --- | --- |
 | Evrak dosyaları | `-StoragePath` | **Kiracı başına ayrı zip** üretilir (`{db}-tenant-{id}-{damga}.zip`). Tek müşterinin dosyalarını diğerlerine dokunmadan geri yükleyebilir, müşteri ayrıldığında KVKK gereği **yalnız onun yedeğini imha edebilirsiniz**. **Veritabanı tek başına yetmez:** DB yalnız dosya yollarını tutar, dosyalar diskte durur. |
@@ -125,24 +150,58 @@ pwsh scripts/backup-restore-drill.ps1 `
 
 ## Otomatik zamanlama
 
+Kiracı verisi veritabanı:
+
 ```powershell
 # 1) Önce ne yapacağını gör (sistemi değiştirmez):
-pwsh scripts/register-backup-task.ps1 -Database IKProDb -BackupPath "C:\SQLYedek" -WhatIf
+pwsh scripts/register-backup-task.ps1 -Database IKProDb -BackupPath "C:\SQLYedek" `
+  -TaskName "IKPro-YedekTatbikati-Db" -WhatIf
 
 # 2) YÖNETİCİ PowerShell'de kaydet:
 pwsh scripts/register-backup-task.ps1 -Database IKProDb -BackupPath "C:\SQLYedek" `
+  -TaskName "IKPro-YedekTatbikati-Db" `
   -StoragePath "C:\IKPro\App_Data\storage" -OffsitePath "\\yedek-sunucu\ikpro" `
   -LogPath "C:\SQLYedek\tatbikat.jsonl"
-
-# 3) Hemen tetikleyip doğrula:
-Start-ScheduledTask -TaskName IKPro-YedekTatbikati
-Get-ScheduledTaskInfo -TaskName IKPro-YedekTatbikati | Select LastRunTime, LastTaskResult
 ```
 
-`LastTaskResult` **0** = başarılı. Görev SYSTEM hesabıyla kaydedilir, çünkü SQL
+Platform veritabanı (kiracı kimliği ve yönlendirme):
+
+```powershell
+# 1) Önce ne yapacağını gör (sistemi değiştirmez):
+pwsh scripts/register-backup-task.ps1 -Database IKProPlatform -BackupPath "C:\SQLYedek" `
+  -TaskName "IKPro-YedekTatbikati-Platform" -WhatIf
+
+# 2) YÖNETİCİ PowerShell'de kaydet:
+pwsh scripts/register-backup-task.ps1 -Database IKProPlatform -BackupPath "C:\SQLYedek" `
+  -TaskName "IKPro-YedekTatbikati-Platform" `
+  -OffsitePath "\\yedek-sunucu\ikpro" -LogPath "C:\SQLYedek\tatbikat.jsonl"
+```
+
+Zamanlanmış görevleri hemen tetikleyip doğrula — **her iki görev de başarılı dönmelidir:**
+
+```powershell
+# 3) Kiracı verisi zamanlaması:
+Start-ScheduledTask -TaskName IKPro-YedekTatbikati-Db
+Get-ScheduledTaskInfo -TaskName IKPro-YedekTatbikati-Db | Select LastRunTime, LastTaskResult
+
+# 4) Platform zamanlaması:
+Start-ScheduledTask -TaskName IKPro-YedekTatbikati-Platform
+Get-ScheduledTaskInfo -TaskName IKPro-YedekTatbikati-Platform | Select LastRunTime, LastTaskResult
+```
+
+`LastTaskResult` **0** = başarılı. Görevler SYSTEM hesabıyla kaydedilir, çünkü SQL
 Server yedek dizinine yazma izni kullanıcı hesabında genelde yoktur.
 
-Kaldırmak için: `Unregister-ScheduledTask -TaskName IKPro-YedekTatbikati -Confirm:$false`
+**Neden ayrı görev adları:** Script `Register-ScheduledTask ... -Force` ile çağırıyor
+(satır ~97). Aynı ad kullanılırsa `-Force`, ikinci çağrı birinci görevi sessizce siler.
+Operatör bu adımları izlerse kiracı verisi zamanlaması kaybolur.
+
+Kaldırmak için her iki görevi de silin:
+
+```powershell
+Unregister-ScheduledTask -TaskName IKPro-YedekTatbikati-Db -Confirm:$false
+Unregister-ScheduledTask -TaskName IKPro-YedekTatbikati-Platform -Confirm:$false
+```
 
 > **Not:** Zamanlanmış görev bu depoda **kaydedilmedi** — sistemde kalıcı
 > yapılandırma oluşturduğu ve yönetici hakkı gerektirdiği için bilinçli olarak
@@ -159,7 +218,7 @@ Kaldırmak için: `Unregister-ScheduledTask -TaskName IKPro-YedekTatbikati -Conf
   doğrulanmalı.
 - ⬜ **Log dosyası kimse tarafından izlenmiyor** — webhook kurulana kadar
   `tatbikat.jsonl` dosyasına düzenli bakılmalı.
-- ⬜ **Veritabanı kiracı bazına bölünmüyor** — dosyalar kiracı başına arşivleniyor
-  ama DB tek parça yedekleniyor. Yani "şu müşteriyi dünkü hâline döndür" talebi
-  yarım çözülür: dosyalar evet, veritabanı satırları hayır. Tam müşteri bazlı
-  geri yükleme ayrı bir tasarım gerektirir (FK sırası, IDENTITY_INSERT, tatbikat).
+- 🔄 **Kiracı bazına bölme sürüyor** — Faz 1a tamamlandı: kiracı kimliği
+  `IKProPlatform` veritabanına ayrıldı. Kiracı VERİSİ hâlâ tek `IKProDb`
+  içindedir; tek müşteriyi geri yükleme yeteneği Faz 2'de gelir.
+  Tasarım: `docs/superpowers/specs/2026-08-06-kiraci-basina-veritabani-design.md`

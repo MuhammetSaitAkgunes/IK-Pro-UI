@@ -10,7 +10,8 @@ namespace IKPro.Application.Features.Tenancy.Commands;
 /// <summary>
 /// Self-servis kayıt: müşteri kendi şirketini ve ilk hr-admin'ini public formdan oluşturur.
 /// Platform anahtarı GEREKMEZ; kötüye kullanım 'signup' rate-limit'iyle sınırlanır.
-/// Kiracı PASİF oluşturulur; admin davet e-postasını kabul edince (accept-invite) etkinleşir.
+/// Kiracı <see cref="TenantStatus.Provisioning"/> ile oluşturulur; admin davet e-postasını
+/// kabul edince (accept-invite) <see cref="TenantStatus.Active"/>'e geçer.
 /// </summary>
 public sealed record RegisterTenantCommand(string CompanyName, string AdminName, string AdminEmail)
     : IRequest<RegisterTenantResult>;
@@ -27,7 +28,7 @@ public sealed class RegisterTenantCommandValidator : AbstractValidator<RegisterT
     }
 }
 
-public sealed class RegisterTenantCommandHandler(IApplicationDbContext context, IIdentityService identityService)
+public sealed class RegisterTenantCommandHandler(IPlatformDbContext platform, IIdentityService identityService)
     : IRequestHandler<RegisterTenantCommand, RegisterTenantResult>
 {
     private const int MaxSlugAttempts = 5;
@@ -43,6 +44,12 @@ public sealed class RegisterTenantCommandHandler(IApplicationDbContext context, 
 
         var companyName = request.CompanyName.Trim();
         var tenant = await CreateTenantWithUniqueSlugAsync(companyName, cancellationToken);
+
+        // E-posta, admin kullanıcı oluşturulmadan ÖNCE rezerve edilir — TenantOnboarding
+        // ile aynı desen (bkz. TenantOnboarding.CreateWithAdminAsync): eşzamanlı iki kayıt
+        // aynı adresi alamaz. CreateTenantAdminAsync'in içindeki dizin yazımı idempotent
+        // olduğu için burada rezerve edilmiş olması onu 409'a düşürmez (aynı kiracı → no-op).
+        await identityService.ReserveEmailAsync(adminEmail, tenant.Id, cancellationToken);
 
         await identityService.CreateTenantAdminAsync(
             tenant.Id, request.AdminName.Trim(), adminEmail, tenant.Name, cancellationToken);
@@ -63,19 +70,19 @@ public sealed class RegisterTenantCommandHandler(IApplicationDbContext context, 
             {
                 Name = companyName,
                 Slug = slug,
-                IsActive = false,
+                Status = TenantStatus.Provisioning,
                 CreatedAtUtc = DateTime.UtcNow,
             };
-            context.Tenants.Add(tenant);
+            platform.Tenants.Add(tenant);
             try
             {
-                await context.SaveChangesAsync(cancellationToken);
+                await platform.SaveChangesAsync(cancellationToken);
                 return tenant;
             }
             catch (DbUpdateException) when (attempt < MaxSlugAttempts)
             {
                 // Added durumundaki başarısız eklemeyi bırak (Remove → Detached, silme SQL'i üretmez).
-                context.Tenants.Remove(tenant);
+                platform.Tenants.Remove(tenant);
             }
         }
     }
@@ -94,7 +101,7 @@ public sealed class RegisterTenantCommandHandler(IApplicationDbContext context, 
         // İlk deneme: temiz base; sıralı çakışmada "-2", "-3", ...
         var candidate = baseSlug;
         var suffix = 2;
-        while (await context.Tenants.AnyAsync(t => t.Slug == candidate, cancellationToken))
+        while (await platform.Tenants.AnyAsync(t => t.Slug == candidate, cancellationToken))
         {
             candidate = $"{baseSlug}-{suffix++}";
         }

@@ -32,6 +32,22 @@ public static class DependencyInjection
             options.AddInterceptors(sp.GetRequiredService<AuditableEntityInterceptor>());
         });
 
+        // Platform veritabanı: kiracı kimliği. Uygulama veritabanından AYRI bir
+        // katalog; bağlantı dizesi tanımlı değilse fail-fast (sessizce uygulama
+        // veritabanına düşmek, iki katmanı gizlice birleştirmek olurdu).
+        var platformConnectionString = configuration.GetConnectionString("PlatformConnection")
+            ?? throw new InvalidOperationException("ConnectionStrings:PlatformConnection tanımlı değil.");
+
+        services.AddDbContext<PlatformDbContext>(options =>
+            options.UseSqlServer(platformConnectionString, sql =>
+            {
+                sql.MigrationsAssembly(typeof(PlatformDbContext).Assembly.FullName);
+                sql.MigrationsHistoryTable("__EFMigrationsHistory_Platform");
+            }));
+
+        services.AddScoped<IPlatformDbContext>(sp => sp.GetRequiredService<PlatformDbContext>());
+        services.AddScoped<PlatformDbInitializer>();
+
         // Identity çekirdeği + roller + SignInManager (lockout kontrolü için).
         // Parola politikası demo hesaplarla (demo123) uyumlu tutulur.
         services
@@ -90,6 +106,7 @@ public static class DependencyInjection
         services.AddSingleton<Application.Features.Payroll.Payslips.IPayslipGenerator, Pdf.QuestPdfPayslipGenerator>();
         services.AddScoped<JwtTokenService>();
         services.AddScoped<IIdentityService, IdentityService>();
+        services.AddScoped<IUserDirectorySource, Identity.UserDirectorySource>();
         services.AddScoped<ITenantPurger, Persistence.TenantPurger>();
         // Kiracıya bağlı olduğu için SCOPED: singleton olsaydı ilk isteğin kiracısı
         // sonsuza kadar yapışırdı (captive dependency).

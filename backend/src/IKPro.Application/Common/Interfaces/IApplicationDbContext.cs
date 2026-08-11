@@ -7,7 +7,6 @@ using IKPro.Domain.Entities.Organization;
 using IKPro.Domain.Entities.Payroll;
 using IKPro.Domain.Entities.Recruitment;
 using IKPro.Domain.Entities.Settings;
-using IKPro.Domain.Entities.Tenancy;
 using Microsoft.EntityFrameworkCore;
 
 namespace IKPro.Application.Common.Interfaces;
@@ -18,9 +17,6 @@ namespace IKPro.Application.Common.Interfaces;
 /// </summary>
 public interface IApplicationDbContext
 {
-    // Tenancy
-    DbSet<Tenant> Tenants { get; }
-
     // Organization
     DbSet<Department> Departments { get; }
     DbSet<Employee> Employees { get; }

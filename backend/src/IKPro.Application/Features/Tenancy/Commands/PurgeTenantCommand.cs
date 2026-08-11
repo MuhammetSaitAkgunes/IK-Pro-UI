@@ -12,7 +12,13 @@ namespace IKPro.Application.Features.Tenancy.Commands;
 /// </summary>
 public sealed record PurgeTenantCommand(int TenantId, string ConfirmSlug) : IRequest<PurgeTenantResult>;
 
-public sealed record PurgeTenantResult(int TenantId, string Slug);
+/// <param name="DosyalarSilinemedi">
+/// <c>true</c> ise kiracının veritabanı verisi silindi ama fiziksel dosya alanı
+/// SİLİNEMEDİ — diskte PII kalmış olabilir, elle temizlik gerekir (hata sunucu
+/// loglarına LOUD yazılmıştır, bkz. <see cref="ITenantPurger.PurgeAsync"/>).
+/// Operatör 200 OK'i "her şey silindi" diye okumamalı; bu alanı kontrol etmeli.
+/// </param>
+public sealed record PurgeTenantResult(int TenantId, string Slug, bool DosyalarSilinemedi = false);
 
 public sealed class PurgeTenantCommandValidator : AbstractValidator<PurgeTenantCommand>
 {
@@ -23,12 +29,12 @@ public sealed class PurgeTenantCommandValidator : AbstractValidator<PurgeTenantC
     }
 }
 
-public sealed class PurgeTenantCommandHandler(IApplicationDbContext context, ITenantPurger purger)
+public sealed class PurgeTenantCommandHandler(IPlatformDbContext platform, ITenantPurger purger)
     : IRequestHandler<PurgeTenantCommand, PurgeTenantResult>
 {
     public async Task<PurgeTenantResult> Handle(PurgeTenantCommand request, CancellationToken cancellationToken)
     {
-        var tenant = await context.Tenants.FirstOrDefaultAsync(t => t.Id == request.TenantId, cancellationToken)
+        var tenant = await platform.Tenants.FirstOrDefaultAsync(t => t.Id == request.TenantId, cancellationToken)
             ?? throw new NotFoundException("Kiracı", request.TenantId);
 
         if (!string.Equals(tenant.Slug, request.ConfirmSlug.Trim(), StringComparison.OrdinalIgnoreCase))
@@ -37,7 +43,7 @@ public sealed class PurgeTenantCommandHandler(IApplicationDbContext context, ITe
         }
 
         var slug = tenant.Slug;
-        await purger.PurgeAsync(tenant.Id, cancellationToken);
-        return new PurgeTenantResult(request.TenantId, slug);
+        var dosyalarSilindi = await purger.PurgeAsync(tenant.Id, cancellationToken);
+        return new PurgeTenantResult(request.TenantId, slug, DosyalarSilinemedi: !dosyalarSilindi);
     }
 }

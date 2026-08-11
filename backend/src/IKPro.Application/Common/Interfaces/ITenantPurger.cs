@@ -7,8 +7,17 @@ namespace IKPro.Application.Common.Interfaces;
 /// </summary>
 public interface ITenantPurger
 {
-    /// <summary>Verili kiracının tüm verisini siler.</summary>
-    Task PurgeAsync(int tenantId, CancellationToken cancellationToken);
+    /// <summary>
+    /// Verili kiracının tüm verisini siler. DB verisi (kiracı satırı, dizin, kullanıcılar,
+    /// kiracı-kapsamlı tablolar) her koşulda silinir. Dönüş değeri yalnız FİZİKSEL DOSYA
+    /// alanının silinip silinemediğini bildirir: <c>true</c> = dosyalar başarıyla silindi,
+    /// <c>false</c> = DB temizlendi ama dosya alanı silinemedi (hata loglanmıştır; elle
+    /// temizlik gerekir — bkz. <see cref="Infrastructure.Persistence.TenantPurger"/>). Dosya
+    /// silme hatası purge'ü YARIDA KESMEZ, ama çağırana SESSİZ KALMAZ — operatör bu dönüş
+    /// değerini görmeden "purge tamamlandı" sonucuna güvenemez (KVKK: PII dosyaların diskte
+    /// kalması sessizce geçilemez).
+    /// </summary>
+    Task<bool> PurgeAsync(int tenantId, CancellationToken cancellationToken);
 
     /// <summary>
     /// Doğrulanmamış self-servis kiracıları siler: pasif + <paramref name="createdBeforeUtc"/>'den

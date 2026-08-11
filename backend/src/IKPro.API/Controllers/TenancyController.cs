@@ -1,4 +1,5 @@
 using IKPro.Application.Features.Tenancy.Commands;
+using IKPro.Application.Features.Tenancy.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -68,6 +69,37 @@ public sealed class TenancyController(ISender sender, IConfiguration configurati
         return Ok(await sender.Send(new CleanupUnverifiedTenantsCommand(olderThanDays), cancellationToken));
     }
 
+    /// <remarks>Kiracının yönlendirme dizinini yeniden kurar (geri yükleme sonrası zorunlu adım).</remarks>
+    [HttpPost("{id:int}/rebuild-directory")]
+    [ProducesResponseType<RebuildDirectoryResult>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<RebuildDirectoryResult>> RebuildDirectory(
+        int id, CancellationToken cancellationToken)
+    {
+        if (!PlatformKeyValid())
+        {
+            return Unauthorized(new { title = "Platform anahtarı geçersiz veya eksik." });
+        }
+
+        return Ok(await sender.Send(new RebuildDirectoryCommand(id), cancellationToken));
+    }
+
+    /// <remarks>Provizyonu/silmesi yarıda kalmış kiracılar (operatör görünürlüğü).</remarks>
+    [HttpGet("stuck")]
+    [ProducesResponseType<IReadOnlyList<StuckTenantDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<IReadOnlyList<StuckTenantDto>>> Stuck(
+        [FromQuery] int olderThanMinutes = 60, CancellationToken cancellationToken = default)
+    {
+        if (!PlatformKeyValid())
+        {
+            return Unauthorized(new { title = "Platform anahtarı geçersiz veya eksik." });
+        }
+
+        return Ok(await sender.Send(new GetStuckTenantsQuery(olderThanMinutes), cancellationToken));
+    }
+
     private bool PlatformKeyValid()
     {
         var expected = configuration["Platform:ProvisioningKey"];
@@ -76,7 +108,8 @@ public sealed class TenancyController(ISender sender, IConfiguration configurati
     }
 
     /// <remarks>Self-servis kayıt (public, platform anahtarı yok, 'signup' rate-limit'li).
-    /// Kiracı pasif oluşturulur; admin davet e-postasını kabul edince etkinleşir.</remarks>
+    /// Kiracı Provisioning durumunda oluşturulur; admin davet e-postasını kabul edince
+    /// (accept-invite) Active'e geçer.</remarks>
     [HttpPost("signup")]
     [EnableRateLimiting("signup")]
     [ProducesResponseType<RegisterTenantResult>(StatusCodes.Status201Created)]

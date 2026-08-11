@@ -30,10 +30,20 @@ Kendi SQL Server'ına göre bu bağlantıyı ortam değişkeniyle ezebilirsin (�
 ```bash
 # Windows PowerShell
 $env:ConnectionStrings__DefaultConnection = "Server=(localdb)\MSSQLLocalDB;Database=IKProDb;Trusted_Connection=True;TrustServerCertificate=True"
+$env:ConnectionStrings__PlatformConnection = "Server=(localdb)\MSSQLLocalDB;Database=IKProPlatform;Trusted_Connection=True;TrustServerCertificate=True"
 ```
 
+> **Çok önemli:** Uygulama **iki ayrı veritabanı** kullanır — `DefaultConnection`
+> (`IKProDb`, kiracı verisi) ve `PlatformConnection` (`IKProPlatform`, kiracı kimliği:
+> `Tenants`, `TenantDirectoryEntries`; bkz. [06](06-multi-tenancy.md)). Yalnız
+> `DefaultConnection`'ı ezip `PlatformConnection`'ı unutursan uygulama verisi senin
+> sunucuna, kiracı kimliği ise `appsettings.Development.json`'daki varsayılan sunucuya
+> bağlanır — **hata vermeden**, ve login sırasında şaşırtıcı biçimde tutarsız davranır.
+> İkisini birlikte ayarla.
+
 > **Not:** Migration'lar ve demo seed, uygulama **Development** modunda ilk açılışta
-> otomatik uygulanır. Elle bir şey yapmana gerek yok (detay: [07](07-veritabani-ve-migrationlar.md)).
+> (her iki veritabanı için de) otomatik uygulanır. Elle bir şey yapmana gerek yok
+> (detay: [07](07-veritabani-ve-migrationlar.md)).
 
 ## 2) Backend'i Çalıştır
 

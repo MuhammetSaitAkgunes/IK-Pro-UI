@@ -1,6 +1,8 @@
 using FluentAssertions;
+using IKPro.Application.Common.Interfaces;
 using IKPro.Application.Features.Auth;
 using IKPro.Application.Features.Departments;
+using IKPro.Domain.Entities.Tenancy;
 using IKPro.Infrastructure.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
@@ -82,13 +84,13 @@ public sealed class TenantProvisioningTests(IKProApiFactory factory) : TenancyTe
         var adminEmail = $"admin-{Guid.NewGuid():N}@pasif.local";
         var tenant = await ProvisionAndActivateAsync("Pasif A.Ş.", adminEmail);
 
-        // Kiracıyı doğrudan pasife al.
+        // Kiracıyı doğrudan dondur (pasife al).
         using (var scope = Factory.Services.CreateScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var entity = await db.Tenants.FindAsync(tenant.TenantId);
-            entity!.IsActive = false;
-            await db.SaveChangesAsync();
+            var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+            var entity = await platform.Tenants.FindAsync(tenant.TenantId);
+            entity!.Status = TenantStatus.Frozen;
+            await platform.SaveChangesAsync(CancellationToken.None);
         }
 
         var anonymous = Factory.CreateClient();

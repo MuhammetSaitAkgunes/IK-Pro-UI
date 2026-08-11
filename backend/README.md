@@ -40,8 +40,13 @@ dotnet run --project src/IKPro.API           # https://localhost:7001/swagger
 ```
 
 - Development ortamında migration + demo seed **otomatik** uygulanır (`Program.cs`).
-- Bağlantı dizesi: `appsettings.Development.json` → `ConnectionStrings:DefaultConnection`
-  (yerel Windows auth). Ortam değişkeniyle ezilebilir: `ConnectionStrings__DefaultConnection`.
+- **İki ayrı veritabanı/bağlantı dizesi var:** `ConnectionStrings:DefaultConnection`
+  (`IKProDb`, kiracı verisi) ve `ConnectionStrings:PlatformConnection` (`IKProPlatform`,
+  kiracı kimliği — `Tenants`, `TenantDirectoryEntries`). İkisi de
+  `appsettings.Development.json`'da tanımlı (yerel Windows auth). Ortam değişkeniyle
+  ezilebilirler: `ConnectionStrings__DefaultConnection`, `ConnectionStrings__PlatformConnection`.
+  **Tuzak:** yalnız birini ezersen diğeri sessizce varsayılan sunucuya bağlanmaya devam
+  eder — hata vermeden tutarsız bir kuruluma düşersin, ikisini birlikte ayarla.
 - Dosya deposu kökü: `Storage:Root` (varsayılan `App_Data/storage`); e-posta outbox'ı
   `{Storage:Root}/outbox` altına JSON olarak düşer (SMTP yerine geliştirme göndericisi).
 
