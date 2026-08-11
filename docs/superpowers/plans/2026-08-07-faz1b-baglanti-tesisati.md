@@ -1110,3 +1110,50 @@ eklendi — kapsamın genişletilmesi değil.
   Bugünkü `freeze`/`unfreeze` ucu bu tasarımın öngördüğü "1. `Status = Frozen`"
   adımını zaten karşılıyor; Faz 2 yalnız 2–4. adımları (gerçek `RESTORE
   DATABASE`, dosya arşivi, dizin yeniden kurma) otomatikleştirecek.
+
+---
+
+## Faz 2'ye devredilenler (nihai inceleme sonrası)
+
+### Üretim öncesi kapatılmalı — bu fazın hatası değil, ama kapının yanındaki delik
+
+**`POST /api/auth/register` anonim olarak gerçek bir müşterinin kiracısına hesap açıyor.**
+
+`RegisterCommand` → `IdentityService.RegisterAsync` → `DefaultTenantIdAsync()` =
+**platformdaki en düşük Id'li kiracı** (üretimde gerçek bir müşteri). Yeni kullanıcı
+`employee` rolüyle, `EmailConfirmed=true` olarak oluşuyor, dizine yazılıyor ve
+erişim kapısı **bilinçli olarak atlanarak** (`skipAccessCheck: true`) anında token
+alıyor.
+
+O token şunlara erişir: `/api/dashboard/overview` (personel sayısı, bekleyen
+izinler, aday hunisi), `/api/leaves/*`, `/api/me`, `/api/payroll/my`,
+`/api/settings/company/logo`.
+
+Bu açık Faz 1a'dan önce de vardı; bu dal onu ne getirdi ne büyüttü — bu yüzden
+birleştirmeyi bloke etmedi. Ama **ilk gerçek müşteriden önce kapatılmalı**:
+ya uç kaldırılmalı (şirket kaydı için `/api/tenants/signup` ayrı ve doğru akış
+zaten var), ya da davet zorunlu kılınmalı.
+
+### Faz 2'de yapılması zorunlu olanlar
+
+| Madde | Neden |
+| --- | --- |
+| `LoginAsync` / `RefreshAsync` kiracı kapsamına alınmalı | Bugün dizinden kiracıyı çözüyor ama `userManager` ve `context.RefreshTokens` hâlâ kiracısız kapsamın context'iyle çalışıyor. Kiracı DB'leri ayrılınca yanlış katalogda arama demek. Kodda yorumla işaretlendi. |
+| `AppDbContextInitializer.SeedDefaultTenantAsync` | Tek kalan elle `Impersonate` (satır ~187). Düzeltme bu dosyada değil, `Program.cs`'in initializer'ı kiracı kapsamından çözmesinde. Yalnız Development seed'ini etkiliyor. |
+| `AcceptInviteAsync` durum makinesini atlıyor | Herhangi bir `Provisioning` kiracıyı şifre belirlenir belirlenmez `Active` yapıyor. Faz 2'de **var olmayan bir veritabanına Active kiracı** demek. |
+| `TenantOnboarding` / `RegisterTenantCommand` sıra kopyası | Self-servis kayıt ortak yolu kullanmıyor, sırayı kopyalıyor. İki kopya = sessiz sapma riski. |
+
+### Ertelenebilir notlar
+
+- `TenantRegistry` `IMemoryCache` (process-içi) kullanıyor. Runbook "kütük anında
+  düşer" garantisi veriyor — bu **tek instance** varsayımıdır. Ölçeklenmiş kurulumda
+  diğer instance'lar en geç TTL (5 dk) kadar gecikir.
+- `docs/rehberler/06-multi-tenancy.md` hâlâ `Impersonate`'i doğrudan çağırmayı
+  öğretiyor ve erişim kapısı / freeze uçlarından söz etmiyor.
+- Login'de zamanlama yan kanalı (var olmayan e-posta parola hash'i hesaplanmadan
+  döner). Bu diff'le gelmedi; sabit-zamanlı dummy-hash ayrı bir sertleştirme işi.
+- `frontend/src/api/client.ts` yalnız 401'i özel ele alıyor; oturum ortasında kiracı
+  dondurulunca 403 dönüyor ama oturum temizlenmiyor.
+- Platform-key karşılaştırması sabit-zamanlı değil (`TenancyController`).
+- `TenantInaccessibleException` `ForbiddenAccessException`'dan türemiyor;
+  `GlobalExceptionHandler`'da iki özdeş 403 kolu var.
