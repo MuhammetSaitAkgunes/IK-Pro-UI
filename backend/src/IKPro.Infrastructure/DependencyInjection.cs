@@ -20,14 +20,18 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection tanımlı değil.");
-
         services.AddScoped<AuditableEntityInterceptor>();
+        services.AddScoped<ITenantConnectionResolver, Tenancy.TenantConnectionResolver>();
 
         services.AddDbContext<AppDbContext>((sp, options) =>
         {
-            options.UseSqlServer(connectionString, sql =>
+            // Bağlantı KAPSAM BAŞINA çözülür: aktif kiracı neyse ona göre.
+            // Faz 1b'de sonuç herkes için aynı, ama çağrı yolu artık doğru yerden
+            // geçiyor — Faz 2'de yalnız çözücünün içi değişecek.
+            var cozucu = sp.GetRequiredService<ITenantConnectionResolver>();
+            var kiraci = sp.GetRequiredService<ICurrentTenant>();
+
+            options.UseSqlServer(cozucu.ResolveFor(kiraci.TenantId), sql =>
                 sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName));
             options.AddInterceptors(sp.GetRequiredService<AuditableEntityInterceptor>());
         });
