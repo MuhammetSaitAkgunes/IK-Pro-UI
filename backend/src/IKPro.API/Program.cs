@@ -183,6 +183,10 @@ try
     app.UseCors(frontendCors);
     app.UseRateLimiter();
     app.UseAuthentication();
+    // Erişim kapısının HTTP ayağı — kimlik doğrulamadan SONRA (claim okunabilir
+    // olmalı), yetkilendirmeden ÖNCE (dondurulmuş kiracıyı rol kontrolünden önce
+    // kesmek gereksiz iş yapmaz). Bkz. TenantAccessMiddleware xmldoc.
+    app.UseMiddleware<TenantAccessMiddleware>();
     app.UseAuthorization();
 
     app.MapControllers();

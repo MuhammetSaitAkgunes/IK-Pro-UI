@@ -42,6 +42,12 @@ public sealed class GlobalExceptionHandler(
                 Title = exception.Message,
                 Type = "https://tools.ietf.org/html/rfc9110#section-15.5.4"
             },
+            TenantInaccessibleException => new ProblemDetails
+            {
+                Status = StatusCodes.Status403Forbidden,
+                Title = exception.Message,
+                Type = "https://tools.ietf.org/html/rfc9110#section-15.5.4"
+            },
             NotFoundException => new ProblemDetails
             {
                 Status = StatusCodes.Status404NotFound,

@@ -78,6 +78,13 @@ public sealed class TenantProvisioningTests(IKProApiFactory factory) : TenancyTe
         })).StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
+    /// <summary>
+    /// Sözleşme (Görev 3): dondurulmuş/pasif kiracıda login artık 403 döner, 401
+    /// değil — kimlik bilgileri doğru, engelleyen şey kiracının kapalı olması.
+    /// Bu senaryo <see cref="ErisimKapisiTests.DondurulmusKiraci_LoginYapamaz"/>
+    /// ile örtüşüyor (Faz 1a ledger'ında not edildi); burada tutuldu çünkü ayrıca
+    /// provizyon akışının bir parçası olarak sınanıyor.
+    /// </summary>
     [Fact]
     public async Task Login_InactiveTenant_Rejected()
     {
@@ -91,11 +98,17 @@ public sealed class TenantProvisioningTests(IKProApiFactory factory) : TenancyTe
             var entity = await platform.Tenants.FindAsync(tenant.TenantId);
             entity!.Status = TenantStatus.Frozen;
             await platform.SaveChangesAsync(CancellationToken.None);
+            // Erişim kapısı ITenantRegistry'nin (singleton) önbelleğinden okur; bu
+            // testte henüz bir GetStatusAsync çağrısı olmadığı için pratikte gerekli
+            // değildir, ama davranışı DB durumuna bağımlı bırakmak yerine açıkça
+            // düşürmek gelecekte bu testin başına ProvisionAndActivateAsync'ten SONRA
+            // bir login eklenirse sessizce bayatlamasını önler.
+            scope.ServiceProvider.GetRequiredService<ITenantRegistry>().Invalidate(tenant.TenantId);
         }
 
         var anonymous = Factory.CreateClient();
         var login = await anonymous.PostAsJsonAsync("/api/auth/login",
             new { email = adminEmail, password = "demo123" });
-        login.StatusCode.Should().Be(HttpStatusCode.Unauthorized, "pasif kiracıya giriş reddedilmeli");
+        login.StatusCode.Should().Be(HttpStatusCode.Forbidden, "pasif kiracıya giriş reddedilmeli");
     }
 }

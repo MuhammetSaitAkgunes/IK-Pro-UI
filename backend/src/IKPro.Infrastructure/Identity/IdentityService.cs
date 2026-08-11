@@ -27,7 +27,8 @@ public sealed class IdentityService(
     AppDbContext context,
     IPlatformDbContext platform,
     ITenantDirectory directory,
-    ITenantRegistry registry) : IIdentityService
+    ITenantRegistry registry,
+    ITenantAccessGuard accessGuard) : IIdentityService
 {
     private const string InvalidCredentialsMessage = "E-posta veya şifre hatalı.";
 
@@ -52,14 +53,10 @@ public sealed class IdentityService(
             throw new UnauthorizedException(InvalidCredentialsMessage);
         }
 
-        // Multi-tenant: kullanıcının kiracısı (şirketi) askıya alınmışsa girişe izin verilmez.
-        // Kiracı kimliği platform veritabanındadır.
-        var tenant = await platform.Tenants.FirstOrDefaultAsync(t => t.Id == user.TenantId, cancellationToken);
-        if (tenant is null || tenant.Status != TenantStatus.Active)
-        {
-            throw new UnauthorizedException("Şirket hesabı aktif değil. Yöneticinizle iletişime geçin.");
-        }
-
+        // Kiracı erişim kontrolü artık burada YAPILMAZ — tek doğruluk kaynağı
+        // IssueTokensAsync'in başındaki erişim kapısıdır (bkz. orada). Burada
+        // tekrarlamak iki kaynak demekti ve refresh yolunu (aynı kapıdan geçmeyen
+        // eski RefreshAsync) korumasız bırakmıştı.
         return await IssueTokensAsync(user, cancellationToken);
     }
 
@@ -294,6 +291,12 @@ public sealed class IdentityService(
 
     private async Task<AuthResponse> IssueTokensAsync(ApplicationUser user, CancellationToken cancellationToken)
     {
+        // Kapı burada: login ve refresh'in ORTAK yolu burasıdır, dolayısıyla
+        // ikisi de tek noktadan korunur. Faz 1a'da kapı yalnız login'deydi ve
+        // refresh onu atlıyordu — dondurulmuş bir kiracının kullanıcısı elindeki
+        // refresh token'la oturumunu süresiz uzatabiliyordu.
+        await accessGuard.EnsureAccessibleAsync(user.TenantId, cancellationToken);
+
         var roles = await userManager.GetRolesAsync(user);
         var (accessToken, expiresAtUtc) = tokenService.CreateAccessToken(user, roles);
         var (rawRefreshToken, refreshEntity) = tokenService.CreateRefreshToken(user.Id);

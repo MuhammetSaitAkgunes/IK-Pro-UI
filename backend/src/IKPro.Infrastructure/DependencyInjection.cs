@@ -114,6 +114,9 @@ public static class DependencyInjection
         // dependency olarak yakalamaz.
         services.AddMemoryCache();
         services.AddSingleton<ITenantRegistry, Tenancy.TenantRegistry>();
+        // Erişim kapısı: durum dışında bağımlılığı yok (kütükten okur), scoped
+        // yeterli — captive dependency riski taşımaz.
+        services.AddScoped<ITenantAccessGuard, Tenancy.TenantAccessGuard>();
         // Kiracıya bağlı olduğu için SCOPED: singleton olsaydı ilk isteğin kiracısı
         // sonsuza kadar yapışırdı (captive dependency).
         services.AddScoped<IFileStorage, Storage.LocalFileStorage>();
