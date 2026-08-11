@@ -125,9 +125,8 @@ public class ErisimKapisiTests(IKProApiFactory factory) : TenancyTestBase(factor
         var (_, tenantId) = await AktifKiraciAsync("KapiRegisterHedef");
         await DurumDegistirAsync(tenantId, TenantStatus.Frozen);
 
-        using var scope = Factory.Services.CreateScope();
-        scope.ServiceProvider.GetRequiredService<ICurrentTenant>().Impersonate(tenantId);
-        var identity = scope.ServiceProvider.GetRequiredService<IIdentityService>();
+        using var kapsam = Factory.Services.GetRequiredService<ITenantScopeFactory>().Create(tenantId);
+        var identity = kapsam.Services.GetRequiredService<IIdentityService>();
 
         var email = $"kapiregister-{Guid.NewGuid():N}@ornek.local";
         var auth = await identity.RegisterAsync("Kapi Register", email, "kayit-sifre-1", Roles.Employee, default);

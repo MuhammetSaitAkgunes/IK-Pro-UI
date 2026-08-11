@@ -4,6 +4,7 @@ using IKPro.Domain.Entities.Tenancy;
 using IKPro.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace IKPro.Infrastructure.Persistence;
@@ -16,7 +17,7 @@ namespace IKPro.Infrastructure.Persistence;
 public sealed class TenantPurger(
     AppDbContext context,
     IPlatformDbContext platform,
-    ICurrentTenant currentTenant,
+    ITenantScopeFactory tenantScopeFactory,
     IFileStorage fileStorage,
     ITenantDirectory directory,
     ITenantRegistry registry,
@@ -37,18 +38,27 @@ public sealed class TenantPurger(
             registry.Invalidate(tenantId);
         }
 
-        // Global filtre için impersone et: aradaki sorgular kiracı filtresine tabidir.
-        // Dosya yollarını önceden toplamaya gerek yok — silme, kiracının tüm alanı üzerinden
-        // yapılır (bkz. adım 4).
-        currentTenant.Impersonate(tenantId);
+        // Silinecek kiracı için AYRI, TAZE bir kapsam açılır. Bu sınıfa constructor'da
+        // enjekte edilen `context`, TenantPurger inşa edilirken ÇOKTAN kurulmuş olabilir —
+        // ya çağıranın kendi kiracısıyla (operatör isteğiyse) ya da hiç kiracısız (arka
+        // plan servisiyse). O bağlantıyı burada impersone etmeye çalışmak SIRAYA GÜVENMEK
+        // olurdu: AppDbContext'in bağlantısı kapsam başına, ilk çözümde ICurrentTenant'tan
+        // okunuyor (bkz. Infrastructure.DependencyInjection) — yani Impersonate BURADA
+        // çağrılsa bile `context` zaten yanlış (ya da kiracısız) bağlantıyla kurulmuş olurdu,
+        // ve bu SESSİZCE olurdu. Faz 1b'de tüm kiracılar aynı DB'yi paylaştığı için zararsız,
+        // Faz 2'de kiracı başına DB'ye geçilince "yanlış kiracının verisini silme/görememe"
+        // demek olur. Bu yüzden asıl silme, `tenantId`'ye özel taze bir kapsamdan çözülen
+        // AppDbContext ile yapılır (bkz. ITenantScopeFactory).
+        using var kapsam = tenantScopeFactory.Create(tenantId);
+        var purgeContext = kapsam.Services.GetRequiredService<AppDbContext>();
 
-        var tables = TenantScopedTablesInDeleteOrder();
+        var tables = TenantScopedTablesInDeleteOrder(purgeContext);
 
         // Tablo adları metadata'dan çözülür (Identity tabloları yeniden adlandırılmış: Users/UserRoles…).
-        var refreshTokenTable = QualifiedTableName(typeof(RefreshToken));
-        var userTable = QualifiedTableName(typeof(ApplicationUser));
+        var refreshTokenTable = QualifiedTableName(purgeContext, typeof(RefreshToken));
+        var userTable = QualifiedTableName(purgeContext, typeof(ApplicationUser));
 
-        await using var tx = await context.Database.BeginTransactionAsync(cancellationToken);
+        await using var tx = await purgeContext.Database.BeginTransactionAsync(cancellationToken);
 
         // EF1002 bilinçli olarak bastırılıyor: tenantId SQL'e PARAMETRE olarak geçiyor
         // ({0} yer tutucusu + object[]), dolayısıyla enjeksiyona kapalı. Enterpole edilen
@@ -58,14 +68,14 @@ public sealed class TenantPurger(
         // 1) ITenantScoped tablolar (çocuk→ebeveyn). Açık TenantId filtresi (impersonation'a bağlı değil).
         foreach (var table in tables)
         {
-            await context.Database.ExecuteSqlRawAsync(
+            await purgeContext.Database.ExecuteSqlRawAsync(
                 $"DELETE FROM {table} WHERE [TenantId] = {{0}}", new object[] { tenantId }, cancellationToken);
         }
 
         // 2) Kimlik: refresh token'lar, sonra kullanıcılar (UserRoles/UserClaims cascade).
-        await context.Database.ExecuteSqlRawAsync(
+        await purgeContext.Database.ExecuteSqlRawAsync(
             $"DELETE FROM {refreshTokenTable} WHERE [TenantId] = {{0}}", new object[] { tenantId }, cancellationToken);
-        await context.Database.ExecuteSqlRawAsync(
+        await purgeContext.Database.ExecuteSqlRawAsync(
             $"DELETE FROM {userTable} WHERE [TenantId] = {{0}}", new object[] { tenantId }, cancellationToken);
 #pragma warning restore EF1002
 
@@ -121,7 +131,14 @@ public sealed class TenantPurger(
             .ToListAsync(cancellationToken);
         if (candidateIds.Count == 0) return 0;
 
-        // Şifre belirlemiş (davet kabul edilmiş / askıya alınmış) kullanıcısı olan kiracıları hariç tut.
+        // Şifre belirlemiş (davet kabul edilmiş / askıya alınmış) kullanıcısı olan kiracıları
+        // hariç tut. Bu sorgu birden çok kiracıyı BİRDEN taradığı için (candidateIds.Contains)
+        // ve ApplicationUser ITenantScoped OLMADIĞINDAN (kiracı-üstü, global filtre yok)
+        // yapısı gereği tek bir kiracıya sabitlenemez — burada bilerek `context` alanı
+        // (constructor'da enjekte edilen, kiracısız/ambient bağlantı) kullanılır. Faz 1b'de
+        // tüm kiracılar aynı DB'yi paylaştığı için doğru sonucu verir; Faz 2'de kiracı başına
+        // DB'ye geçilince bu sorgu kiracı-ötesi bir mekanizmaya (ör. platform DB'sinde
+        // özetlenen bir alan) taşınmalı — TenantPurger'ın bugünkü kapsamı bunu çözmez.
         var verifiedTenantIds = await context.Set<ApplicationUser>()
             .Where(u => u.PasswordHash != null && candidateIds.Contains(u.TenantId))
             .Select(u => u.TenantId)
@@ -140,9 +157,15 @@ public sealed class TenantPurger(
     }
 
     // ITenantScoped + tablo (PK'lı) tipleri FK bağımlılığına göre çocuk-önce sıralar.
-    private List<string> TenantScopedTablesInDeleteOrder()
+    // `ctx` parametre olarak alınır (ambient `context` yerine): çağıran taze `purgeContext`
+    // geçirir. Model METADATA'sı (tablo/şema adları, FK grafiği) hangi AppDbContext örneğinden
+    // okunduğuna bağlı değildir — ikisi de aynı derlenmiş EF modelini paylaşır — ama ambient
+    // `context` alanını burada kullanmak, purge akışının TAMAMEN `purgeContext` üzerinden
+    // yürüdüğü izlenimini bozar ve ileride biri metadata-dışı bir kullanım eklerse (ör. bir
+    // sorgu) yanlış kiracıya sessizce çalışabilir. Parametre almak bunu yapısal olarak imkânsız kılar.
+    private static List<string> TenantScopedTablesInDeleteOrder(AppDbContext ctx)
     {
-        var entityTypes = context.Model.GetEntityTypes()
+        var entityTypes = ctx.Model.GetEntityTypes()
             .Where(e => typeof(ITenantScoped).IsAssignableFrom(e.ClrType)
                         && e.FindPrimaryKey() is not null // keyless view'leri (read-model) dışla
                         && e.GetTableName() is not null)
@@ -180,9 +203,10 @@ public sealed class TenantPurger(
     }
 
     // Bir CLR tipinin köşeli-parantezli, şema-nitelikli tablo adını metadata'dan üretir.
-    private string QualifiedTableName(Type clrType)
+    // `ctx` parametre alır — bkz. TenantScopedTablesInDeleteOrder üstündeki gerekçe.
+    private static string QualifiedTableName(AppDbContext ctx, Type clrType)
     {
-        var entityType = context.Model.FindEntityType(clrType)
+        var entityType = ctx.Model.FindEntityType(clrType)
             ?? throw new InvalidOperationException($"{clrType.Name} için EF entity tipi bulunamadı.");
         var table = entityType.GetTableName()
             ?? throw new InvalidOperationException($"{clrType.Name} bir tabloya eşlenmemiş.");

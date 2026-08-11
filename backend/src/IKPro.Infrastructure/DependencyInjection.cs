@@ -33,6 +33,11 @@ public static class DependencyInjection
 
         services.AddScoped<AuditableEntityInterceptor>();
         services.AddScoped<ITenantConnectionResolver, Tenancy.TenantConnectionResolver>();
+        // SINGLETON: yalnız IServiceScopeFactory'yi (kendisi zaten singleton) sarar,
+        // durumu yok. Impersonate çağıran HTTP-dışı yollar (purge, seed, arka plan
+        // servisi, test yardımcıları) kapsamı BUNUN ÜZERİNDEN açmalı — doğrudan
+        // ICurrentTenant.Impersonate çağırıp sıraya güvenmek yerine (bkz. arayüz dokümanı).
+        services.AddSingleton<ITenantScopeFactory, Tenancy.TenantScopeFactory>();
 
         services.AddDbContext<AppDbContext>((sp, options) =>
         {

@@ -52,13 +52,16 @@ public abstract class TenancyTestBase(IKProApiFactory factory)
         return client.PostAsJsonAsync("/api/tenants", body);
     }
 
-    /// <summary>Verili kiracıyı impersone edip DB'ye doğrudan veri yazar (çapraz-kiracı kurulum).</summary>
+    /// <summary>
+    /// Verili kiracıyı impersone edip DB'ye doğrudan veri yazar (çapraz-kiracı kurulum).
+    /// Üretim kodundaki desenle aynı: kapsam <see cref="ITenantScopeFactory"/> ile açılır,
+    /// kiracı kapsam DÖNMEDEN önce sabitlenir — "önce impersone et, sonra çöz" sırasına
+    /// güvenmek yerine test altyapısı da üretimin taklit ettiği deseni kullanır.
+    /// </summary>
     protected async Task SeedInTenantAsync(int tenantId, Func<AppDbContext, Task> seed)
     {
-        using var scope = Factory.Services.CreateScope();
-        var sp = scope.ServiceProvider;
-        sp.GetRequiredService<ICurrentTenant>().Impersonate(tenantId);
-        var db = sp.GetRequiredService<AppDbContext>();
+        using var kapsam = Factory.Services.GetRequiredService<ITenantScopeFactory>().Create(tenantId);
+        var db = kapsam.Services.GetRequiredService<AppDbContext>();
         await seed(db);
         await db.SaveChangesAsync();
     }

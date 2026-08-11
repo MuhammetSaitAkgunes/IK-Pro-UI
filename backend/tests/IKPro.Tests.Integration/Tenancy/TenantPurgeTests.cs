@@ -34,10 +34,9 @@ public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(
                 .PurgeAsync(a.TenantId, CancellationToken.None);
         }
 
-        using (var scope = Factory.Services.CreateScope())
+        using (var kapsam = Factory.Services.GetRequiredService<ITenantScopeFactory>().Create(b.TenantId))
         {
-            var sp = scope.ServiceProvider;
-            sp.GetRequiredService<ICurrentTenant>().Impersonate(b.TenantId);
+            var sp = kapsam.Services;
             var db = sp.GetRequiredService<AppDbContext>();
             var platform = sp.GetRequiredService<IPlatformDbContext>();
 
@@ -108,12 +107,11 @@ public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(
         var t = await ProvisionAndActivateAsync("Dosyalı A.Ş.", $"f-{Guid.NewGuid():N}@purge.local");
 
         // Depo artık kiracıya bağlı ve SCOPED; kök sağlayıcıdan çözülemez.
-        // Kiracı bağlamı TenantPurger'ın yaptığı gibi impersonate ile kurulur.
+        // Kiracı bağlamı TenantPurger'ın yaptığı gibi ITenantScopeFactory ile kurulur.
         StoredFile stored;
-        using (var yazmaScope = Factory.Services.CreateScope())
+        using (var yazmaKapsam = Factory.Services.GetRequiredService<ITenantScopeFactory>().Create(t.TenantId))
         {
-            yazmaScope.ServiceProvider.GetRequiredService<ICurrentTenant>().Impersonate(t.TenantId);
-            stored = await yazmaScope.ServiceProvider.GetRequiredService<IFileStorage>().SaveAsync(
+            stored = await yazmaKapsam.Services.GetRequiredService<IFileStorage>().SaveAsync(
                 new MemoryStream(new byte[] { 1, 2, 3 }), "gizli.pdf", "docs", CancellationToken.None);
         }
 
