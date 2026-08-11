@@ -9,6 +9,7 @@ using IKPro.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace IKPro.Infrastructure.Identity;
 
@@ -25,14 +26,55 @@ public sealed class IdentityService(
     IEmailSender emailSender,
     IConfiguration configuration,
     AppDbContext context,
-    IPlatformDbContext platform) : IIdentityService
+    IPlatformDbContext platform,
+    ITenantDirectory directory,
+    ITenantRegistry registry,
+    ITenantAccessGuard accessGuard,
+    ILogger<IdentityService> logger) : IIdentityService
 {
     private const string InvalidCredentialsMessage = "E-posta veya şifre hatalı.";
 
     public async Task<AuthResponse> LoginAsync(string email, string password, CancellationToken cancellationToken)
     {
+        // Dizin login'in ÖN adımıdır: Faz 2'de kullanıcı tablosu kiracının kendi
+        // veritabanında olacak, dolayısıyla hangi veritabanına bakılacağı
+        // bilinmeden kullanıcı aranamaz. Dizinde kayıt yoksa (ör. dizin bütünlüğü
+        // bozulmuşsa) hesabın var olup olmadığını sızdırmadan genel mesajla reddet.
+        var dizinKiraciId = await directory.FindTenantIdAsync(email, cancellationToken)
+            ?? throw new UnauthorizedException(InvalidCredentialsMessage);
+
+        // FAZ 2 NOTU (bu dal — Faz 1b — burayı ÇÖZMEZ): `dizinKiraciId` yukarıda DOĞRU
+        // kiracıyı bulur, ama aşağıdaki `userManager` (constructor'da enjekte edilen
+        // `UserManager<ApplicationUser>`, dolayısıyla onun içindeki `AppDbContext`) hâlâ
+        // bu sınıf inşa edilirken kurulmuş AMBIENT/kiracısız HTTP kapsamının bağlantısını
+        // kullanır — `dizinKiraciId`'ye SABİTLENMEMİŞTİR. Bugün doğru sonuç verir çünkü
+        // Faz 1b'de tüm kiracılar aynı veritabanını paylaşıyor (bkz. TenantConnectionResolver).
+        // Faz 2'de kiracı başına veritabanına geçilince bu satır YANLIŞ kiracının
+        // veritabanında kullanıcı arar (dizinKiraciId'nin veritabanında değil) — login
+        // burada SESSİZCE bozulur (muhtemelen "kullanıcı yok" hatasıyla, gerçek nedeni
+        // gizleyerek). Bu yüzden LoginAsync'in Faz 2'de YENİDEN YAPILANDIRILMASI gerekir:
+        // kiracı yalnızca BURADA, dizin sorgusundan SONRA bilinir, dolayısıyla constructor
+        // enjeksiyonu (sıra: DI kapsamı kurulur → sonra kiracı öğrenilir) yapısal olarak
+        // yetersizdir. Olası yaklaşım: userManager/context'i constructor'da almak yerine,
+        // `dizinKiraciId` bilindikten SONRA `ITenantScopeFactory.Create(dizinKiraciId)` ile
+        // taze bir kapsam açıp o kapsamdan UserManager/AppDbContext çözmek (bkz. TenantPurger
+        // ve UserDirectorySource'taki aynı desen) — ya da login akışını iki aşamaya bölüp
+        // ikinci aşamayı kiracıya sabitlenmiş bir kapsamda çalıştırmak.
         var user = await userManager.FindByEmailAsync(email)
             ?? throw new UnauthorizedException(InvalidCredentialsMessage);
+
+        if (user.TenantId != dizinKiraciId)
+        {
+            // Dizin ile Identity'nin kendi kaydı UYUŞMUYOR: bu bir bütünlük hatasıdır.
+            // Faz 2'de bu, yanlış kiracının veritabanına bakmak demek olurdu — bu
+            // yüzden yüksek sesle loglanır. Kullanıcıya yine genel mesaj dönülür,
+            // iç tutarsızlık sızdırılmaz.
+            logger.LogError(
+                "Dizin/Identity tutarsızlığı: E-posta={Email}, DizinTenantId={DizinTenantId}, " +
+                "KullaniciTenantId={KullaniciTenantId}",
+                email, dizinKiraciId, user.TenantId);
+            throw new UnauthorizedException(InvalidCredentialsMessage);
+        }
 
         if (!user.IsActive)
         {
@@ -50,14 +92,10 @@ public sealed class IdentityService(
             throw new UnauthorizedException(InvalidCredentialsMessage);
         }
 
-        // Multi-tenant: kullanıcının kiracısı (şirketi) askıya alınmışsa girişe izin verilmez.
-        // Kiracı kimliği platform veritabanındadır.
-        var tenant = await platform.Tenants.FirstOrDefaultAsync(t => t.Id == user.TenantId, cancellationToken);
-        if (tenant is null || tenant.Status != TenantStatus.Active)
-        {
-            throw new UnauthorizedException("Şirket hesabı aktif değil. Yöneticinizle iletişime geçin.");
-        }
-
+        // Kiracı erişim kontrolü (aktif/donmuş/vs.) artık burada YAPILMAZ — tek
+        // doğruluk kaynağı IssueTokensAsync'in başındaki erişim kapısıdır (bkz.
+        // orada). Burada tekrarlamak iki kaynak demekti ve refresh yolunu (aynı
+        // kapıdan geçmeyen eski RefreshAsync) korumasız bırakmıştı.
         return await IssueTokensAsync(user, cancellationToken);
     }
 
@@ -83,15 +121,16 @@ public sealed class IdentityService(
         };
 
         // Dizine ÖNCE yaz, kullanıcıyı SONRA oluştur — sıra bilinçli olarak budur (bkz.
-        // DizineYazAsync xmldoc + CreateInvitedUserAsync'teki aynı gerekçe). userManager.CreateAsync
-        // hemen commit eder ve geri alınamaz; sıra tersi olsaydı ve DizineYazAsync arada
-        // ConflictException fırlatsaydı (TOCTOU — başka bir istek aynı e-postayı kaptı),
-        // kullanıcı uygulama DB'sinde KALICI olarak var ama dizinde YOK kalırdı: Faz 1b'de
-        // asla giriş yapamaz, rolü de atanmamış olur, ve EmailExistsAsync artık true
-        // döndüğünden aynı e-postayla yeniden deneme sonsuza kadar 409 alır. Dizine önce
-        // yazmak bu sınıf hatayı imkansız kılar: DizineYazAsync başarısız olursa CreateAsync
-        // hiç çağrılmaz, ortada yarım kalan kullanıcı olmaz.
-        await DizineYazAsync(email, user.TenantId, cancellationToken);
+        // ITenantDirectory.ReserveAsync xmldoc + CreateInvitedUserAsync'teki aynı gerekçe).
+        // userManager.CreateAsync hemen commit eder ve geri alınamaz; sıra tersi olsaydı
+        // ve ReserveAsync arada ConflictException fırlatsaydı (TOCTOU — başka bir istek
+        // aynı e-postayı kaptı), kullanıcı uygulama DB'sinde KALICI olarak var ama
+        // dizinde YOK kalırdı: Faz 1b'de asla giriş yapamaz, rolü de atanmamış olur, ve
+        // EmailExistsAsync artık true döndüğünden aynı e-postayla yeniden deneme
+        // sonsuza kadar 409 alır. Dizine önce yazmak bu sınıf hatayı imkansız kılar:
+        // ReserveAsync başarısız olursa CreateAsync hiç çağrılmaz, ortada yarım kalan
+        // kullanıcı olmaz.
+        await directory.ReserveAsync(email, user.TenantId, cancellationToken);
 
         var createResult = await userManager.CreateAsync(user, password);
         if (!createResult.Succeeded)
@@ -103,14 +142,20 @@ public sealed class IdentityService(
 
         await userManager.AddToRoleAsync(user, role);
 
-        return await IssueTokensAsync(user, cancellationToken);
+        // Kapı burada BİLİNÇLİ olarak atlanır (Düzeltme turu 1, IMPORTANT #2).
+        // Bu anonim self-servis kayıt akışıdır: user.TenantId yukarıda kayıt
+        // olanın NİYETİNİ değil, DefaultTenantIdAsync'in döndürdüğü (platformdaki
+        // EN DÜŞÜK Id'li) kiracıyı temsil eder. Kapıyı burada da çalıştırmak,
+        // platformun ilk kiracısı herhangi bir sebeple dondurulur/purge'e girerse
+        // /api/auth/register'a yapılan HER anonim kaydı (hedef kiracı ne olursa
+        // olsun) 403'e düşürürdü — bu değişiklikten önce var olmayan gerçek bir
+        // regresyon. Kapı IssueTokensAsync'in gerçek iki çağıranında (LoginAsync,
+        // RefreshAsync) çalışmaya devam ediyor.
+        return await IssueTokensAsync(user, cancellationToken, skipAccessCheck: true);
     }
 
     public async Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken)
         => await userManager.FindByEmailAsync(email) is not null;
-
-    public async Task ReserveEmailAsync(string email, int tenantId, CancellationToken cancellationToken)
-        => await DizineYazAsync(email, tenantId, cancellationToken);
 
     public async Task CreateTenantAdminAsync(
         int tenantId, string name, string email, string companyName, CancellationToken cancellationToken)
@@ -125,8 +170,8 @@ public sealed class IdentityService(
             TenantId = tenantId,
         };
 
-        // Dizine CreateInvitedUserAsync KOŞULSUZ yazar (idempotent DizineYazAsync).
-        // Çağıran burada ReserveEmailAsync ile önceden rezervasyon yapmış olabilir
+        // Dizine CreateInvitedUserAsync KOŞULSUZ yazar (idempotent ITenantDirectory.ReserveAsync).
+        // Çağıran burada directory.ReserveAsync ile önceden rezervasyon yapmış olabilir
         // (TenantOnboarding) — o durumda bu ikinci yazım aynı kiracı için sessizce
         // no-op'tur. Rezervasyon yapılmamışsa (ör. eski bir çağıran unutursa) bu
         // çağrı yine de dizine yazar; "dizine hiç yazılmadı" sınıfı hatalar artık
@@ -177,6 +222,8 @@ public sealed class IdentityService(
         {
             tenant.Status = TenantStatus.Active;
             await platform.SaveChangesAsync(cancellationToken);
+            // Durum değişti — kütüğü düşür ki erişim kapısı bunu ANINDA görsün.
+            registry.Invalidate(tenant.Id);
         }
     }
 
@@ -185,16 +232,16 @@ public sealed class IdentityService(
     /// e-postayla gönderir. Kullanıcı <c>accept-invite</c> ile hesabını etkinleştirir.
     ///
     /// Dizine KOŞULSUZ ÖNCE yazar, kullanıcıyı SONRA oluşturur (bkz.
-    /// <see cref="DizineYazAsync"/> — idempotenttir, çağıran önceden rezervasyon
-    /// yapmışsa aynı kiracı için sessizce no-op'tur). Sıra bilinçlidir: userManager.CreateAsync
-    /// hemen commit eder ve geri alınamaz. Ters sırada (önce CreateAsync, sonra
-    /// DizineYazAsync) DizineYazAsync bir ConflictException fırlatırsa (TOCTOU — başka
-    /// bir istek arada aynı e-postayı kaptı) kullanıcı uygulama DB'sinde KALICI olarak
-    /// var ama dizinde YOK kalırdı: Faz 1b'de asla giriş yapamaz, rolü de atanmamış
-    /// olur, ve EmailExistsAsync artık true döndüğünden aynı kişiyi yeniden işe alma
-    /// denemesi (en çok <c>CreateEmployeeLoginAsync</c> üzerinden — ürünün en yüksek
-    /// hacimli kullanıcı yaratma yolu) sonsuza kadar 409 alır. Dizine önce yazmak bu
-    /// sınıf hatayı imkansız kılar.
+    /// <see cref="ITenantDirectory.ReserveAsync"/> — idempotenttir, çağıran önceden
+    /// rezervasyon yapmışsa aynı kiracı için sessizce no-op'tur). Sıra bilinçlidir:
+    /// userManager.CreateAsync hemen commit eder ve geri alınamaz. Ters sırada (önce
+    /// CreateAsync, sonra ReserveAsync) ReserveAsync bir ConflictException fırlatırsa
+    /// (TOCTOU — başka bir istek arada aynı e-postayı kaptı) kullanıcı uygulama
+    /// DB'sinde KALICI olarak var ama dizinde YOK kalırdı: Faz 1b'de asla giriş
+    /// yapamaz, rolü de atanmamış olur, ve EmailExistsAsync artık true döndüğünden
+    /// aynı kişiyi yeniden işe alma denemesi (en çok <c>CreateEmployeeLoginAsync</c>
+    /// üzerinden — ürünün en yüksek hacimli kullanıcı yaratma yolu) sonsuza kadar 409
+    /// alır. Dizine önce yazmak bu sınıf hatayı imkansız kılar.
     /// </summary>
     private async Task CreateInvitedUserAsync(
         ApplicationUser user, string role, string companyName, CancellationToken cancellationToken)
@@ -204,7 +251,7 @@ public sealed class IdentityService(
             throw new ConflictException($"'{user.Email}' e-postasıyla kayıtlı bir hesap zaten var.");
         }
 
-        await DizineYazAsync(user.Email!, user.TenantId, cancellationToken);
+        await directory.ReserveAsync(user.Email!, user.TenantId, cancellationToken);
 
         var createResult = await userManager.CreateAsync(user); // şifresiz → davet gerektirir
         if (!createResult.Succeeded)
@@ -217,68 +264,6 @@ public sealed class IdentityService(
 
         var token = await userManager.GeneratePasswordResetTokenAsync(user);
         await SendInviteEmailAsync(user.DisplayName, user.Email!, companyName, token, cancellationToken);
-    }
-
-    /// <summary>
-    /// Kullanıcıyı yönlendirme dizinine İDEMPOTENT yazar ve ÇAKIŞMAYI 409'a çevirir.
-    ///
-    /// Dizinin birincil anahtarı e-postadır; "tek e-posta = tek kiracı" kuralı
-    /// burada, veritabanı seviyesinde uygulanır:
-    ///   - kayıt yoksa → eklenir,
-    ///   - kayıt var ve AYNI kiracıya aitse → sessizce geçilir (no-op),
-    ///   - kayıt var ve BAŞKA kiracıya aitse → <c>ConflictException</c>.
-    ///
-    /// İdempotent olması, çağrının GÜVENLE tekrarlanabilmesini sağlar: hem önceden
-    /// rezervasyon yapmış bir çağıranın (ör. <see cref="ReserveEmailAsync"/>) ardından
-    /// kullanıcı oluşturma yolunun tekrar çağırması sorun çıkarmaz, hem de rezervasyonu
-    /// atlayan bir çağıran için dizine yazma güvenlik ağı olarak kalır — böylece
-    /// "dizine hiç yazılmadı" sınıfı hatalar tek bir sözleşmeye (çağıranın önceden
-    /// rezerve ettiğini varsaymak) bağımlı olmaktan çıkar.
-    ///
-    /// Yukarıdaki okuma-sonra-karar mantığı eşzamanlı iki isteği ayıramaz (TOCTOU);
-    /// asıl güvence alttaki <c>catch</c>'tir — INSERT birincil anahtara çarparsa da
-    /// 409'a çevrilir.
-    ///
-    /// Dizine yazan TEK YER burası DEĞİLDİR: <c>RebuildDirectoryCommand</c> de
-    /// <c>platform.Directory.Add</c> çağırır. İkisinin semantiği kasıtlı olarak
-    /// FARKLIDIR — burası kullanıcı OLUŞTURURKEN çakışmayı 409'a çevirip reddeder
-    /// (yetkisiz bir yazının başka kiracıyı ele geçirmesini önler), yeniden kurma
-    /// ise zaten yetkili kaynaktan (kiracının kendi Users tablosu) yazdığı için
-    /// çakışan satırları reddetmek yerine atlar ve raporlar.
-    /// </summary>
-    private async Task DizineYazAsync(string email, int tenantId, CancellationToken cancellationToken)
-    {
-        var normalizedEmail = TenantDirectoryEntry.Normalize(email);
-
-        var mevcut = await platform.Directory
-            .FirstOrDefaultAsync(d => d.NormalizedEmail == normalizedEmail, cancellationToken);
-
-        if (mevcut is not null)
-        {
-            if (mevcut.TenantId != tenantId)
-            {
-                throw new ConflictException($"'{email}' e-postasıyla kayıtlı bir hesap zaten var.");
-            }
-
-            return; // Aynı kiracı için zaten rezerve/yazılmış — idempotent no-op.
-        }
-
-        platform.Directory.Add(new TenantDirectoryEntry
-        {
-            NormalizedEmail = normalizedEmail,
-            TenantId = tenantId,
-        });
-
-        try
-        {
-            await platform.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateException)
-        {
-            // Eşzamanlı bir istek yukarıdaki kontrolden SONRA, biz SaveChanges'ten ÖNCE
-            // aynı e-postayı kaptı: TOCTOU. INSERT birincil anahtara çarptı.
-            throw new ConflictException($"'{email}' e-postasıyla kayıtlı bir hesap zaten var.");
-        }
     }
 
     private async Task SendInviteEmailAsync(
@@ -295,6 +280,19 @@ public sealed class IdentityService(
 
     public async Task<AuthResponse> RefreshAsync(string refreshToken, CancellationToken cancellationToken)
     {
+        // FAZ 2 NOTU: `context` burada da (LoginAsync'teki `userManager` gibi) constructor'da
+        // enjekte edilen AMBIENT AppDbContext'tir — refresh token'ın hangi kiracıya ait
+        // olduğu bu sorgudan ÖNCE bilinmez, tıpkı login'de e-postanın kiracısının dizin
+        // sorgusundan önce bilinmemesi gibi. Bugün doğru sonuç verir (Faz 1b'de tek DB) ve
+        // ayrıca bu uç HTTP isteğiyle çağrıldığından `ICurrentTenant` zaten geçerli bir JWT
+        // `tenant` claim'inden dolar — ama bu, `context`'in doğru kiracıya kasıtlı olarak
+        // SABİTLENDİĞİ anlamına gelmez, sadece HTTP kapsamının o anki değeriyle çakıştığı
+        // anlamına gelir. Faz 2'de kiracı başına veritabanına geçilince: token hash'i
+        // yalnızca refresh token'ın SAHİBİ olduğu kiracının veritabanında bulunabilir,
+        // dolayısıyla bu sorgu da LoginAsync gibi iki aşamalı çözülmeli — ya token'ın
+        // kiracısı platform/dizin katmanından ÖNCE belirlenip `ITenantScopeFactory` ile
+        // taze bir kapsamdan çözülmeli, ya da bu uç için ambient context'in JWT claim'inden
+        // GERÇEKTEN doğru kiracıya sabitlendiği açıkça garanti altına alınmalı.
         var hash = JwtTokenService.Hash(refreshToken);
         var stored = await context.RefreshTokens
             .Include(t => t.User)
@@ -352,8 +350,25 @@ public sealed class IdentityService(
         return user is null ? null : await BuildUserDtoAsync(user);
     }
 
-    private async Task<AuthResponse> IssueTokensAsync(ApplicationUser user, CancellationToken cancellationToken)
+    /// <param name="skipAccessCheck">
+    /// Yalnız <see cref="RegisterAsync"/> için <c>true</c> geçilir (bkz. orada
+    /// Düzeltme turu 1, IMPORTANT #2 yorumu) — anonim kayıtta <c>user.TenantId</c>
+    /// kayıt olanın niyetini değil <see cref="DefaultTenantIdAsync"/>'in
+    /// döndürdüğü kiracıyı temsil eder, kapıyı orada çalıştırmak platform
+    /// genelinde yanlış-pozitif 403'e yol açardı.
+    /// </param>
+    private async Task<AuthResponse> IssueTokensAsync(
+        ApplicationUser user, CancellationToken cancellationToken, bool skipAccessCheck = false)
     {
+        if (!skipAccessCheck)
+        {
+            // Kapı burada: login ve refresh'in ORTAK yolu burasıdır, dolayısıyla
+            // ikisi de tek noktadan korunur. Faz 1a'da kapı yalnız login'deydi ve
+            // refresh onu atlıyordu — dondurulmuş bir kiracının kullanıcısı elindeki
+            // refresh token'la oturumunu süresiz uzatabiliyordu.
+            await accessGuard.EnsureAccessibleAsync(user.TenantId, cancellationToken);
+        }
+
         var roles = await userManager.GetRolesAsync(user);
         var (accessToken, expiresAtUtc) = tokenService.CreateAccessToken(user, roles);
         var (rawRefreshToken, refreshEntity) = tokenService.CreateRefreshToken(user.Id);

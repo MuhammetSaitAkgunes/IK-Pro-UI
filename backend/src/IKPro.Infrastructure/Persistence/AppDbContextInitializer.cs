@@ -13,6 +13,7 @@ using IKPro.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace IKPro.Infrastructure.Persistence;
@@ -31,7 +32,9 @@ public class AppDbContextInitializer(
     RoleManager<IdentityRole> roleManager,
     ICurrentTenant currentTenant,
     IConfiguration configuration,
-    IIdentityService identityService)
+    IIdentityService identityService,
+    ITenantDirectory directory,
+    ITenantScopeFactory tenantScopeFactory)
 {
     public async Task InitialiseAsync()
     {
@@ -167,6 +170,20 @@ public class AppDbContextInitializer(
             await platform.SaveChangesAsync(default);
         }
 
+        // BİLİNÇLİ OLARAK ITenantScopeFactory KULLANILMIYOR: `context` (ve bu sınıfın diğer
+        // tüm bağımlılıkları — userManager, roleManager, directory, identityService) constructor
+        // parametresi olarak enjekte edildiğinden, DI konteyneri bunları BU SINIFIN KENDİSİ
+        // çözülürken (Program.cs'de `scope.ServiceProvider.GetRequiredService<AppDbContextInitializer>()`)
+        // ÇOKTAN kurmuştur — yani `SeedAsync` hiç çalışmadan önce. Burada yeni bir fabrika kapsamı
+        // açıp impersone etmek o YENİ kapsamın KENDİ ICurrentTenant/AppDbContext'ini etkiler,
+        // ambient `context`'i DEĞİL — hiçbir şey düzeltmez, üstelik SeedOrganizationAsync'ten
+        // SeedSettingsAsync'e kadar tüm alt adımlar zaten bu ambient `context`'i paylaşır. Doğru
+        // düzeltme (Faz 2'de gerekecek): Program.cs, AppDbContextInitializer'ı ROOT kapsamdan değil,
+        // `tenantScopeFactory.Create(varsayılanKiraciId)` ile açılan bir kapsamdan çözmeli — bu,
+        // Task 5'in kapsamı dışında (bu dosya tek başına çözemez). Faz 1b'de zararsız: bağlantı
+        // kiracıdan bağımsız her zaman DefaultConnection'dır (bkz. TenantConnectionResolver) ve
+        // TenantId damgalaması SaveChanges anında DİNAMİK okunur (bkz. AuditableEntityInterceptor) —
+        // yani bu doğrudan çağrı bugün doğru çalışır, ama sıraya güvenir.
         currentTenant.Impersonate(tenant.Id);
     }
 
@@ -208,13 +225,24 @@ public class AppDbContextInitializer(
         platform.Tenants.Add(tenant);
         await platform.SaveChangesAsync(default);
 
-        // Bundan sonra tüm yazımlar Globex'e damgalanır (interceptor + global filtre).
-        currentTenant.Impersonate(tenant.Id);
+        // Bu adımdan sonraki TÜM yazımlar Globex'e ait — ama ambient `context` yukarıdaki
+        // varsayılan-kiracı seed adımlarıyla (SeedOrganizationAsync…SeedSettingsAsync) PAYLAŞILAN
+        // aynı DbContext'tir. Ambient `currentTenant`'ı burada yeniden impersone edip ambient
+        // `context`'i kullanmaya devam etmek (Faz 1b'de tek DB olduğundan) çalışırdı, ama TAM
+        // OLARAK Task 5'in kaçınmak istediği örüntü olurdu: "önce impersone et, sonra context'i
+        // KULLANMAYA DEVAM ET" sırasına güvenmek. Bunun yerine — TenantPurger'ın taze purgeContext
+        // açması gibi — Globex için TAMAMEN BAĞIMSIZ, kendi ICurrentTenant/AppDbContext/UserManager/
+        // ITenantDirectory'sini taşıyan bir kapsam açılır; kapsam DÖNMEDEN önce impersone edilmiş
+        // olduğundan sıra hatası yapısal olarak imkânsızdır (bkz. ITenantScopeFactory dokümanı).
+        using var kapsam = tenantScopeFactory.Create(tenant.Id);
+        var globexContext = kapsam.Services.GetRequiredService<AppDbContext>();
+        var globexUserManager = kapsam.Services.GetRequiredService<UserManager<ApplicationUser>>();
+        var globexDirectory = kapsam.Services.GetRequiredService<ITenantDirectory>();
 
         var urun = new Department { Name = "Ürün" };
         var operasyon = new Department { Name = "Operasyon" };
-        context.Departments.AddRange(urun, operasyon);
-        await context.SaveChangesAsync();
+        globexContext.Departments.AddRange(urun, operasyon);
+        await globexContext.SaveChangesAsync();
 
         var deniz = new Employee
         {
@@ -222,8 +250,8 @@ public class AppDbContextInitializer(
             DepartmentId = operasyon.Id, HireDate = new DateOnly(2024, 3, 1),
             Status = EmployeeStatus.Active, Profile = new EmployeeProfile(),
         };
-        context.Employees.Add(deniz);
-        await context.SaveChangesAsync();
+        globexContext.Employees.Add(deniz);
+        await globexContext.SaveChangesAsync();
 
         var cem = new Employee
         {
@@ -231,32 +259,32 @@ public class AppDbContextInitializer(
             DepartmentId = operasyon.Id, HireDate = new DateOnly(2025, 6, 1),
             Status = EmployeeStatus.Active, ManagerId = deniz.Id, Profile = new EmployeeProfile(),
         };
-        context.Employees.Add(cem);
-        await context.SaveChangesAsync();
+        globexContext.Employees.Add(cem);
+        await globexContext.SaveChangesAsync();
 
         var year = DateTime.UtcNow.Year;
-        context.LeaveBalances.AddRange(
+        globexContext.LeaveBalances.AddRange(
             new LeaveBalance { EmployeeId = deniz.Id, Year = year, EntitledDays = 24, CarriedOverDays = 0 },
             new LeaveBalance { EmployeeId = cem.Id, Year = year, EntitledDays = 24, CarriedOverDays = 0 });
 
-        context.CompanyProfiles.Add(new CompanyProfile
+        globexContext.CompanyProfiles.Add(new CompanyProfile
         {
             Name = "Globex Bilişim A.Ş.", Website = "www.globex.local",
             SystemEmail = "info@globex.local", Phone = "+90 216 000 00 00",
             HeadquartersAddress = "Ataşehir/İstanbul",
         });
-        context.NotificationSettings.Add(new NotificationSettings
+        globexContext.NotificationSettings.Add(new NotificationSettings
         {
             NewPersonnelEmail = true, LeaveRequestEmail = true,
             WeeklyReportEmail = false, TwoFactorSmsEnabled = false,
         });
-        context.Subscriptions.Add(new Subscription
+        globexContext.Subscriptions.Add(new Subscription
         {
             Plan = "STANDART", PlanName = "Globex Başlangıç", BillingCycle = "Aylık",
             Price = 900m, RenewalDate = new DateOnly(year, 12, 1),
             PaymentMethodMasked = "•••• •••• •••• 1000",
         });
-        await context.SaveChangesAsync();
+        await globexContext.SaveChangesAsync();
 
         var demoPassword = configuration["Seed:DemoPassword"] ?? "demo123";
         var users = new (ApplicationUser User, string Role, Employee? Employee)[]
@@ -284,7 +312,7 @@ public class AppDbContextInitializer(
         foreach (var (user, role, employee) in users)
         {
             user.EmployeeId = employee?.Id;
-            var result = await userManager.CreateAsync(user, demoPassword);
+            var result = await globexUserManager.CreateAsync(user, demoPassword);
             if (!result.Succeeded)
             {
                 throw new InvalidOperationException(
@@ -294,16 +322,16 @@ public class AppDbContextInitializer(
 
             // Demo kullanıcılar da normal kullanıcı oluşturma yollarıyla aynı kuralı izler:
             // dizine yazılmadan hiçbir hesap "var" sayılmaz (Faz 1b login'i buradan çözecek).
-            await identityService.ReserveEmailAsync(user.Email!, tenant.Id, default);
+            await globexDirectory.ReserveAsync(user.Email!, tenant.Id, default);
 
-            await userManager.AddToRoleAsync(user, role);
+            await globexUserManager.AddToRoleAsync(user, role);
             if (employee is not null)
             {
                 employee.UserId = user.Id;
             }
         }
 
-        await context.SaveChangesAsync();
+        await globexContext.SaveChangesAsync();
     }
 
     private async Task SeedDemoUsersAsync()
@@ -362,7 +390,7 @@ public class AppDbContextInitializer(
 
             // Demo kullanıcılar da normal kullanıcı oluşturma yollarıyla aynı kuralı izler:
             // dizine yazılmadan hiçbir hesap "var" sayılmaz (Faz 1b login'i buradan çözecek).
-            await identityService.ReserveEmailAsync(user.Email!, tenantId, default);
+            await directory.ReserveAsync(user.Email!, tenantId, default);
 
             await userManager.AddToRoleAsync(user, role);
 

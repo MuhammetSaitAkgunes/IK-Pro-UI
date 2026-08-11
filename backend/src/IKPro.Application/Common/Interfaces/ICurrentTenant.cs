@@ -16,6 +16,13 @@ public interface ICurrentTenant
     /// Platform/seed işlemleri için aktif kiracıyı geçici olarak sabitler (impersonation).
     /// HTTP isteği dışında (ör. veri tohumlama) global filtre ve damgalamanın doğru
     /// kiracıya çalışmasını sağlar.
+    ///
+    /// DOĞRUDAN ÇAĞIRMA. <c>AppDbContext</c>'in bağlantısı kapsam başına, ilk çözümde
+    /// bu arayüzden okunur (bkz. <c>Infrastructure.DependencyInjection</c>) — servis/context
+    /// zaten çözüldükten SONRA bu metodu çağırmak sıraya güvenmek olur ve o sıra bozulursa
+    /// hata FIRLATMADAN, SESSİZCE yanlış kiracının bağlantısıyla çalışmaya devam eder.
+    /// Bunun yerine <see cref="ITenantScopeFactory"/> kullan: kiracıyı kapsam DÖNMEDEN
+    /// ÖNCE sabitler, bu yüzden yanlış sıra imkânsız olur.
     /// </summary>
     void Impersonate(int tenantId);
 }

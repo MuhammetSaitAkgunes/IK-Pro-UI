@@ -1,6 +1,5 @@
 using IKPro.Application.Common.Exceptions;
 using IKPro.Application.Common.Interfaces;
-using IKPro.Domain.Entities.Tenancy;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,7 +26,8 @@ public sealed record RebuildDirectoryResult(int TenantId, int YazilanKayit, IRea
 
 public sealed class RebuildDirectoryCommandHandler(
     IPlatformDbContext platform,
-    IUserDirectorySource kullanicilar)
+    IUserDirectorySource kullanicilar,
+    ITenantDirectory directory)
     : IRequestHandler<RebuildDirectoryCommand, RebuildDirectoryResult>
 {
     public async Task<RebuildDirectoryResult> Handle(
@@ -41,44 +41,7 @@ public sealed class RebuildDirectoryCommandHandler(
 
         var epostalar = await kullanicilar.NormalizedEmailsAsync(request.TenantId, cancellationToken);
 
-        var mevcut = await platform.Directory
-            .Where(d => d.TenantId == request.TenantId)
-            .ToListAsync(cancellationToken);
-
-        platform.Directory.RemoveRange(mevcut);
-
-        // Yazmadan ÖNCE çakışmayı denetle: bu, tam da geri yükleme sonrası sapma
-        // senaryosudur — geri yüklenen kullanıcılardan biri, dizinde HÂLÂ başka bir
-        // kiracıya kayıtlı bir e-postayı taşıyabilir. NormalizedEmail birincil anahtar
-        // olduğu için ham bir Add + SaveChanges tek satırda çakışsa bile TÜM
-        // SaveChangesAsync çağrısını (bu kiracının diğer geçerli satırları dahil)
-        // geri alırdı — kurtarma aracının en çok gerektiği anda hiçbir şey yapmadan
-        // çökmesi demektir. Bunun yerine çakışan satır atlanır, kalanlar yazılır ve
-        // atlananlar sonuçta açıkça raporlanır; operatör hangi e-postaların elle
-        // müdahale gerektirdiğini görür.
-        var digerKiracilardaki = await platform.Directory
-            .Where(d => d.TenantId != request.TenantId && epostalar.Contains(d.NormalizedEmail))
-            .Select(d => d.NormalizedEmail)
-            .ToListAsync(cancellationToken);
-        var cakisanlar = new HashSet<string>(digerKiracilardaki);
-
-        var atlanan = new List<string>();
-        foreach (var eposta in epostalar)
-        {
-            if (cakisanlar.Contains(eposta))
-            {
-                atlanan.Add(eposta);
-                continue;
-            }
-
-            platform.Directory.Add(new TenantDirectoryEntry
-            {
-                NormalizedEmail = eposta,
-                TenantId = request.TenantId,
-            });
-        }
-
-        await platform.SaveChangesAsync(cancellationToken);
-        return new RebuildDirectoryResult(request.TenantId, epostalar.Count - atlanan.Count, atlanan);
+        var sonuc = await directory.RebuildForTenantAsync(request.TenantId, epostalar, cancellationToken);
+        return new RebuildDirectoryResult(request.TenantId, sonuc.YazilanKayit, sonuc.CakisanEpostalar);
     }
 }

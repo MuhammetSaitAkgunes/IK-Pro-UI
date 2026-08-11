@@ -100,6 +100,11 @@ public class PlatformKatmaniTests(IKProApiFactory factory) : TenancyTestBase(fac
         kayit!.Slug.Should().Be(kiraci.Slug);
     }
 
+    /// <summary>
+    /// Sözleşme (Görev 3): dondurulmuş kiracıda login artık 403 döner, 401 değil.
+    /// Kimlik bilgileri DOĞRU, engelleyen şey kiracının kapalı olması — 401
+    /// "parolan yanlış" anlamına gelir ve kullanıcıyı yanlış yönlendirirdi.
+    /// </summary>
     [Fact]
     public async Task DondurulmusKiraci_GirisYapamaz()
     {
@@ -114,7 +119,7 @@ public class PlatformKatmaniTests(IKProApiFactory factory) : TenancyTestBase(fac
         var anonim = Factory.CreateClient();
         var yanit = await anonim.PostAsJsonAsync("/api/auth/login", new { email = eposta, password = DefaultPassword });
 
-        yanit.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
+        yanit.StatusCode.Should().Be(HttpStatusCode.Forbidden,
             "dondurulmuş kiracıya giriş yapılamamalı");
     }
 
@@ -125,6 +130,10 @@ public class PlatformKatmaniTests(IKProApiFactory factory) : TenancyTestBase(fac
         var kiraci = await platform.Tenants.FirstAsync(t => t.Id == tenantId);
         kiraci.Status = durum;
         await platform.SaveChangesAsync(default);
+        // Erişim kapısı ITenantRegistry'nin (singleton) önbelleğinden okur; bu satır
+        // olmadan üstteki AuthedClientAsync çağrısının doldurduğu "Active" kaydı TTL
+        // (5 dk) dolana kadar yapışık kalır ve test yanlışlıkla 200 alır.
+        scope.ServiceProvider.GetRequiredService<ITenantRegistry>().Invalidate(tenantId);
     }
 
     [Fact]
@@ -172,9 +181,9 @@ public class PlatformKatmaniTests(IKProApiFactory factory) : TenancyTestBase(fac
     {
         // Yarış koşulunun simülasyonu: dizinde Identity'de karşılığı OLMAYAN bir satır
         // elle oluşturulur. Böylece EmailExistsAsync (Identity sorgusu) false döner ve
-        // ön kontrolü geçer — ama ReserveEmailAsync'in yazdığı DizineYazAsync, dizinde
-        // BAŞKA bir kiracıya ait aynı e-postayı bulur ve ConflictException fırlatır.
-        // DÜRÜST NOT: bu test DizineYazAsync'in OKUMA-SONRA-KARAR dalını tetikler
+        // ön kontrolü geçer — ama ITenantDirectory.ReserveAsync, dizinde BAŞKA bir
+        // kiracıya ait aynı e-postayı bulur ve ConflictException fırlatır.
+        // DÜRÜST NOT: bu test ReserveAsync'in OKUMA-SONRA-KARAR dalını tetikler
         // (mevcut satır bulunur, TenantId eşleşmez → throw); alttaki gerçek
         // veritabanı-seviyesi kısıtı sınayan `catch (DbUpdateException)` dalı BURADAN
         // koşmaz — o yalnız GERÇEK eşzamanlı iki isteğin INSERT'i aynı anda

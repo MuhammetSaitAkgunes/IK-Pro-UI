@@ -96,6 +96,37 @@ yapılmamış sayılır.
 6. **Aç:** Uygulamayı devreye al.
 7. **Yaz:** Olay sonrası not — kök neden ve tekrarını önleyecek adım.
 
+### Tek kiracıyı dondurma (bakım / kısmi geri yükleme öncesi)
+
+Bütün uygulamayı kapatmak yerine **tek bir müşteriyi** dondurmak gerektiğinde
+(o kiracının verisi üzerinde çalışılacak, diğerleri kesintisiz devam etmeli),
+platform ucu kullanılır — artık elle SQL'e inmeye gerek yok:
+
+```bash
+# Dondur (bakım/geri yükleme başlamadan ÖNCE):
+curl -X POST https://<api-host>/api/tenants/<tenantId>/freeze \
+  -H "X-Platform-Key: <platform-anahtarı>"
+
+# ... bakım/geri yükleme burada yapılır ...
+
+# Çöz (iş bittiğinde):
+curl -X POST https://<api-host>/api/tenants/<tenantId>/unfreeze \
+  -H "X-Platform-Key: <platform-anahtarı>"
+```
+
+**Faz 1a'da bu adım yalnız yeni girişleri kesiyordu** — elinde geçerli bir
+access/refresh token'ı olan kullanıcı çalışmaya ve oturumunu uzatmaya devam
+edebiliyordu. Faz 1b ile erişim kapısı login, refresh ve yetkili isteğin
+**üçüne de** yerleşti; bu uyarı artık geçerli değil. `freeze` ucu kiracı
+kütüğünü (`ITenantRegistry`) **anında** düşürür — bir sonraki istekte üç
+yolun üçü de kapanır, TTL dolmasını beklemek gerekmez. Aynı şey `unfreeze`
+için de geçerlidir: çözüldüğü an login/refresh/yetkili istek tekrar çalışır.
+
+Uç, `Provisioning`/`Purging` durumundaki bir kiracıyı bilerek reddeder (409) —
+bu durumlar kendi yaşam döngüsüne aittir, elle dondurulup çözülmez. Zaten
+hedef durumdaki bir kiracıyı tekrar dondurmak/çözmek hataya çarpmaz (idempotent
+no-op) — operatör yeniden denerse güvenlidir.
+
 ## KVKK notu
 
 **Yedekler de kişisel veri içerir.** Bu şu sonuçları doğurur:

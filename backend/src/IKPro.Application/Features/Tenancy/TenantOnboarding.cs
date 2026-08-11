@@ -19,6 +19,8 @@ public static class TenantOnboarding
     public static async Task<Tenant> CreateWithAdminAsync(
         IPlatformDbContext platform,
         IIdentityService identityService,
+        ITenantDirectory directory,
+        ITenantRegistry registry,
         string companyName,
         string slug,
         string adminName,
@@ -48,7 +50,7 @@ public static class TenantOnboarding
         // E-posta, admin kullanıcı oluşturulmadan ÖNCE rezerve edilir: eşzamanlı
         // iki kayıt aynı adresi alamaz. Rezervasyonu kullanıcı oluşturmaya
         // bıraksaydık iki müşteri yarışabilirdi.
-        await identityService.ReserveEmailAsync(adminEmail, tenant.Id, cancellationToken);
+        await directory.ReserveAsync(adminEmail, tenant.Id, cancellationToken);
 
         await identityService.CreateTenantAdminAsync(tenant.Id, adminName, adminEmail, tenant.Name, cancellationToken);
 
@@ -57,6 +59,9 @@ public static class TenantOnboarding
         // ve operatör yeniden deneyebilir ya da geri alabilir.
         tenant.Status = hedefDurum;
         await platform.SaveChangesAsync(cancellationToken);
+        // Durum değişti — kütüğü düşür ki bir sonraki erişim kapısı sorgusu
+        // bunu ANINDA görsün, süre dolmasını beklemesin.
+        registry.Invalidate(tenant.Id);
 
         return tenant;
     }

@@ -20,14 +20,34 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
+        // Açılışta doğrula: yapılandırma eksikse uygulama hiç ayağa kalkmasın
+        // (eski davranış). Sonuç burada KULLANILMAZ — çözüm çalışma zamanında
+        // kapsam başına ITenantConnectionResolver üzerinden yapılır (aşağıdaki
+        // AddDbContext lambda'sı). Bu satır yalnız fail-fast için var: aksi halde
+        // bozuk yapılandırmayla yapılan bir dağıtım temiz açılır, sağlıklı görünür
+        // ve hata ancak ilk gerçek istekte 500 olarak çıkar (Development'ta fark
+        // görünmez çünkü Program.cs açılışta AppDbContextInitializer'ı çözerek
+        // DbContext'i zorluyor; üretimde o blok çalışmaz).
+        _ = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection tanımlı değil.");
 
         services.AddScoped<AuditableEntityInterceptor>();
+        services.AddScoped<ITenantConnectionResolver, Tenancy.TenantConnectionResolver>();
+        // SINGLETON: yalnız IServiceScopeFactory'yi (kendisi zaten singleton) sarar,
+        // durumu yok. Impersonate çağıran HTTP-dışı yollar (purge, seed, arka plan
+        // servisi, test yardımcıları) kapsamı BUNUN ÜZERİNDEN açmalı — doğrudan
+        // ICurrentTenant.Impersonate çağırıp sıraya güvenmek yerine (bkz. arayüz dokümanı).
+        services.AddSingleton<ITenantScopeFactory, Tenancy.TenantScopeFactory>();
 
         services.AddDbContext<AppDbContext>((sp, options) =>
         {
-            options.UseSqlServer(connectionString, sql =>
+            // Bağlantı KAPSAM BAŞINA çözülür: aktif kiracı neyse ona göre.
+            // Faz 1b'de sonuç herkes için aynı, ama çağrı yolu artık doğru yerden
+            // geçiyor — Faz 2'de yalnız çözücünün içi değişecek.
+            var cozucu = sp.GetRequiredService<ITenantConnectionResolver>();
+            var kiraci = sp.GetRequiredService<ICurrentTenant>();
+
+            options.UseSqlServer(cozucu.ResolveFor(kiraci.TenantId), sql =>
                 sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName));
             options.AddInterceptors(sp.GetRequiredService<AuditableEntityInterceptor>());
         });
@@ -107,7 +127,16 @@ public static class DependencyInjection
         services.AddScoped<JwtTokenService>();
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<IUserDirectorySource, Identity.UserDirectorySource>();
+        services.AddScoped<ITenantDirectory, Tenancy.TenantDirectory>();
         services.AddScoped<ITenantPurger, Persistence.TenantPurger>();
+        // Kütüğün önbelleği SINGLETON'dır — okuma anında kendi kapsamını açar
+        // (bkz. TenantRegistry), bu yüzden scoped platform context'i captive
+        // dependency olarak yakalamaz.
+        services.AddMemoryCache();
+        services.AddSingleton<ITenantRegistry, Tenancy.TenantRegistry>();
+        // Erişim kapısı: durum dışında bağımlılığı yok (kütükten okur), scoped
+        // yeterli — captive dependency riski taşımaz.
+        services.AddScoped<ITenantAccessGuard, Tenancy.TenantAccessGuard>();
         // Kiracıya bağlı olduğu için SCOPED: singleton olsaydı ilk isteğin kiracısı
         // sonsuza kadar yapışırdı (captive dependency).
         services.AddScoped<IFileStorage, Storage.LocalFileStorage>();
