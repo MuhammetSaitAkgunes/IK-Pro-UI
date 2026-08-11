@@ -26,7 +26,8 @@ public sealed class IdentityService(
     IConfiguration configuration,
     AppDbContext context,
     IPlatformDbContext platform,
-    ITenantDirectory directory) : IIdentityService
+    ITenantDirectory directory,
+    ITenantRegistry registry) : IIdentityService
 {
     private const string InvalidCredentialsMessage = "E-posta veya şifre hatalı.";
 
@@ -176,6 +177,8 @@ public sealed class IdentityService(
         {
             tenant.Status = TenantStatus.Active;
             await platform.SaveChangesAsync(cancellationToken);
+            // Durum değişti — kütüğü düşür ki erişim kapısı bunu ANINDA görsün.
+            registry.Invalidate(tenant.Id);
         }
     }
 

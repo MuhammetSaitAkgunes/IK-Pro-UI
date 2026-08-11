@@ -109,6 +109,11 @@ public static class DependencyInjection
         services.AddScoped<IUserDirectorySource, Identity.UserDirectorySource>();
         services.AddScoped<ITenantDirectory, Tenancy.TenantDirectory>();
         services.AddScoped<ITenantPurger, Persistence.TenantPurger>();
+        // Kütüğün önbelleği SINGLETON'dır — okuma anında kendi kapsamını açar
+        // (bkz. TenantRegistry), bu yüzden scoped platform context'i captive
+        // dependency olarak yakalamaz.
+        services.AddMemoryCache();
+        services.AddSingleton<ITenantRegistry, Tenancy.TenantRegistry>();
         // Kiracıya bağlı olduğu için SCOPED: singleton olsaydı ilk isteğin kiracısı
         // sonsuza kadar yapışırdı (captive dependency).
         services.AddScoped<IFileStorage, Storage.LocalFileStorage>();

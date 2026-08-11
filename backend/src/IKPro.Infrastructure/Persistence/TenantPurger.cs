@@ -19,6 +19,7 @@ public sealed class TenantPurger(
     ICurrentTenant currentTenant,
     IFileStorage fileStorage,
     ITenantDirectory directory,
+    ITenantRegistry registry,
     ILogger<TenantPurger> logger) : ITenantPurger
 {
     public async Task<bool> PurgeAsync(int tenantId, CancellationToken cancellationToken)
@@ -32,6 +33,8 @@ public sealed class TenantPurger(
         {
             tenantRow.Status = TenantStatus.Purging;
             await platform.SaveChangesAsync(cancellationToken);
+            // Durum değişti — kütüğü düşür ki erişim kapısı bunu ANINDA görsün.
+            registry.Invalidate(tenantId);
         }
 
         // Global filtre için impersone et: aradaki sorgular kiracı filtresine tabidir.

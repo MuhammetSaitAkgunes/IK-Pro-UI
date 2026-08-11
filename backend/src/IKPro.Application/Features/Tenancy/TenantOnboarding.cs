@@ -20,6 +20,7 @@ public static class TenantOnboarding
         IPlatformDbContext platform,
         IIdentityService identityService,
         ITenantDirectory directory,
+        ITenantRegistry registry,
         string companyName,
         string slug,
         string adminName,
@@ -58,6 +59,9 @@ public static class TenantOnboarding
         // ve operatör yeniden deneyebilir ya da geri alabilir.
         tenant.Status = hedefDurum;
         await platform.SaveChangesAsync(cancellationToken);
+        // Durum değişti — kütüğü düşür ki bir sonraki erişim kapısı sorgusu
+        // bunu ANINDA görsün, süre dolmasını beklemesin.
+        registry.Invalidate(tenant.Id);
 
         return tenant;
     }
