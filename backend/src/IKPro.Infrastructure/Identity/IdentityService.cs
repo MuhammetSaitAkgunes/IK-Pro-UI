@@ -103,7 +103,16 @@ public sealed class IdentityService(
 
         await userManager.AddToRoleAsync(user, role);
 
-        return await IssueTokensAsync(user, cancellationToken);
+        // Kapı burada BİLİNÇLİ olarak atlanır (Düzeltme turu 1, IMPORTANT #2).
+        // Bu anonim self-servis kayıt akışıdır: user.TenantId yukarıda kayıt
+        // olanın NİYETİNİ değil, DefaultTenantIdAsync'in döndürdüğü (platformdaki
+        // EN DÜŞÜK Id'li) kiracıyı temsil eder. Kapıyı burada da çalıştırmak,
+        // platformun ilk kiracısı herhangi bir sebeple dondurulur/purge'e girerse
+        // /api/auth/register'a yapılan HER anonim kaydı (hedef kiracı ne olursa
+        // olsun) 403'e düşürürdü — bu değişiklikten önce var olmayan gerçek bir
+        // regresyon. Kapı IssueTokensAsync'in gerçek iki çağıranında (LoginAsync,
+        // RefreshAsync) çalışmaya devam ediyor.
+        return await IssueTokensAsync(user, cancellationToken, skipAccessCheck: true);
     }
 
     public async Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken)
@@ -289,13 +298,24 @@ public sealed class IdentityService(
         return user is null ? null : await BuildUserDtoAsync(user);
     }
 
-    private async Task<AuthResponse> IssueTokensAsync(ApplicationUser user, CancellationToken cancellationToken)
+    /// <param name="skipAccessCheck">
+    /// Yalnız <see cref="RegisterAsync"/> için <c>true</c> geçilir (bkz. orada
+    /// Düzeltme turu 1, IMPORTANT #2 yorumu) — anonim kayıtta <c>user.TenantId</c>
+    /// kayıt olanın niyetini değil <see cref="DefaultTenantIdAsync"/>'in
+    /// döndürdüğü kiracıyı temsil eder, kapıyı orada çalıştırmak platform
+    /// genelinde yanlış-pozitif 403'e yol açardı.
+    /// </param>
+    private async Task<AuthResponse> IssueTokensAsync(
+        ApplicationUser user, CancellationToken cancellationToken, bool skipAccessCheck = false)
     {
-        // Kapı burada: login ve refresh'in ORTAK yolu burasıdır, dolayısıyla
-        // ikisi de tek noktadan korunur. Faz 1a'da kapı yalnız login'deydi ve
-        // refresh onu atlıyordu — dondurulmuş bir kiracının kullanıcısı elindeki
-        // refresh token'la oturumunu süresiz uzatabiliyordu.
-        await accessGuard.EnsureAccessibleAsync(user.TenantId, cancellationToken);
+        if (!skipAccessCheck)
+        {
+            // Kapı burada: login ve refresh'in ORTAK yolu burasıdır, dolayısıyla
+            // ikisi de tek noktadan korunur. Faz 1a'da kapı yalnız login'deydi ve
+            // refresh onu atlıyordu — dondurulmuş bir kiracının kullanıcısı elindeki
+            // refresh token'la oturumunu süresiz uzatabiliyordu.
+            await accessGuard.EnsureAccessibleAsync(user.TenantId, cancellationToken);
+        }
 
         var roles = await userManager.GetRolesAsync(user);
         var (accessToken, expiresAtUtc) = tokenService.CreateAccessToken(user, roles);

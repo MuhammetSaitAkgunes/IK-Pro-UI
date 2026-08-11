@@ -1,5 +1,6 @@
 using FluentAssertions;
 using IKPro.Application.Common.Interfaces;
+using IKPro.Domain.Constants;
 using IKPro.Domain.Entities.Tenancy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -78,6 +79,61 @@ public class ErisimKapisiTests(IKProApiFactory factory) : TenancyTestBase(factor
 
         (await client.GetAsync("/api/departments")).StatusCode.Should().Be(HttpStatusCode.OK,
             "kapı, aktif kiracıyı engellememelidir");
+    }
+
+    /// <summary>
+    /// Düzeltme turu 1, IMPORTANT #1: kapı isteğin token'ına değil, UCUN kendi
+    /// yetkilendirme gereksinimine bağlı olmalı. Dondurulmuş bir kiracıdan kalma,
+    /// süresi henüz dolmamış bir Bearer token'ı taşıyan bir istemci (Postman,
+    /// mobil, entegrasyon) <c>POST /api/auth/login</c> ile BAŞKA ve AKTİF bir
+    /// kiracının hesabına girmeye çalışırsa, o eski token'ın kiracı bağlamı bu
+    /// isteğin amacıyla ilgisizdir — engellenmemeli. Bu senaryo
+    /// <see cref="DondurulmusKiraci_LoginYapamaz"/>'dan farklıdır: orada login
+    /// isteği HEADER'SIZ (anonim istemci), burada dondurulmuş kiracıdan kalma bir
+    /// Authorization header'ı istekle birlikte taşınıyor.
+    /// </summary>
+    [Fact]
+    public async Task DondurulmusKiraciTokeniTasiyanIstemci_BaskaAktifKiraciyaLoginYapabilir()
+    {
+        var (dondurulanEposta, dondurulanTenantId) = await AktifKiraciAsync("KapiEskiToken");
+        var dondurulanClient = await AuthedClientAsync(dondurulanEposta);
+        await DurumDegistirAsync(dondurulanTenantId, TenantStatus.Frozen);
+
+        var (aktifEposta, _) = await AktifKiraciAsync("KapiHedefAktif");
+
+        // dondurulanClient'ın Authorization header'ı hâlâ dondurulmuş kiracının
+        // token'ını taşıyor — ama hedef, BAŞKA ve aktif bir kiracının hesabı.
+        var yanit = await dondurulanClient.PostAsJsonAsync(
+            "/api/auth/login", new { email = aktifEposta, password = DefaultPassword });
+
+        yanit.StatusCode.Should().Be(HttpStatusCode.OK,
+            "dondurulmuş bir kiracıdan kalma token, BAŞKA ve aktif bir kiracıya girişi engellememeli");
+    }
+
+    /// <summary>
+    /// Düzeltme turu 1, IMPORTANT #2: RegisterAsync artık kapıdan geçmiyor.
+    /// <c>POST /api/auth/register</c> her zaman anonimdir ve hedef kiracıyı
+    /// <c>DefaultTenantIdAsync</c> (platformdaki EN DÜŞÜK Id'li kiracı) belirler —
+    /// gerçek/paylaşılan ilk kiracıyı burada dondurmak diğer testleri bozardı, bu
+    /// yüzden aynı kod yolunu (RegisterAsync → IssueTokensAsync) impersonation ile
+    /// TAZE ve İZOLE bir dondurulmuş kiracıda doğrudan çağırıyoruz. Kapı hâlâ
+    /// devrede olsaydı bu, TenantInaccessibleException fırlatırdı.
+    /// </summary>
+    [Fact]
+    public async Task DondurulmusKiraciyaRegisterKapidanGecmezVeCalisir()
+    {
+        var (_, tenantId) = await AktifKiraciAsync("KapiRegisterHedef");
+        await DurumDegistirAsync(tenantId, TenantStatus.Frozen);
+
+        using var scope = Factory.Services.CreateScope();
+        scope.ServiceProvider.GetRequiredService<ICurrentTenant>().Impersonate(tenantId);
+        var identity = scope.ServiceProvider.GetRequiredService<IIdentityService>();
+
+        var email = $"kapiregister-{Guid.NewGuid():N}@ornek.local";
+        var auth = await identity.RegisterAsync("Kapi Register", email, "kayit-sifre-1", Roles.Employee, default);
+
+        auth.Token.Should().NotBeNullOrWhiteSpace(
+            "register anonim self-servis akışıdır; kapı burada bilinçli olarak atlanır");
     }
 
     private async Task<(string Eposta, int TenantId)> AktifKiraciAsync(string ad)
