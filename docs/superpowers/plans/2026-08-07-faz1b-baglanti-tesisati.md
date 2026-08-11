@@ -1010,7 +1010,8 @@ git add -A && git commit -m "feat(auth): login kiracıyı yönlendirme dizininde
 
 1. Demo kullanıcıyla giriş yap → başarılı olmalı
 2. Kiracıyı `Frozen` yap → aynı token'la istek at → **403**
-3. Refresh dene → **401**
+3. Refresh dene → **403** (gerçek ve test edilen davranış; erişim kapısı bu ucu da
+   diğerleriyle aynı şekilde keser — düzeltildi, bkz. nihai dal incelemesi madde 4)
 4. Yeni giriş dene → reddedilmeli
 5. Kiracıyı `Active`'e döndür → üçü de tekrar çalışmalı
 6. Dizin kaydını sil → giriş başarısız → `rebuild-directory` → giriş tekrar çalışıyor
@@ -1038,7 +1039,14 @@ git add -A && git commit -m "docs(tenancy): Faz 1b sonucu ve dondurma prosedür�
 - [x] Dondurulmuş kiracı: login, refresh ve yetkili istek — **üçü de** reddediliyor
 - [x] Aktif kiracı hiçbir yerde engellenmiyor
 - [x] Kütük durum değişiminde anında düşüyor
-- [x] Arka plan işleri ve seed kiracıya sabitlenmiş kapsam kullanıyor; elle `Impersonate` kalmadı
+- [x] Arka plan işleri ve seed kiracıya sabitlenmiş kapsam kullanıyor; elle `Impersonate`
+      tek istisnayla kalmıştır — `AppDbContextInitializer.cs:187`, BİLİNÇLİ ve gerekçeli
+      (dosyada 173-186 satırlarında 14 satırlık açıklama var: bu sınıfın tüm bağımlılıkları
+      constructor'da zaten kurulduğundan yeni bir fabrika kapsamı açmak ambient `context`'i
+      etkilemez, düzeltme Program.cs'in bu sınıfı hangi kapsamdan çözdüğünü değiştirmeyi
+      gerektirir — Faz 2'ye devredildi). Nihai dal incelemesi madde 1 kapsamında
+      `UserDirectorySource` (`backend/src/IKPro.Infrastructure/Identity/UserDirectorySource.cs`)
+      ikinci bir istisna olacaktı — bu görevde `ITenantScopeFactory`'ye geçirilerek kapatıldı.
 - [x] Login dizin üzerinden çözüyor; dizin silinince giriş kesiliyor, yeniden kurulunca dönüyor
 - [x] Bağlantı çözücü devrede ve tüm testler geçiyor (davranış değişmedi)
 - [x] Derleme uyarısız, backend ve frontend suite'leri yeşil
