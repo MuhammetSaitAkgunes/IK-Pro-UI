@@ -21,7 +21,7 @@ namespace IKPro.Application.Features.Tenancy.Commands;
 /// </summary>
 public sealed record FreezeTenantCommand(int TenantId) : IRequest<TenantStatusResult>;
 
-/// <param name="AlreadyFrozen">
+/// <param name="AlreadyInTargetState">
 /// <c>true</c> ise kiracı zaten dondurulmuştu — işlem idempotent no-op olarak
 /// tamamlandı (operatör yeniden denerse hataya çarpmamalı).
 /// </param>
