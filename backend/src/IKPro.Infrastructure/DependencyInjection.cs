@@ -20,6 +20,17 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
+        // Açılışta doğrula: yapılandırma eksikse uygulama hiç ayağa kalkmasın
+        // (eski davranış). Sonuç burada KULLANILMAZ — çözüm çalışma zamanında
+        // kapsam başına ITenantConnectionResolver üzerinden yapılır (aşağıdaki
+        // AddDbContext lambda'sı). Bu satır yalnız fail-fast için var: aksi halde
+        // bozuk yapılandırmayla yapılan bir dağıtım temiz açılır, sağlıklı görünür
+        // ve hata ancak ilk gerçek istekte 500 olarak çıkar (Development'ta fark
+        // görünmez çünkü Program.cs açılışta AppDbContextInitializer'ı çözerek
+        // DbContext'i zorluyor; üretimde o blok çalışmaz).
+        _ = configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection tanımlı değil.");
+
         services.AddScoped<AuditableEntityInterceptor>();
         services.AddScoped<ITenantConnectionResolver, Tenancy.TenantConnectionResolver>();
 
