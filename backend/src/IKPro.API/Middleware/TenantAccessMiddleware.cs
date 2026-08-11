@@ -24,8 +24,8 @@ namespace IKPro.API.Middleware;
 ///
 /// İki koşuldan biri sağlanırsa istek DOKUNULMADAN geçer:
 /// <list type="bullet">
-/// <item><description>Uç <c>[AllowAnonymous]</c> taşıyor (login/register/refresh/
-/// logout/accept-invite/signup, <c>X-Platform-Key</c> korumalı TenancyController) —
+/// <item><description>Uç <c>[AllowAnonymous]</c> taşıyor (login/refresh/logout/
+/// accept-invite/signup, <c>X-Platform-Key</c> korumalı TenancyController) —
 /// bu uçlar taşınan bir token'ın kiracı bağlamını YOK SAYMALI.</description></item>
 /// <item><description>Uç hiç <c>[Authorize]</c> taşımıyor — bu API'de varsayılan bir
 /// yetkilendirme politikası (fallback policy) YOK (bkz. Program.cs), yani

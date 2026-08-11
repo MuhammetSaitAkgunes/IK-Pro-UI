@@ -1,5 +1,5 @@
 import { Suspense, lazy, type ComponentType } from "react";
-import type { RouteObject } from "react-router-dom";
+import { Navigate, type RouteObject } from "react-router-dom";
 import { PageLoading } from "./features/shared/PageState";
 import { LoginPage } from "./auth/LoginPage";
 import { AcceptInvitePage } from "./auth/AcceptInvitePage";
@@ -120,6 +120,10 @@ export function buildRouteObjects(): RouteObject[] {
     { path: "/login", element: <PublicOnly><LoginPage /></PublicOnly> },
     { path: "/accept-invite", element: <PublicOnly><AcceptInvitePage /></PublicOnly> },
     { path: "/register-company", element: <PublicOnly><CompanySignupPage /></PublicOnly> },
+    // Eski self-servis kayıt sayfası kaldırıldı (bkz. POST /api/auth/register —
+    // kiracı sızıntısı). Yer imi/paylaşılmış link taşıyanlar catch-all'a düşüp
+    // yanlış URL'de login görmesin diye açıkça yönlendiriliyor.
+    { path: "/signup", element: <Navigate to="/register-company" replace /> },
     {
       element: <RequireAuth />,
       children: [
