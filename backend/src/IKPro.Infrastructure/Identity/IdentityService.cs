@@ -9,6 +9,7 @@ using IKPro.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace IKPro.Infrastructure.Identity;
 
@@ -28,14 +29,35 @@ public sealed class IdentityService(
     IPlatformDbContext platform,
     ITenantDirectory directory,
     ITenantRegistry registry,
-    ITenantAccessGuard accessGuard) : IIdentityService
+    ITenantAccessGuard accessGuard,
+    ILogger<IdentityService> logger) : IIdentityService
 {
     private const string InvalidCredentialsMessage = "E-posta veya şifre hatalı.";
 
     public async Task<AuthResponse> LoginAsync(string email, string password, CancellationToken cancellationToken)
     {
+        // Dizin login'in ÖN adımıdır: Faz 2'de kullanıcı tablosu kiracının kendi
+        // veritabanında olacak, dolayısıyla hangi veritabanına bakılacağı
+        // bilinmeden kullanıcı aranamaz. Dizinde kayıt yoksa (ör. dizin bütünlüğü
+        // bozulmuşsa) hesabın var olup olmadığını sızdırmadan genel mesajla reddet.
+        var dizinKiraciId = await directory.FindTenantIdAsync(email, cancellationToken)
+            ?? throw new UnauthorizedException(InvalidCredentialsMessage);
+
         var user = await userManager.FindByEmailAsync(email)
             ?? throw new UnauthorizedException(InvalidCredentialsMessage);
+
+        if (user.TenantId != dizinKiraciId)
+        {
+            // Dizin ile Identity'nin kendi kaydı UYUŞMUYOR: bu bir bütünlük hatasıdır.
+            // Faz 2'de bu, yanlış kiracının veritabanına bakmak demek olurdu — bu
+            // yüzden yüksek sesle loglanır. Kullanıcıya yine genel mesaj dönülür,
+            // iç tutarsızlık sızdırılmaz.
+            logger.LogError(
+                "Dizin/Identity tutarsızlığı: E-posta={Email}, DizinTenantId={DizinTenantId}, " +
+                "KullaniciTenantId={KullaniciTenantId}",
+                email, dizinKiraciId, user.TenantId);
+            throw new UnauthorizedException(InvalidCredentialsMessage);
+        }
 
         if (!user.IsActive)
         {
@@ -53,10 +75,10 @@ public sealed class IdentityService(
             throw new UnauthorizedException(InvalidCredentialsMessage);
         }
 
-        // Kiracı erişim kontrolü artık burada YAPILMAZ — tek doğruluk kaynağı
-        // IssueTokensAsync'in başındaki erişim kapısıdır (bkz. orada). Burada
-        // tekrarlamak iki kaynak demekti ve refresh yolunu (aynı kapıdan geçmeyen
-        // eski RefreshAsync) korumasız bırakmıştı.
+        // Kiracı erişim kontrolü (aktif/donmuş/vs.) artık burada YAPILMAZ — tek
+        // doğruluk kaynağı IssueTokensAsync'in başındaki erişim kapısıdır (bkz.
+        // orada). Burada tekrarlamak iki kaynak demekti ve refresh yolunu (aynı
+        // kapıdan geçmeyen eski RefreshAsync) korumasız bırakmıştı.
         return await IssueTokensAsync(user, cancellationToken);
     }
 
