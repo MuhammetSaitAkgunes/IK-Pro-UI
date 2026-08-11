@@ -51,4 +51,38 @@ public class LoginDizinTests(IKProApiFactory factory) : TenancyTestBase(factory)
         ikinciDeneme.StatusCode.Should().Be(HttpStatusCode.OK,
             "dizin yeniden kurulduktan sonra giriş çalışmalı — kurtarma prosedürünün kanıtı");
     }
+
+    [Fact]
+    public async Task DizinBaskaKiraciyaIsaretEderse_GirisReddedilir()
+    {
+        var eposta = $"tutarsiz-{Guid.NewGuid():N}@ornek.local";
+        await ProvisionAndActivateAsync("LoginDizinTutarsiz-A", eposta);
+
+        // İkinci (ilgisiz) bir kiracı daha provizyonla — dizin kaydını buna
+        // çevirmek için gerçek, var olan ama YANLIŞ bir TenantId lazım.
+        var digerKiraci = await ProvisionTenantAsync(
+            "LoginDizinTutarsiz-B", $"diger-{Guid.NewGuid():N}@ornek.local");
+
+        // Dizin kaydını diğer kiracıya çevir: kullanıcı Identity'de kendi
+        // (doğru) TenantId'siyle duruyor ama dizin başka bir kiracıyı gösteriyor.
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
+            var anahtar = TenantDirectoryEntry.Normalize(eposta);
+            var kayit = await platform.Directory.FirstAsync(d => d.NormalizedEmail == anahtar);
+            kayit.TenantId = digerKiraci.TenantId;
+            await platform.SaveChangesAsync(default);
+        }
+
+        var yanit = await Factory.CreateClient()
+            .PostAsJsonAsync("/api/auth/login", new { email = eposta, password = DefaultPassword });
+
+        yanit.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
+            "dizin ile Identity'nin kendi kaydı uyuşmuyorsa (bütünlük hatası) giriş reddedilmeli — " +
+            "Faz 2'de bu yanlış kiracının veritabanına bakmak demek olurdu");
+
+        var govde = await yanit.Content.ReadAsStringAsync();
+        govde.Should().NotContain(eposta,
+            "genel hata mesajı dönmeli — hesabın var olduğu ya da iç tutarsızlığın niteliği sızmamalı");
+    }
 }
