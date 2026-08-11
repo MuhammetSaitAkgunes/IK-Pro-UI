@@ -25,7 +25,8 @@ public sealed class IdentityService(
     IEmailSender emailSender,
     IConfiguration configuration,
     AppDbContext context,
-    IPlatformDbContext platform) : IIdentityService
+    IPlatformDbContext platform,
+    ITenantDirectory directory) : IIdentityService
 {
     private const string InvalidCredentialsMessage = "E-posta veya şifre hatalı.";
 
@@ -83,15 +84,16 @@ public sealed class IdentityService(
         };
 
         // Dizine ÖNCE yaz, kullanıcıyı SONRA oluştur — sıra bilinçli olarak budur (bkz.
-        // DizineYazAsync xmldoc + CreateInvitedUserAsync'teki aynı gerekçe). userManager.CreateAsync
-        // hemen commit eder ve geri alınamaz; sıra tersi olsaydı ve DizineYazAsync arada
-        // ConflictException fırlatsaydı (TOCTOU — başka bir istek aynı e-postayı kaptı),
-        // kullanıcı uygulama DB'sinde KALICI olarak var ama dizinde YOK kalırdı: Faz 1b'de
-        // asla giriş yapamaz, rolü de atanmamış olur, ve EmailExistsAsync artık true
-        // döndüğünden aynı e-postayla yeniden deneme sonsuza kadar 409 alır. Dizine önce
-        // yazmak bu sınıf hatayı imkansız kılar: DizineYazAsync başarısız olursa CreateAsync
-        // hiç çağrılmaz, ortada yarım kalan kullanıcı olmaz.
-        await DizineYazAsync(email, user.TenantId, cancellationToken);
+        // ITenantDirectory.ReserveAsync xmldoc + CreateInvitedUserAsync'teki aynı gerekçe).
+        // userManager.CreateAsync hemen commit eder ve geri alınamaz; sıra tersi olsaydı
+        // ve ReserveAsync arada ConflictException fırlatsaydı (TOCTOU — başka bir istek
+        // aynı e-postayı kaptı), kullanıcı uygulama DB'sinde KALICI olarak var ama
+        // dizinde YOK kalırdı: Faz 1b'de asla giriş yapamaz, rolü de atanmamış olur, ve
+        // EmailExistsAsync artık true döndüğünden aynı e-postayla yeniden deneme
+        // sonsuza kadar 409 alır. Dizine önce yazmak bu sınıf hatayı imkansız kılar:
+        // ReserveAsync başarısız olursa CreateAsync hiç çağrılmaz, ortada yarım kalan
+        // kullanıcı olmaz.
+        await directory.ReserveAsync(email, user.TenantId, cancellationToken);
 
         var createResult = await userManager.CreateAsync(user, password);
         if (!createResult.Succeeded)
@@ -109,9 +111,6 @@ public sealed class IdentityService(
     public async Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken)
         => await userManager.FindByEmailAsync(email) is not null;
 
-    public async Task ReserveEmailAsync(string email, int tenantId, CancellationToken cancellationToken)
-        => await DizineYazAsync(email, tenantId, cancellationToken);
-
     public async Task CreateTenantAdminAsync(
         int tenantId, string name, string email, string companyName, CancellationToken cancellationToken)
     {
@@ -125,8 +124,8 @@ public sealed class IdentityService(
             TenantId = tenantId,
         };
 
-        // Dizine CreateInvitedUserAsync KOŞULSUZ yazar (idempotent DizineYazAsync).
-        // Çağıran burada ReserveEmailAsync ile önceden rezervasyon yapmış olabilir
+        // Dizine CreateInvitedUserAsync KOŞULSUZ yazar (idempotent ITenantDirectory.ReserveAsync).
+        // Çağıran burada directory.ReserveAsync ile önceden rezervasyon yapmış olabilir
         // (TenantOnboarding) — o durumda bu ikinci yazım aynı kiracı için sessizce
         // no-op'tur. Rezervasyon yapılmamışsa (ör. eski bir çağıran unutursa) bu
         // çağrı yine de dizine yazar; "dizine hiç yazılmadı" sınıfı hatalar artık
@@ -185,16 +184,16 @@ public sealed class IdentityService(
     /// e-postayla gönderir. Kullanıcı <c>accept-invite</c> ile hesabını etkinleştirir.
     ///
     /// Dizine KOŞULSUZ ÖNCE yazar, kullanıcıyı SONRA oluşturur (bkz.
-    /// <see cref="DizineYazAsync"/> — idempotenttir, çağıran önceden rezervasyon
-    /// yapmışsa aynı kiracı için sessizce no-op'tur). Sıra bilinçlidir: userManager.CreateAsync
-    /// hemen commit eder ve geri alınamaz. Ters sırada (önce CreateAsync, sonra
-    /// DizineYazAsync) DizineYazAsync bir ConflictException fırlatırsa (TOCTOU — başka
-    /// bir istek arada aynı e-postayı kaptı) kullanıcı uygulama DB'sinde KALICI olarak
-    /// var ama dizinde YOK kalırdı: Faz 1b'de asla giriş yapamaz, rolü de atanmamış
-    /// olur, ve EmailExistsAsync artık true döndüğünden aynı kişiyi yeniden işe alma
-    /// denemesi (en çok <c>CreateEmployeeLoginAsync</c> üzerinden — ürünün en yüksek
-    /// hacimli kullanıcı yaratma yolu) sonsuza kadar 409 alır. Dizine önce yazmak bu
-    /// sınıf hatayı imkansız kılar.
+    /// <see cref="ITenantDirectory.ReserveAsync"/> — idempotenttir, çağıran önceden
+    /// rezervasyon yapmışsa aynı kiracı için sessizce no-op'tur). Sıra bilinçlidir:
+    /// userManager.CreateAsync hemen commit eder ve geri alınamaz. Ters sırada (önce
+    /// CreateAsync, sonra ReserveAsync) ReserveAsync bir ConflictException fırlatırsa
+    /// (TOCTOU — başka bir istek arada aynı e-postayı kaptı) kullanıcı uygulama
+    /// DB'sinde KALICI olarak var ama dizinde YOK kalırdı: Faz 1b'de asla giriş
+    /// yapamaz, rolü de atanmamış olur, ve EmailExistsAsync artık true döndüğünden
+    /// aynı kişiyi yeniden işe alma denemesi (en çok <c>CreateEmployeeLoginAsync</c>
+    /// üzerinden — ürünün en yüksek hacimli kullanıcı yaratma yolu) sonsuza kadar 409
+    /// alır. Dizine önce yazmak bu sınıf hatayı imkansız kılar.
     /// </summary>
     private async Task CreateInvitedUserAsync(
         ApplicationUser user, string role, string companyName, CancellationToken cancellationToken)
@@ -204,7 +203,7 @@ public sealed class IdentityService(
             throw new ConflictException($"'{user.Email}' e-postasıyla kayıtlı bir hesap zaten var.");
         }
 
-        await DizineYazAsync(user.Email!, user.TenantId, cancellationToken);
+        await directory.ReserveAsync(user.Email!, user.TenantId, cancellationToken);
 
         var createResult = await userManager.CreateAsync(user); // şifresiz → davet gerektirir
         if (!createResult.Succeeded)
@@ -217,68 +216,6 @@ public sealed class IdentityService(
 
         var token = await userManager.GeneratePasswordResetTokenAsync(user);
         await SendInviteEmailAsync(user.DisplayName, user.Email!, companyName, token, cancellationToken);
-    }
-
-    /// <summary>
-    /// Kullanıcıyı yönlendirme dizinine İDEMPOTENT yazar ve ÇAKIŞMAYI 409'a çevirir.
-    ///
-    /// Dizinin birincil anahtarı e-postadır; "tek e-posta = tek kiracı" kuralı
-    /// burada, veritabanı seviyesinde uygulanır:
-    ///   - kayıt yoksa → eklenir,
-    ///   - kayıt var ve AYNI kiracıya aitse → sessizce geçilir (no-op),
-    ///   - kayıt var ve BAŞKA kiracıya aitse → <c>ConflictException</c>.
-    ///
-    /// İdempotent olması, çağrının GÜVENLE tekrarlanabilmesini sağlar: hem önceden
-    /// rezervasyon yapmış bir çağıranın (ör. <see cref="ReserveEmailAsync"/>) ardından
-    /// kullanıcı oluşturma yolunun tekrar çağırması sorun çıkarmaz, hem de rezervasyonu
-    /// atlayan bir çağıran için dizine yazma güvenlik ağı olarak kalır — böylece
-    /// "dizine hiç yazılmadı" sınıfı hatalar tek bir sözleşmeye (çağıranın önceden
-    /// rezerve ettiğini varsaymak) bağımlı olmaktan çıkar.
-    ///
-    /// Yukarıdaki okuma-sonra-karar mantığı eşzamanlı iki isteği ayıramaz (TOCTOU);
-    /// asıl güvence alttaki <c>catch</c>'tir — INSERT birincil anahtara çarparsa da
-    /// 409'a çevrilir.
-    ///
-    /// Dizine yazan TEK YER burası DEĞİLDİR: <c>RebuildDirectoryCommand</c> de
-    /// <c>platform.Directory.Add</c> çağırır. İkisinin semantiği kasıtlı olarak
-    /// FARKLIDIR — burası kullanıcı OLUŞTURURKEN çakışmayı 409'a çevirip reddeder
-    /// (yetkisiz bir yazının başka kiracıyı ele geçirmesini önler), yeniden kurma
-    /// ise zaten yetkili kaynaktan (kiracının kendi Users tablosu) yazdığı için
-    /// çakışan satırları reddetmek yerine atlar ve raporlar.
-    /// </summary>
-    private async Task DizineYazAsync(string email, int tenantId, CancellationToken cancellationToken)
-    {
-        var normalizedEmail = TenantDirectoryEntry.Normalize(email);
-
-        var mevcut = await platform.Directory
-            .FirstOrDefaultAsync(d => d.NormalizedEmail == normalizedEmail, cancellationToken);
-
-        if (mevcut is not null)
-        {
-            if (mevcut.TenantId != tenantId)
-            {
-                throw new ConflictException($"'{email}' e-postasıyla kayıtlı bir hesap zaten var.");
-            }
-
-            return; // Aynı kiracı için zaten rezerve/yazılmış — idempotent no-op.
-        }
-
-        platform.Directory.Add(new TenantDirectoryEntry
-        {
-            NormalizedEmail = normalizedEmail,
-            TenantId = tenantId,
-        });
-
-        try
-        {
-            await platform.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateException)
-        {
-            // Eşzamanlı bir istek yukarıdaki kontrolden SONRA, biz SaveChanges'ten ÖNCE
-            // aynı e-postayı kaptı: TOCTOU. INSERT birincil anahtara çarptı.
-            throw new ConflictException($"'{email}' e-postasıyla kayıtlı bir hesap zaten var.");
-        }
     }
 
     private async Task SendInviteEmailAsync(

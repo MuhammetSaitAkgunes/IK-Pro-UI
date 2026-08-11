@@ -172,9 +172,9 @@ public class PlatformKatmaniTests(IKProApiFactory factory) : TenancyTestBase(fac
     {
         // Yarış koşulunun simülasyonu: dizinde Identity'de karşılığı OLMAYAN bir satır
         // elle oluşturulur. Böylece EmailExistsAsync (Identity sorgusu) false döner ve
-        // ön kontrolü geçer — ama ReserveEmailAsync'in yazdığı DizineYazAsync, dizinde
-        // BAŞKA bir kiracıya ait aynı e-postayı bulur ve ConflictException fırlatır.
-        // DÜRÜST NOT: bu test DizineYazAsync'in OKUMA-SONRA-KARAR dalını tetikler
+        // ön kontrolü geçer — ama ITenantDirectory.ReserveAsync, dizinde BAŞKA bir
+        // kiracıya ait aynı e-postayı bulur ve ConflictException fırlatır.
+        // DÜRÜST NOT: bu test ReserveAsync'in OKUMA-SONRA-KARAR dalını tetikler
         // (mevcut satır bulunur, TenantId eşleşmez → throw); alttaki gerçek
         // veritabanı-seviyesi kısıtı sınayan `catch (DbUpdateException)` dalı BURADAN
         // koşmaz — o yalnız GERÇEK eşzamanlı iki isteğin INSERT'i aynı anda

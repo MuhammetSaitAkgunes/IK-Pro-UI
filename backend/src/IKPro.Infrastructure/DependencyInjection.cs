@@ -107,6 +107,7 @@ public static class DependencyInjection
         services.AddScoped<JwtTokenService>();
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<IUserDirectorySource, Identity.UserDirectorySource>();
+        services.AddScoped<ITenantDirectory, Tenancy.TenantDirectory>();
         services.AddScoped<ITenantPurger, Persistence.TenantPurger>();
         // Kiracıya bağlı olduğu için SCOPED: singleton olsaydı ilk isteğin kiracısı
         // sonsuza kadar yapışırdı (captive dependency).

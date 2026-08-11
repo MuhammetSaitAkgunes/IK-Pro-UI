@@ -18,6 +18,7 @@ public sealed class TenantPurger(
     IPlatformDbContext platform,
     ICurrentTenant currentTenant,
     IFileStorage fileStorage,
+    ITenantDirectory directory,
     ILogger<TenantPurger> logger) : ITenantPurger
 {
     public async Task<bool> PurgeAsync(int tenantId, CancellationToken cancellationToken)
@@ -76,23 +77,13 @@ public sealed class TenantPurger(
         // satırı/dizin kalır ama uygulama verisi gitmiştir; durum Purging'de kaldığı
         // için kiracı erişilemez olarak durur (bkz. Task 6) ve operatör yeniden
         // çalıştırabilir (dizin silme de idempotenttir — kayıt yoksa no-op).
-        var dizinSatirlari = await platform.Directory
-            .Where(d => d.TenantId == tenantId)
-            .ToListAsync(cancellationToken);
-        if (dizinSatirlari.Count > 0)
-        {
-            platform.Directory.RemoveRange(dizinSatirlari);
-        }
+        await directory.RemoveForTenantAsync(tenantId, cancellationToken);
 
         // tenantRow üstte, Purging'e geçirilirken zaten çekildi ve DbContext'te
         // izleniyor (bkz. metod başı) — burada yeniden sorgulamaya gerek yok.
         if (tenantRow is not null)
         {
             platform.Tenants.Remove(tenantRow);
-        }
-
-        if (dizinSatirlari.Count > 0 || tenantRow is not null)
-        {
             await platform.SaveChangesAsync(cancellationToken);
         }
 

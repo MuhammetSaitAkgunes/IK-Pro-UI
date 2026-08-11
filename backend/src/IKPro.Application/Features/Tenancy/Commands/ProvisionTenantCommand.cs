@@ -34,7 +34,8 @@ public sealed class ProvisionTenantCommandValidator : AbstractValidator<Provisio
     }
 }
 
-public sealed class ProvisionTenantCommandHandler(IPlatformDbContext platform, IIdentityService identityService)
+public sealed class ProvisionTenantCommandHandler(
+    IPlatformDbContext platform, IIdentityService identityService, ITenantDirectory directory)
     : IRequestHandler<ProvisionTenantCommand, ProvisionTenantResult>
 {
     public async Task<ProvisionTenantResult> Handle(
@@ -50,7 +51,7 @@ public sealed class ProvisionTenantCommandHandler(IPlatformDbContext platform, I
         // ise Provisioning durumunda oluşturur (bkz. RegisterTenantCommand); ortak adımlar
         // TenantOnboarding'de.
         var tenant = await TenantOnboarding.CreateWithAdminAsync(
-            platform, identityService,
+            platform, identityService, directory,
             request.CompanyName.Trim(), slug,
             request.AdminName.Trim(), request.AdminEmail.Trim(),
             hedefDurum: TenantStatus.Active, cancellationToken);
