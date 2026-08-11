@@ -43,6 +43,23 @@ public sealed class IdentityService(
         var dizinKiraciId = await directory.FindTenantIdAsync(email, cancellationToken)
             ?? throw new UnauthorizedException(InvalidCredentialsMessage);
 
+        // FAZ 2 NOTU (bu dal — Faz 1b — burayı ÇÖZMEZ): `dizinKiraciId` yukarıda DOĞRU
+        // kiracıyı bulur, ama aşağıdaki `userManager` (constructor'da enjekte edilen
+        // `UserManager<ApplicationUser>`, dolayısıyla onun içindeki `AppDbContext`) hâlâ
+        // bu sınıf inşa edilirken kurulmuş AMBIENT/kiracısız HTTP kapsamının bağlantısını
+        // kullanır — `dizinKiraciId`'ye SABİTLENMEMİŞTİR. Bugün doğru sonuç verir çünkü
+        // Faz 1b'de tüm kiracılar aynı veritabanını paylaşıyor (bkz. TenantConnectionResolver).
+        // Faz 2'de kiracı başına veritabanına geçilince bu satır YANLIŞ kiracının
+        // veritabanında kullanıcı arar (dizinKiraciId'nin veritabanında değil) — login
+        // burada SESSİZCE bozulur (muhtemelen "kullanıcı yok" hatasıyla, gerçek nedeni
+        // gizleyerek). Bu yüzden LoginAsync'in Faz 2'de YENİDEN YAPILANDIRILMASI gerekir:
+        // kiracı yalnızca BURADA, dizin sorgusundan SONRA bilinir, dolayısıyla constructor
+        // enjeksiyonu (sıra: DI kapsamı kurulur → sonra kiracı öğrenilir) yapısal olarak
+        // yetersizdir. Olası yaklaşım: userManager/context'i constructor'da almak yerine,
+        // `dizinKiraciId` bilindikten SONRA `ITenantScopeFactory.Create(dizinKiraciId)` ile
+        // taze bir kapsam açıp o kapsamdan UserManager/AppDbContext çözmek (bkz. TenantPurger
+        // ve UserDirectorySource'taki aynı desen) — ya da login akışını iki aşamaya bölüp
+        // ikinci aşamayı kiracıya sabitlenmiş bir kapsamda çalıştırmak.
         var user = await userManager.FindByEmailAsync(email)
             ?? throw new UnauthorizedException(InvalidCredentialsMessage);
 
@@ -263,6 +280,19 @@ public sealed class IdentityService(
 
     public async Task<AuthResponse> RefreshAsync(string refreshToken, CancellationToken cancellationToken)
     {
+        // FAZ 2 NOTU: `context` burada da (LoginAsync'teki `userManager` gibi) constructor'da
+        // enjekte edilen AMBIENT AppDbContext'tir — refresh token'ın hangi kiracıya ait
+        // olduğu bu sorgudan ÖNCE bilinmez, tıpkı login'de e-postanın kiracısının dizin
+        // sorgusundan önce bilinmemesi gibi. Bugün doğru sonuç verir (Faz 1b'de tek DB) ve
+        // ayrıca bu uç HTTP isteğiyle çağrıldığından `ICurrentTenant` zaten geçerli bir JWT
+        // `tenant` claim'inden dolar — ama bu, `context`'in doğru kiracıya kasıtlı olarak
+        // SABİTLENDİĞİ anlamına gelmez, sadece HTTP kapsamının o anki değeriyle çakıştığı
+        // anlamına gelir. Faz 2'de kiracı başına veritabanına geçilince: token hash'i
+        // yalnızca refresh token'ın SAHİBİ olduğu kiracının veritabanında bulunabilir,
+        // dolayısıyla bu sorgu da LoginAsync gibi iki aşamalı çözülmeli — ya token'ın
+        // kiracısı platform/dizin katmanından ÖNCE belirlenip `ITenantScopeFactory` ile
+        // taze bir kapsamdan çözülmeli, ya da bu uç için ambient context'in JWT claim'inden
+        // GERÇEKTEN doğru kiracıya sabitlendiği açıkça garanti altına alınmalı.
         var hash = JwtTokenService.Hash(refreshToken);
         var stored = await context.RefreshTokens
             .Include(t => t.User)
