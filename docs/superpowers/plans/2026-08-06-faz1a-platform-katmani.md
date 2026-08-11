@@ -1428,6 +1428,39 @@ git commit -m "chore(platform): CI, compose ve runbook platform veritabanını y
 
 ---
 
+## Uygulama sonucu (2026-08-07)
+
+**Tamamlandı.** 7 görev, 24 commit. Test tabanı 158 → 175 (47 birim + 128
+entegrasyon), derleme uyarısız (`-warnaserror`).
+
+Yedi görevin altısında inceleme gerçek kusur buldu; hepsi "testler geçiyor ama
+kod yanlış şeyi yapıyor" sınıfındaydı:
+
+| Görev | Yakalanan |
+| --- | --- |
+| 1 | Test hiçbir şey doğrulamıyordu (`Count >= 0` her zaman doğru) |
+| 4 | **Üç kullanıcı yolu dizine yazmıyordu** — self-servis kayıt, demo seed, purge sonrası temizlik. Faz 1b'de "müşteri giriş yapamıyor" olarak patlayacaktı. Ayrıca bir test iddia ettiği kısıtı değil, ondan önceki ön kontrolü sınıyordu. |
+| 5 | Kurtarma aracı tek çakışmada tümden çöküyordu — en çok ihtiyaç duyulacağı anda |
+| 6 | Takılı kiracı listesinde eşik `Purging`'e de uygulanıyordu (plan hatası; kullanıcı kararıyla düzeltildi) |
+| 7 | Runbook "iki DB de yedeklenir" derken tüm örnekler tek DB'yi gösteriyordu; düzeltildikten sonra iki zamanlanmış görev aynı adı kullanıp birbirini eziyordu |
+| Nihai | Bu dalı çeken geliştiricinin uygulaması **açılışta çöküyordu**; üretim migration belgesi platform DB'sini hiç migrate etmiyordu; purge'de dosya silme hatası operatöre görünmüyordu; dizine yazma sırası kullanıcıyı rolsüz ve dizinsiz bırakabiliyordu |
+
+## Faz 1b'ye devredilenler
+
+Bunlar bilinçli olarak ertelendi; 1b planına girdi olacak.
+
+| Konu | Not |
+| --- | --- |
+| `RefreshAsync` kiracı `Status` kontrolü | Tasarım gereği 1b'de kapı bağlantı çözümüne taşınınca yapısal olarak kapanır. **Şart:** 1b gecikirse, `Frozen` bir kiracının kullanıcıları refresh token ömrü boyunca oturum uzatmaya devam eder — o durumda 1b'yi beklemeden üç satırlık kontrol eklenmeli. |
+| Dizine yazma sırası — öksüz satır | `DizineYazAsync` başarılı olup `CreateAsync` başarısız olursa dizinde kullanıcısız satır kalır. Aynı kiracı için sonraki deneme idempotentlik sayesinde kendini onarır; test edilmiyor. 1b'de bağlantı katmanına geçmeden önce test eklenmeli. |
+| İşe alım yolu dizin testi | `CreateEmployeeLoginAsync` en yüksek hacimli kullanıcı yaratma yolu ve dizin iddiası olan testi yok. Dizin yazımı sessiz olduğu için regresyon 1b'ye kadar fark edilmez. |
+| `AcceptInviteAsync` durum makinesini atlıyor | Herhangi bir `Provisioning` kiracıyı şifre belirlenir belirlenmez `Active` yapıyor. 1a'da zararsız; **Faz 2'de var olmayan bir veritabanına Active kiracı demektir.** |
+| Dizinin ayrı soyutlamaya çıkarılması | Bugün tek yazma yolu `IdentityService` içinde. 1b'de bağlantı çözücü de dizine erişecek — o noktada Identity'den ayrılmalı. |
+| `TenantOnboarding` ile `RegisterTenantCommand` sıra kopyası | Self-servis kayıt slug-retry döngüsü yüzünden ortak yolu kullanmıyor, sırayı kopyalıyor. İki kopya = ileride sessiz sapma riski. |
+| `TenantStatus` migration `defaultValue: ""` | Geçerli enum değeri değil; şemada kalıcı. EF her zaman açık yazdığı için zararsız. |
+
+---
+
 ## Faz sonu doğrulama
 
 - [ ] `IKProDb` ve `IKProPlatform` sıfırdan kurulup uygulama açılıyor
