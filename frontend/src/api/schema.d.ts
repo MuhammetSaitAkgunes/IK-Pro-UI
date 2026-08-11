@@ -637,71 +637,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/register": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["RegisterCommand"];
-                    "text/json": components["schemas"]["RegisterCommand"];
-                    "application/*+json": components["schemas"]["RegisterCommand"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["AuthResponse"];
-                        "application/json": components["schemas"]["AuthResponse"];
-                        "text/json": components["schemas"]["AuthResponse"];
-                    };
-                };
-                /** @description Bad Request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["ProblemDetails"];
-                        "application/json": components["schemas"]["ProblemDetails"];
-                        "text/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Conflict */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["ProblemDetails"];
-                        "application/json": components["schemas"]["ProblemDetails"];
-                        "text/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/auth/refresh": {
         parameters: {
             query?: never;
@@ -4203,6 +4138,272 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenants/{id}/rebuild-directory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Kiracının yönlendirme dizinini yeniden kurar (geri yükleme sonrası zorunlu adım). */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["RebuildDirectoryResult"];
+                        "application/json": components["schemas"]["RebuildDirectoryResult"];
+                        "text/json": components["schemas"]["RebuildDirectoryResult"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{id}/freeze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Kiracıyı Active'den Frozen'a alır ve kütüğü ANINDA düşürür (bakım/geri
+         *                 yükleme öncesi zorunlu adım — bkz. yedekleme-ve-kurtarma.md). Provisioning/Purging
+         *                 durumundaki bir kiracı dondurulamaz.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantStatusResult"];
+                        "application/json": components["schemas"]["TenantStatusResult"];
+                        "text/json": components["schemas"]["TenantStatusResult"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{id}/unfreeze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Kiracıyı Frozen'dan Active'e döndürür ve kütüğü ANINDA düşürür.
+         *                 Provisioning/Purging durumundaki bir kiracı bu uçla çözülemez.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantStatusResult"];
+                        "application/json": components["schemas"]["TenantStatusResult"];
+                        "text/json": components["schemas"]["TenantStatusResult"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/stuck": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Provizyonu/silmesi yarıda kalmış kiracılar (operatör görünürlüğü). */
+        get: {
+            parameters: {
+                query?: {
+                    olderThanMinutes?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["StuckTenantDto"][];
+                        "application/json": components["schemas"]["StuckTenantDto"][];
+                        "text/json": components["schemas"]["StuckTenantDto"][];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tenants/signup": {
         parameters: {
             query?: never;
@@ -4214,7 +4415,8 @@ export interface paths {
         put?: never;
         /**
          * @description Self-servis kayıt (public, platform anahtarı yok, 'signup' rate-limit'li).
-         *                 Kiracı pasif oluşturulur; admin davet e-postasını kabul edince etkinleşir.
+         *                 Kiracı Provisioning durumunda oluşturulur; admin davet e-postasını kabul edince
+         *                 (accept-invite) Active'e geçer.
          */
         post: {
             parameters: {
@@ -5261,6 +5463,14 @@ export interface components {
             /** Format: int32 */
             tenantId?: number;
             slug?: string | null;
+            dosyalarSilinemedi?: boolean;
+        };
+        RebuildDirectoryResult: {
+            /** Format: int32 */
+            tenantId?: number;
+            /** Format: int32 */
+            yazilanKayit?: number;
+            cakisanEpostalar?: string[] | null;
         };
         RecruitmentFunnelDto: {
             /** Format: int32 */
@@ -5292,11 +5502,6 @@ export interface components {
         };
         RefreshTokenCommand: {
             refreshToken?: string | null;
-        };
-        RegisterCommand: {
-            name?: string | null;
-            email?: string | null;
-            password?: string | null;
         };
         RegisterTenantCommand: {
             companyName?: string | null;
@@ -5370,6 +5575,14 @@ export interface components {
             security?: components["schemas"]["SecuritySettingsDto"];
             subscription?: components["schemas"]["SubscriptionDto"];
         };
+        StuckTenantDto: {
+            /** Format: int32 */
+            tenantId?: number;
+            slug?: string | null;
+            status?: components["schemas"]["TenantStatus"];
+            /** Format: date-time */
+            createdAtUtc?: string;
+        };
         SubscriptionDto: {
             plan?: string | null;
             planName?: string | null;
@@ -5409,6 +5622,18 @@ export interface components {
             startDate?: string;
             /** Format: date */
             endDate?: string;
+        };
+        /**
+         * Format: int32
+         * @enum {integer}
+         */
+        TenantStatus: 0 | 1 | 2 | 3;
+        TenantStatusResult: {
+            /** Format: int32 */
+            tenantId?: number;
+            slug?: string | null;
+            status?: components["schemas"]["TenantStatus"];
+            alreadyInTargetState?: boolean;
         };
         TimesheetDto: {
             /** Format: int32 */

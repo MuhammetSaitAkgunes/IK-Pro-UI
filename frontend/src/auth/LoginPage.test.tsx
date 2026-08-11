@@ -27,7 +27,7 @@ const renderLogin = () =>
     <QueryClientProvider client={new QueryClient()}>
       <MemoryRouter>
         <AuthProvider>
-          <LoginPage mode="login" />
+          <LoginPage />
         </AuthProvider>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -63,11 +63,9 @@ test("başarısız girişte hata mesajı görünür, oturum yazılmaz", async ()
   expect(getSession()).toBeNull();
 });
 
-test("sekmeler ve iki form da DOM'da (parite)", () => {
+test("kayıt sekmesi yok — POST /api/auth/register kiracı sızıntısı yüzünden kaldırıldı", () => {
   renderLogin();
-  const signupTabButton = document.querySelector("div.auth-tabs button:nth-child(2)")!;
-  expect(signupTabButton).toHaveClass("auth-tab");
   expect(document.getElementById("auth-login")).toHaveClass("auth-form", "active");
-  expect(document.getElementById("auth-signup")).toHaveClass("auth-form");
-  expect(document.getElementById("auth-signup")).not.toHaveClass("active");
+  expect(document.getElementById("auth-signup")).toBeNull();
+  expect(document.querySelector(".auth-tabs")).toBeNull();
 });

@@ -6,7 +6,6 @@ import { clearSession, getSession, setSession, subscribeSession, type UserDto } 
 type AuthValue = {
   user: UserDto | null;
   login: (email: string, password: string) => Promise<UserDto>;
-  register: (name: string, email: string, password: string) => Promise<UserDto>;
   logout: () => Promise<void>;
 };
 
@@ -44,12 +43,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [accept],
   );
 
-  const register = useCallback(
-    async (name: string, email: string, password: string) =>
-      accept(await apiFetch<AuthResponse>("/auth/register", { method: "POST", body: JSON.stringify({ name, email, password }) })),
-    [accept],
-  );
-
   const logout = useCallback(async () => {
     const refreshToken = getSession()?.refreshToken;
     try {
@@ -60,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearSession();
   }, []);
 
-  return <AuthContext.Provider value={{ user, login, register, logout }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthValue {

@@ -117,8 +117,7 @@ function GatedPage({ route }: { route: AppRoute }) {
 
 export function buildRouteObjects(): RouteObject[] {
   return [
-    { path: "/login", element: <PublicOnly><LoginPage mode="login" /></PublicOnly> },
-    { path: "/signup", element: <PublicOnly><LoginPage mode="signup" /></PublicOnly> },
+    { path: "/login", element: <PublicOnly><LoginPage /></PublicOnly> },
     { path: "/accept-invite", element: <PublicOnly><AcceptInvitePage /></PublicOnly> },
     { path: "/register-company", element: <PublicOnly><CompanySignupPage /></PublicOnly> },
     {
@@ -133,6 +132,6 @@ export function buildRouteObjects(): RouteObject[] {
         },
       ],
     },
-    { path: "*", element: <PublicOnly><LoginPage mode="login" /></PublicOnly> },
+    { path: "*", element: <PublicOnly><LoginPage /></PublicOnly> },
   ];
 }

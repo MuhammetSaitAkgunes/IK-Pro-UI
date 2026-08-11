@@ -99,61 +99,6 @@ public sealed class IdentityService(
         return await IssueTokensAsync(user, cancellationToken);
     }
 
-    public async Task<AuthResponse> RegisterAsync(
-        string name, string email, string password, string role, CancellationToken cancellationToken)
-    {
-        if (await userManager.FindByEmailAsync(email) is not null)
-        {
-            throw new ConflictException("Bu e-posta adresiyle kayıtlı bir hesap zaten var.");
-        }
-
-        var user = new ApplicationUser
-        {
-            UserName = email,
-            Email = email,
-            EmailConfirmed = true,
-            DisplayName = name,
-            Initials = DeriveInitials(name),
-            // Faz 0/1: anonim self-servis kayıt henüz kiracı bağlamı taşımaz → aktif
-            // kiracı yoksa varsayılan (ilk) kiracıya bağlanır. Faz 1 (self-servis) bunu
-            // gerçek kiracı seçimi/davetiyle değiştirecek.
-            TenantId = currentTenant.TenantId ?? await DefaultTenantIdAsync(cancellationToken),
-        };
-
-        // Dizine ÖNCE yaz, kullanıcıyı SONRA oluştur — sıra bilinçli olarak budur (bkz.
-        // ITenantDirectory.ReserveAsync xmldoc + CreateInvitedUserAsync'teki aynı gerekçe).
-        // userManager.CreateAsync hemen commit eder ve geri alınamaz; sıra tersi olsaydı
-        // ve ReserveAsync arada ConflictException fırlatsaydı (TOCTOU — başka bir istek
-        // aynı e-postayı kaptı), kullanıcı uygulama DB'sinde KALICI olarak var ama
-        // dizinde YOK kalırdı: Faz 1b'de asla giriş yapamaz, rolü de atanmamış olur, ve
-        // EmailExistsAsync artık true döndüğünden aynı e-postayla yeniden deneme
-        // sonsuza kadar 409 alır. Dizine önce yazmak bu sınıf hatayı imkansız kılar:
-        // ReserveAsync başarısız olursa CreateAsync hiç çağrılmaz, ortada yarım kalan
-        // kullanıcı olmaz.
-        await directory.ReserveAsync(email, user.TenantId, cancellationToken);
-
-        var createResult = await userManager.CreateAsync(user, password);
-        if (!createResult.Succeeded)
-        {
-            // Identity parola/kullanıcı politikası ihlalleri 400 doğrulama hatası olarak döner.
-            throw new ValidationException(createResult.Errors
-                .Select(e => new ValidationFailure("password", e.Description)));
-        }
-
-        await userManager.AddToRoleAsync(user, role);
-
-        // Kapı burada BİLİNÇLİ olarak atlanır (Düzeltme turu 1, IMPORTANT #2).
-        // Bu anonim self-servis kayıt akışıdır: user.TenantId yukarıda kayıt
-        // olanın NİYETİNİ değil, DefaultTenantIdAsync'in döndürdüğü (platformdaki
-        // EN DÜŞÜK Id'li) kiracıyı temsil eder. Kapıyı burada da çalıştırmak,
-        // platformun ilk kiracısı herhangi bir sebeple dondurulur/purge'e girerse
-        // /api/auth/register'a yapılan HER anonim kaydı (hedef kiracı ne olursa
-        // olsun) 403'e düşürürdü — bu değişiklikten önce var olmayan gerçek bir
-        // regresyon. Kapı IssueTokensAsync'in gerçek iki çağıranında (LoginAsync,
-        // RefreshAsync) çalışmaya devam ediyor.
-        return await IssueTokensAsync(user, cancellationToken, skipAccessCheck: true);
-    }
-
     public async Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken)
         => await userManager.FindByEmailAsync(email) is not null;
 
@@ -350,24 +295,21 @@ public sealed class IdentityService(
         return user is null ? null : await BuildUserDtoAsync(user);
     }
 
-    /// <param name="skipAccessCheck">
-    /// Yalnız <see cref="RegisterAsync"/> için <c>true</c> geçilir (bkz. orada
-    /// Düzeltme turu 1, IMPORTANT #2 yorumu) — anonim kayıtta <c>user.TenantId</c>
-    /// kayıt olanın niyetini değil <see cref="DefaultTenantIdAsync"/>'in
-    /// döndürdüğü kiracıyı temsil eder, kapıyı orada çalıştırmak platform
-    /// genelinde yanlış-pozitif 403'e yol açardı.
-    /// </param>
-    private async Task<AuthResponse> IssueTokensAsync(
-        ApplicationUser user, CancellationToken cancellationToken, bool skipAccessCheck = false)
+    /// <summary>
+    /// Erişim kapısı artık KOŞULSUZDUR (POST /api/auth/register kaldırılmasıyla
+    /// birlikte — bkz. AuthController xmldoc): daha önce bu metodun tek çağıranı
+    /// olan anonim self-servis kayıt <c>skipAccessCheck: true</c> geçerek kapıyı
+    /// bilinçli atlıyordu, bu da kiracı sızıntısı güvenlik açığının bir parçasıydı.
+    /// Ucun kaldırılmasıyla o istisna da ortadan kalktı: bundan sonra hiçbir token
+    /// üretimi (login, refresh) bu kapıyı atlayamaz.
+    /// </summary>
+    private async Task<AuthResponse> IssueTokensAsync(ApplicationUser user, CancellationToken cancellationToken)
     {
-        if (!skipAccessCheck)
-        {
-            // Kapı burada: login ve refresh'in ORTAK yolu burasıdır, dolayısıyla
-            // ikisi de tek noktadan korunur. Faz 1a'da kapı yalnız login'deydi ve
-            // refresh onu atlıyordu — dondurulmuş bir kiracının kullanıcısı elindeki
-            // refresh token'la oturumunu süresiz uzatabiliyordu.
-            await accessGuard.EnsureAccessibleAsync(user.TenantId, cancellationToken);
-        }
+        // Kapı burada: login ve refresh'in ORTAK yolu burasıdır, dolayısıyla
+        // ikisi de tek noktadan korunur. Faz 1a'da kapı yalnız login'deydi ve
+        // refresh onu atlıyordu — dondurulmuş bir kiracının kullanıcısı elindeki
+        // refresh token'la oturumunu süresiz uzatabiliyordu.
+        await accessGuard.EnsureAccessibleAsync(user.TenantId, cancellationToken);
 
         var roles = await userManager.GetRolesAsync(user);
         var (accessToken, expiresAtUtc) = tokenService.CreateAccessToken(user, roles);
@@ -406,13 +348,6 @@ public sealed class IdentityService(
             user.TenantId,
             tenantName);
     }
-
-    /// <summary>Varsayılan (ilk) kiracı — anonim kayıtta kullanılır (Faz 1'de değişecek).</summary>
-    private async Task<int> DefaultTenantIdAsync(CancellationToken cancellationToken) =>
-        await platform.Tenants
-            .OrderBy(t => t.Id)
-            .Select(t => t.Id)
-            .FirstAsync(cancellationToken);
 
     /// <summary>Ad soyaddan baş harfler, ör. "Ahmet Yılmaz" → "AY" (frontend initials paritesi).</summary>
     private static string DeriveInitials(string name)
