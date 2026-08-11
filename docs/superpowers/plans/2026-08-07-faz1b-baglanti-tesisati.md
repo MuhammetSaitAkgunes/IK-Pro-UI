@@ -1004,7 +1004,7 @@ git add -A && git commit -m "feat(auth): login kiracıyı yönlendirme dizininde
 - Modify: `docs/rehberler/` altındaki mimari belgesi (varsa)
 - Modify: `docs/yedekleme-ve-kurtarma.md`
 
-- [ ] **Step 1: Uçtan uca elle doğrulama**
+- [x] **Step 1: Uçtan uca elle doğrulama**
 
 İki veritabanını da düşür, uygulamayı aç, şunları sırayla yap ve çıktıları rapora yaz:
 
@@ -1015,15 +1015,15 @@ git add -A && git commit -m "feat(auth): login kiracıyı yönlendirme dizininde
 5. Kiracıyı `Active`'e döndür → üçü de tekrar çalışmalı
 6. Dizin kaydını sil → giriş başarısız → `rebuild-directory` → giriş tekrar çalışıyor
 
-- [ ] **Step 2: Runbook'a dondurma prosedürünü ekle**
+- [x] **Step 2: Runbook'a dondurma prosedürünü ekle**
 
 `docs/yedekleme-ve-kurtarma.md`'deki geri yükleme adımlarında "kiracıyı dondur" adımı artık **gerçek**: `Tenants.Status = Frozen` yapmanın tüm erişimi kestiğini ve kütüğün anında düştüğünü yaz. Faz 1a'da bu adım yalnız yeni girişleri kesiyordu — o uyarıyı kaldır.
 
-- [ ] **Step 3: Plan sonucu bölümü**
+- [x] **Step 3: Plan sonucu bölümü**
 
 Bu plana "Uygulama sonucu" bölümü ekle: görev sayısı, commit sayısı, test tabanı değişimi, incelemede yakalananlar, Faz 2'ye devredilenler.
 
-- [ ] **Step 4: Tam doğrulama ve commit**
+- [x] **Step 4: Tam doğrulama ve commit**
 
 ```bash
 cd backend && dotnet build --configuration Release -warnaserror && dotnet test --configuration Release
@@ -1035,12 +1035,70 @@ git add -A && git commit -m "docs(tenancy): Faz 1b sonucu ve dondurma prosedür�
 
 ## Faz sonu doğrulama
 
-- [ ] Dondurulmuş kiracı: login, refresh ve yetkili istek — **üçü de** reddediliyor
-- [ ] Aktif kiracı hiçbir yerde engellenmiyor
-- [ ] Kütük durum değişiminde anında düşüyor
-- [ ] Arka plan işleri ve seed kiracıya sabitlenmiş kapsam kullanıyor; elle `Impersonate` kalmadı
-- [ ] Login dizin üzerinden çözüyor; dizin silinince giriş kesiliyor, yeniden kurulunca dönüyor
-- [ ] Bağlantı çözücü devrede ve tüm testler geçiyor (davranış değişmedi)
-- [ ] Derleme uyarısız, backend ve frontend suite'leri yeşil
+- [x] Dondurulmuş kiracı: login, refresh ve yetkili istek — **üçü de** reddediliyor
+- [x] Aktif kiracı hiçbir yerde engellenmiyor
+- [x] Kütük durum değişiminde anında düşüyor
+- [x] Arka plan işleri ve seed kiracıya sabitlenmiş kapsam kullanıyor; elle `Impersonate` kalmadı
+- [x] Login dizin üzerinden çözüyor; dizin silinince giriş kesiliyor, yeniden kurulunca dönüyor
+- [x] Bağlantı çözücü devrede ve tüm testler geçiyor (davranış değişmedi)
+- [x] Derleme uyarısız, backend ve frontend suite'leri yeşil
 
 **Sonraki:** Faz 2 — ayrılma. Provizyon gerçek `CREATE DATABASE` yapar, `Tenants.DatabaseName` gelir, `Subscriptions` platforma taşınır, çözücünün içi katalog adı üretmeye başlar.
+
+---
+
+## Uygulama sonucu
+
+**Görev sayısı:** 7 (Task 1–7, planlandığı gibi tamamlandı).
+
+**Commit sayısı:** Plan commit'i (`ce7cad4`) dahil olmak üzere Faz 1b'de toplam
+12 commit: 5 özellik commit'i (dizin ayrımı, kiracı kütüğü, erişim kapısı,
+bağlantı çözücü, sabitlenmiş kapsam fabrikası + login dizin çözümü), 2 düzeltme
+turu commit'i (erişim kapısının aşırı-kapatması; bağlantı dizesi doğrulamasının
+açılışa geri getirilmesi), 1 dizin/Identity tutarsızlığı testi ve bu görevin
+(Task 7) dondurma/çözme ucu + doğrulama + dokümantasyon commit'leri.
+
+**Test tabanı değişimi:** Faz 1b başlangıcında 175 test (Faz 1a sonu) idi;
+Task 1–6 sonunda 50 birim + 142 entegrasyon = **192**'ye çıktı. Bu görev
+(Task 7) planın öngörmediği bir uç (dondurma/çözme) eklediği için 10 yeni
+entegrasyon testi (`TenantFreezeTests.cs`) gerekti: **50 birim + 152
+entegrasyon = 202 test**, hepsi yeşil. Hiçbir test azalmadı/kaldırılmadı.
+
+**Plandan sapma — dondurma/çözme ucu:** Plan Task 7'yi yalnız "doğrulama +
+dokümantasyon" olarak tanımlıyordu, ama erişim kapısının kurduğu yeteneğin
+(kiracı durumu → erişim) operatör tarafından desteklenen bir yolu yoktu.
+Yedekleme runbook'unun geri yükleme prosedürü "kiracıyı dondur" diyordu, tek
+seçenek `Tenants.Status`'a doğrudan SQL yazmaktı — ki bu kütüğü (`ITenantRegistry`)
+düşürmediği için değişiklik en geç 5 dakika (TTL) gecikirdi. Bu yüzden
+`TenancyController`'a platform-key korumalı iki yeni uç eklendi:
+
+- `POST /api/tenants/{id}/freeze` — Active → Frozen, kütüğü ANINDA düşürür.
+- `POST /api/tenants/{id}/unfreeze` — Frozen → Active, kütüğü ANINDA düşürür.
+
+Her ikisi de `Provisioning`/`Purging` durumundaki bir kiracıyı 409 ile
+reddeder (o durumlar kendi yaşam döngüsüne aittir, elle oynanmaz) ve hedef
+durumdaki bir kiracı için idempotent no-op döner (operatör retry'ında hataya
+çarpmaz). Var olmayan kiracı 404. Bu, teslim edilebilirin tamamlanması olarak
+eklendi — kapsamın genişletilmesi değil.
+
+**İncelemede yakalananlar (Task 1–6, önceki turlar):**
+- Erişim kapısının isteğin taşıdığı (dondurulmuş kiracıdan kalma) token'a değil,
+  UCUN kendi yetkilendirme gereksinimine bağlı olması gerektiği — aksi halde
+  eski bir token taşıyan istemci BAŞKA aktif bir kiracıya login yapamazdı
+  [inceleme #1/#2].
+- Bağlantı dizesi doğrulamasının açılışta (fail-fast) kalması gerektiği; kapsam
+  fabrikasına taşınırken kaybolma riski [düzeltme turu 1].
+- Dizin/Identity tutarsızlığında (dizin var ama Identity'de kullanıcı yok gibi
+  uç durumlar) girişin güvenli tarafta reddedilmesi gerektiği — bu görevde
+  (Task 7 öncesi) ayrı bir testle güvenceye alındı.
+
+**Faz 2'ye devredilenler:**
+- Provizyonun gerçek `CREATE DATABASE` yapması, `Tenants.DatabaseName` alanı.
+- `Subscriptions`'ın platform veritabanına taşınması.
+- Bağlantı çözücünün içinin katalog adı üretmeye başlaması (bugün hâlâ tek
+  paylaşılan `IKProDb`).
+- Kiracı başına gerçek fiziksel izolasyon ve tek-kiracı nokta-zaman geri yükleme
+  (bkz. `docs/superpowers/specs/2026-08-06-kiraci-basina-veritabani-design.md`).
+  Bugünkü `freeze`/`unfreeze` ucu bu tasarımın öngördüğü "1. `Status = Frozen`"
+  adımını zaten karşılıyor; Faz 2 yalnız 2–4. adımları (gerçek `RESTORE
+  DATABASE`, dosya arşivi, dizin yeniden kurma) otomatikleştirecek.
