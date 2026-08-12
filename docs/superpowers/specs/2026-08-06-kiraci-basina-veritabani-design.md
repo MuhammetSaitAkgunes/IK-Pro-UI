@@ -352,7 +352,8 @@ açıklanamaz şekilde bozar.
 | --- | --- | --- |
 | 1a · Platform katmanı | Platform DB, `Tenants` taşınması, `TenantStatus`, yönlendirme dizini, dizin yeniden kurma, provizyon durum makinesi, çapraz-DB purge. | Mümkün |
 | 1b · Bağlantı tesisatı | Bağlantı çözücü, kiracı kütüğü, durum kapısı, kiracıya sabitlenmiş kapsam fabrikası. Çözücü **herkese aynı veritabanını** döndürür — hiçbir şey değişmemiş gibi çalışır. | Mümkün |
-| 2 · Ayrılma | Provizyon gerçek DB kurar; `Subscriptions` platforma taşınır; demo kiracılar yeni yoldan yeniden oluşturulur. | Zor — asıl eşik |
+| 2a · Kimlik hazırlığı | Refresh token'lar platform DB'sine taşınır; kullanıcı işlemleri kiracıya sabitlenmiş kapsamda çalışır. Veri **bölünmez**, davranış değişmez. | Mümkün |
+| 2b · Ayrılma | Provizyon gerçek DB kurar; `Tenants.DatabaseName`; çözücü katalog üretir; purge `DROP DATABASE` yapar; `Subscriptions` platforma taşınır; demo kiracılar yeni yoldan yeniden oluşturulur. | Zor — asıl eşik |
 | 3 · Yedekleme | Tatbikat, yedek planı, migration koşucusu. | — |
 | 4 · Temizlik (isteğe bağlı) | Yol B: `TenantId` ve filtrelerin kaldırılması. Üretimde oturduktan sonra, ayrı karar. | — |
 
@@ -362,6 +363,21 @@ noktasını kaybettirirdi.
 
 `Subscriptions` Faz 2'ye alındı: kiracı veritabanları gerçekten ayrılana kadar
 merkezî olmasının faydası yok, taşımanın riski ise bugünden alınmış olurdu.
+
+**Faz 2 neden ikiye bölündü:** `UserManager`, `AppDbContext`'e bağlıdır ve o da
+bağlantısını aktif kiracıdan alır. Veritabanları ayrıldığı anda login kırılır —
+kullanıcıyı bulmak için hangi katalogda arayacağını bilmen gerekir, ama kiracıyı
+bulmak için kullanıcıyı bulman gerekir. Kimlik katmanının bu düğümü çözmesi
+(2a) veri bölünmeden yapılabilir ve tek başına doğrulanabilir; ayrılmanın (2b)
+ön koşuludur.
+
+**Refresh yönlendirme kararı (2a):** Elinde yalnız token dizesi olan sunucu hangi
+kiracı veritabanına bakacağını bilemez — dizin burada yardım edemez. Karar:
+**refresh token'lar platform veritabanına taşınır.** Satır zaten `TenantId`
+taşıdığı için yönlendirmeyi o verir ve token biçimi değişmez. Bedeli:
+`RefreshTokens.UserId → Users.Id` yabancı anahtarı düşer (çapraz-DB FK mümkün
+değil) ve bir kiracıyı geri yüklemek **oturumları geri sarmaz** — ki bu doğru
+davranıştır, oturum veri değil durumdur.
 
 Faz 1, riskli tesisatı veri taşımasından ayırır ve tek başına doğrulanabilir
 kılar. Gerçek müşteri verisi olmadığı için Faz 2'de taşıma işi yoktur — geçişi
