@@ -4,14 +4,11 @@ import { ApiError } from "../api/client";
 import { useAuth } from "./AuthContext";
 import { roleHomeFor } from "../routes";
 
-export function LoginPage({ mode = "login" }: { mode?: "login" | "signup" }) {
-  const { login, register } = useAuth();
+export function LoginPage() {
+  const { login } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("ik@hrmaster.local");
   const [password, setPassword] = useState("demo123");
-  const [name, setName] = useState("İK Yöneticisi");
-  const [signupEmail, setSignupEmail] = useState("ik@hrmaster.local");
-  const [signupPassword, setSignupPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const run = async (event: FormEvent, action: () => Promise<unknown>) => {
@@ -48,12 +45,11 @@ export function LoginPage({ mode = "login" }: { mode?: "login" | "signup" }) {
       </section>
 
       <section className="auth-panel">
-        <div className="auth-tabs">
-          <button className={`auth-tab ${mode === "login" ? "active" : ""}`} onClick={() => navigate("/login")}>Giriş yap</button>
-          <button className={`auth-tab ${mode === "signup" ? "active" : ""}`} onClick={() => navigate("/signup")}>Hesap oluştur</button>
-        </div>
-
-        <form id="auth-login" className={`auth-form ${mode === "login" ? "active" : ""}`} onSubmit={(e) => run(e, () => login(email, password))}>
+        {/* Kayıt sekmesi/mode="signup" yolu KASITLI olarak yok: anonim self-servis
+            kayıt (eski POST /api/auth/register) kiracı sızıntısı güvenlik açığıydı
+            ve uç tamamen kaldırıldı. Şirket kaydı için tek meşru yol aşağıdaki
+            "Şirketinizi kaydedin" bağlantısıyla /register-company'dir. */}
+        <form id="auth-login" className="auth-form active" onSubmit={(e) => run(e, () => login(email, password))}>
           <h2>Hoş geldiniz</h2>
           <p>Demo hesaba giriş yaparak uygulamayı inceleyebilirsiniz.</p>
           <div className="input-group">
@@ -64,7 +60,7 @@ export function LoginPage({ mode = "login" }: { mode?: "login" | "signup" }) {
             <label htmlFor="login-password">Şifre</label>
             <input id="login-password" className="input-control" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
-          {mode === "login" && error && <p className="form-error" role="alert">{error}</p>}
+          {error && <p className="form-error" role="alert">{error}</p>}
           <button type="submit" className="btn btn-primary auth-submit">
             <i aria-hidden="true" className="fa-solid fa-arrow-right-to-bracket" /> Giriş yap
           </button>
@@ -74,27 +70,6 @@ export function LoginPage({ mode = "login" }: { mode?: "login" | "signup" }) {
               Şirketinizi kaydedin
             </button>
           </p>
-        </form>
-
-        <form id="auth-signup" className={`auth-form ${mode === "signup" ? "active" : ""}`} onSubmit={(e) => run(e, () => register(name, signupEmail, signupPassword))}>
-          <h2>Demo hesap oluştur</h2>
-          <p>Bilgiler gerçek backend'de kullanıcı kaydı oluşturur.</p>
-          <div className="input-group">
-            <label htmlFor="signup-name">Ad soyad</label>
-            <input id="signup-name" className="input-control" value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-          <div className="input-group">
-            <label htmlFor="signup-email">İş e-postası</label>
-            <input id="signup-email" className="input-control" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} />
-          </div>
-          <div className="input-group">
-            <label htmlFor="signup-password">Şifre</label>
-            <input id="signup-password" className="input-control" type="password" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} />
-          </div>
-          {mode === "signup" && error && <p className="form-error" role="alert">{error}</p>}
-          <button type="submit" className="btn btn-primary auth-submit">
-            <i aria-hidden="true" className="fa-solid fa-user-plus" /> Hesap oluştur
-          </button>
         </form>
       </section>
     </main>

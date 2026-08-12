@@ -11,9 +11,6 @@ public interface IIdentityService
     /// <summary>E-posta + şifre ile giriş; başarısızsa <c>UnauthorizedException</c>.</summary>
     Task<AuthResponse> LoginAsync(string email, string password, CancellationToken cancellationToken);
 
-    /// <summary>Yeni kullanıcı kaydı; e-posta çakışmasında <c>ConflictException</c>.</summary>
-    Task<AuthResponse> RegisterAsync(string name, string email, string password, string role, CancellationToken cancellationToken);
-
     /// <summary>E-posta ile kayıtlı bir hesap var mı (işe alım öncesi erken doğrulama).</summary>
     Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken);
 

@@ -1,5 +1,6 @@
 using FluentAssertions;
 using IKPro.Application.Features.Auth;
+using IKPro.Tests.Integration.Tenancy;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -8,12 +9,19 @@ namespace IKPro.Tests.Integration.Auth;
 
 /// <summary>
 /// Faz 2 auth akışı uçtan uca: login → me → refresh (rotasyon) → logout →
-/// register → change-password. Seed'lenen demo hesaplar yalnız başarı
-/// senaryolarında kullanılır; hata senaryoları taze kayıtlı kullanıcılarla
-/// çalışır ki lockout sayaçları demo hesapları kilitlemesin.
+/// change-password. Seed'lenen demo hesaplar yalnız başarı senaryolarında
+/// kullanılır; hata senaryoları taze kullanıcılarla çalışır ki lockout
+/// sayaçları demo hesapları kilitlemesin.
+///
+/// <c>POST /api/auth/register</c> KASITLI olarak yoktur (bkz.
+/// <see cref="Register_Kaldirildi_404Doner"/> ve AuthController xmldoc) —
+/// anonim self-servis kayıt bir kiracı sızıntısı güvenlik açığıydı. Testler
+/// için taze kullanıcı üretim akışıyla AYNI meşru yoldan geçer: kiracı
+/// provizyonu (<see cref="TenancyTestBase.ProvisionTenantAsync"/>) + davet
+/// kabulü (<see cref="TenancyTestBase.AcceptInviteAsync"/>).
 /// </summary>
 [Collection(ApiCollection.Name)]
-public sealed class AuthFlowTests(IKProApiFactory factory)
+public sealed class AuthFlowTests(IKProApiFactory factory) : TenancyTestBase(factory)
 {
     private const string DemoPassword = "demo123";
     private readonly HttpClient _client = factory.CreateClient();
@@ -144,37 +152,25 @@ public sealed class AuthFlowTests(IKProApiFactory factory)
         refreshResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
-    // --- register ---
+    // --- register (kaldırıldı — kiracı sızıntısı güvenlik açığı) ---
 
+    /// <summary>
+    /// Güvenlik regresyon testi: <c>POST /api/auth/register</c> anonim
+    /// self-servis kayıt ucuydu ve her yeni kullanıcıyı platformdaki EN
+    /// DÜŞÜK Id'li kiracıya (üretimde gerçek bir müşteri) bağlayıp erişim
+    /// kapısını BİLİNÇLİ ATLAYARAK anında token veriyordu — internetten
+    /// herhangi biri kaydolup o müşterinin İK panosunu okuyabiliyordu. Uç
+    /// tamamen kaldırıldı; bu test ucun SESSİZCE geri gelmediğini (ör. bir
+    /// sonraki değişiklikte yanlışlıkla yeniden eklenmediğini) doğrular.
+    /// </summary>
     [Fact]
-    public async Task Register_NewUser_DefaultsToEmployeeRole()
-    {
-        var (_, _, auth) = await RegisterUniqueUserAsync();
-
-        auth.User.Role.Should().Be("employee");
-        auth.User.RoleLabel.Should().Be("Çalışan");
-        auth.Token.Should().NotBeNullOrWhiteSpace();
-    }
-
-    [Fact]
-    public async Task Register_WithDuplicateEmail_Returns409()
+    public async Task Register_Kaldirildi_404Doner()
     {
         var response = await _client.PostAsJsonAsync("/api/auth/register",
-            new { name = "Kopya Kullanıcı", email = "ik@hrmaster.local", password = "kopya123" });
+            new { name = "Sızma Denemesi", email = $"kaldirildi-{Guid.NewGuid():N}@test.local", password = "sifre123" });
 
-        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
-    }
-
-    [Fact]
-    public async Task Register_IgnoresClientRole_AlwaysEmployee()
-    {
-        // Güvenlik: anonim kayıt ucu istemci rolünü YOK SAYAR (yetki yükseltmesi engeli).
-        var response = await _client.PostAsJsonAsync("/api/auth/register",
-            new { name = "Sızma Denemesi", email = $"rol-{Guid.NewGuid():N}@test.local", password = "sifre123", role = "hr-admin" });
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var auth = (await response.Content.ReadFromJsonAsync<AuthResponse>())!;
-        auth.User.Role.Should().Be("employee", "istemciden gelen rol yok sayılmalı");
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound,
+            "POST /api/auth/register artık mevcut olmamalı — kiracı sızıntısı güvenlik açığı yüzünden kaldırıldı");
     }
 
     // --- change-password ---
@@ -233,16 +229,27 @@ public sealed class AuthFlowTests(IKProApiFactory factory)
         return (await response.Content.ReadFromJsonAsync<AuthResponse>())!;
     }
 
+    /// <summary>
+    /// Taze, tek kullanımlık bir test kullanıcısı üretir. Eskiden <c>POST
+    /// /api/auth/register</c>'ı çağırırdı; o uç kiracı sızıntısı güvenlik
+    /// açığı yüzünden kaldırıldığı için artık üretimdeki TEK meşru kullanıcı
+    /// oluşturma yolunu izler: kiracı provizyonu + davet kabulü (bkz.
+    /// <see cref="TenancyTestBase"/>). Bu testlerin hiçbiri rolün
+    /// "employee" olmasına bağlı değildir — provizyonun ürettiği hr-admin
+    /// rolü login/refresh/logout/change-password akışları için yeterlidir.
+    /// </summary>
     private async Task<(string Email, string Password, AuthResponse Auth)> RegisterUniqueUserAsync()
     {
         var email = $"test-{Guid.NewGuid():N}@test.local";
         const string password = "test-sifre-1";
 
-        var response = await _client.PostAsJsonAsync("/api/auth/register",
-            new { name = "Test Kullanıcı", email, password });
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        // Şirket adına ayrıca GUID eklenmez: ProvisionTenantAsync zaten slug'ı kendi
+        // GUID'iyle benzersizleştirir (bkz. orada) — ikisi üst üste binince slug 64
+        // karakter sınırını aşıp 400 döndürüyordu.
+        await ProvisionTenantAsync("Auth Akis Testi", email);
+        await AcceptInviteAsync(email, password);
 
-        var auth = (await response.Content.ReadFromJsonAsync<AuthResponse>())!;
+        var auth = await LoginAsync(email, password);
         return (email, password, auth);
     }
 }

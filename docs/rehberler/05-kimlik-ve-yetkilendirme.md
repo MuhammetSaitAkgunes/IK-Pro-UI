@@ -74,13 +74,27 @@ veya `smtp` (üretim — MailKit). Detay: [06](06-multi-tenancy.md) ve KVKK dok�
 
 | Uç | Kim çağırır | Sonuç |
 | --- | --- | --- |
-| `POST /api/auth/register` | Anonim | **Her zaman `employee`** rolüyle kayıt (istemci rol gönderemez — güvenlik) |
 | `POST /api/tenants` | Platform (X-Platform-Key) | Yeni kiracı + ilk hr-admin (provizyon) |
-| `POST /api/tenants/signup` | Anonim (public) | Self-servis: yeni şirket + hr-admin (pasif, doğrulanınca aktif) |
+| `POST /api/tenants/signup` | Anonim (public) | Self-servis: **yeni şirket** + hr-admin (`Provisioning`; davet kabul edilince `Active`) |
+| `POST /api/auth/accept-invite` | Davetli kullanıcı (token'la) | Şifre belirler, hesabı etkinleştirir |
 
-> **Önemli güvenlik notu:** Anonim `register` ucu, gövdede rol gelse bile onu
-> **yok sayar** ve daima `employee` atar. Aksi halde kimliği doğrulanmamış biri
-> admin hesabı açabilirdi.
+**Mevcut bir şirkete katılmanın tek yolu davettir.** Personel, işe alım akışıyla
+(aday → personel) oluşturulur ve davet e-postası alır; kendi kendine kaydolamaz.
+
+> **⚠️ `POST /api/auth/register` KALDIRILDI — yeniden eklemeyin.**
+>
+> Bu uç anonimdi ve her yeni kullanıcıyı **platformdaki en düşük Id'li kiracıya**
+> (üretimde gerçek bir müşteriye) bağlıyor, `EmailConfirmed=true` yapıyor ve
+> token'ı erişim kapısını **bilinçli atlayarak** üretiyordu. Sonuç: internetten
+> herhangi biri kaydolup o müşterinin İK verisini okuyabiliyordu — personel
+> sayısı, bekleyen izinler, izindekiler, aday hunisi, `/api/me`,
+> `/api/payroll/my`, `/api/leaves/*`.
+>
+> Bu belgede daha önce yer alan "rolü daima `employee` atıyoruz, o yüzden
+> güvenli" notu **yanlıştı**: sorun yetki yükseltmesi değil, **yanlış kiracıya
+> bağlanmaktı.**
+>
+> `AuthFlowTests` içinde bu ucun 404 döndüğünü doğrulayan bir regresyon testi var.
 
 ## Sonraki Adım
 
