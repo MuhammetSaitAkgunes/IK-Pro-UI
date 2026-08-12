@@ -80,9 +80,12 @@ jobs:
         # TRX üretilir: koşum kırılınca hangi testin neden düştüğü artefakttan
         # okunabilir. GitHub'ın ham job log'unu indirmek kimlik doğrulama
         # istediği için, başarısızlığın sebebini görmenin pratik yolu budur.
+        # LogFileName VERİLMEZ: iki test projesi aynı adı kullanınca ikincisi
+        # birincinin sonuçlarını eziyordu ("Overwriting results file"). Varsayılan
+        # ad proje+zaman damgası içerir, yani her proje kendi dosyasını yazar.
         run: >-
           dotnet test --no-build --configuration Release --verbosity normal
-          --logger "trx;LogFileName=test-sonuclari.trx"
+          --logger trx
           --results-directory TestSonuclari
 
       - name: Başarısız testleri iş özetine yaz
