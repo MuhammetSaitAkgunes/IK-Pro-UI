@@ -77,4 +77,30 @@ jobs:
       - run: dotnet build --no-restore --configuration Release -warnaserror
 
       - name: Testler (birim + entegrasyon)
-        run: dotnet test --no-build --configuration Release --verbosity normal
+        # TRX üretilir: koşum kırılınca hangi testin neden düştüğü artefakttan
+        # okunabilir. GitHub'ın ham job log'unu indirmek kimlik doğrulama
+        # istediği için, başarısızlığın sebebini görmenin pratik yolu budur.
+        run: >-
+          dotnet test --no-build --configuration Release --verbosity normal
+          --logger "trx;LogFileName=test-sonuclari.trx"
+          --results-directory TestSonuclari
+
+      - name: Başarısız testleri iş özetine yaz
+        if: failure()
+        run: |
+          {
+            echo "## Başarısız testler"
+            echo '```'
+            grep -ohP '(?<=testName=")[^"]+(?=".*?outcome="Failed")' TestSonuclari/*.trx 2>/dev/null \
+              || grep -ohP 'testName="[^"]+"' TestSonuclari/*.trx 2>/dev/null | head -50 \
+              || echo "(trx okunamadı)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Test sonuçlarını artefakt olarak yükle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-sonuclari
+          path: backend/TestSonuclari/
+          retention-days: 14
