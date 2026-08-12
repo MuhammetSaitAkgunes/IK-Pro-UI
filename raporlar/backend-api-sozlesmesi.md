@@ -9,7 +9,7 @@
 | Uç | Rol | Açıklama |
 |---|---|---|
 | `POST /auth/login` | herkese açık | JWT + refresh token döner (lockout: 5 deneme/5 dk) |
-| `POST /auth/register` | herkese açık | Yeni kullanıcı kaydı |
+| ~~`POST /auth/register`~~ | — | **KALDIRILDI** — kiracı sızıntısı (her kaydı en düşük Id'li kiracıya bağlıyordu). Mevcut şirkete katılım yalnız davetle; yeni şirket için `POST /tenants/signup`. |
 | `POST /auth/refresh` | herkese açık | Refresh token rotasyonu |
 | `POST /auth/logout` | A M E | Refresh token iptali |
 | `POST /auth/change-password` | A M E | Şifre değişikliği (ayarlar güvenlik sekmesi) |
@@ -111,6 +111,6 @@ açıkken ilgili olaylar `IEmailSender`'a yazılır (geliştirmede `{Storage:Roo
 
 `services/apiClient.js` sözleşmesindeki tüm placeholder'lar birebir karşılanır:
 
-- ✅ `POST /api/auth/login` · ✅ `POST /api/auth/register` · ✅ `GET /api/me`
+- ✅ `POST /api/auth/login` · ⛔ `POST /api/auth/register` (kaldırıldı, yukarı bkz.) · ✅ `GET /api/me`
 - ✅ `GET /api/actions` · ✅ `GET /api/audit-logs` · ✅ `PATCH /api/actions/{id}/status`
 - ✅ Base URL `https://localhost:7001/api` (launchSettings 7001) · ✅ Bearer token şeması

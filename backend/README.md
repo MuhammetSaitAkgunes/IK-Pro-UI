@@ -91,5 +91,9 @@ dotnet test --collect:"XPlat Code Coverage"          # kapsam ölçümü (coverl
 
 Uç envanteri ve rol matrisi için: [`../raporlar/backend-api-sozlesmesi.md`](../raporlar/backend-api-sozlesmesi.md).
 Frontend'in beklediği sözleşme (`services/apiClient.js`) birebir karşılanır:
-`POST /api/auth/login`, `POST /api/auth/register`, `GET /api/me`, `GET /api/actions`,
+`POST /api/auth/login`, `GET /api/me`, `GET /api/actions`,
 `GET /api/audit-logs`, `PATCH /api/actions/{id}/status`.
+
+> `POST /api/auth/register` **kaldırıldı** (kiracı sızıntısı): anonim kayıt her
+> kullanıcıyı platformdaki en düşük Id'li kiracıya bağlıyordu. Mevcut şirkete
+> katılım yalnız davetle olur; yeni şirket için `POST /api/tenants/signup`.
