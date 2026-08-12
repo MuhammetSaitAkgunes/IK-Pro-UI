@@ -8,6 +8,7 @@ using IKPro.Infrastructure.Identity;
 using IKPro.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.Net;
 using System.Net.Http.Json;
 
@@ -20,6 +21,34 @@ namespace IKPro.Tests.Integration.Tenancy;
 [Collection(ApiCollection.Name)]
 public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(factory)
 {
+    /// <summary>
+    /// Dosya alanını silemeyen depo. Purge'ün "silme patlarsa yarıda kesme, ama
+    /// çağırana bildir" sözleşmesini platformdan bağımsız sınamak için var:
+    /// gerçek dosya kilitleme davranışı Windows ile Linux arasında ayrışır ve
+    /// testi işletim sistemine bağlı hale getirirdi.
+    /// </summary>
+    private sealed class SilemeyenDepo : IFileStorage
+    {
+        public bool SilmeDenendi { get; private set; }
+
+        public Task DeleteTenantSpaceAsync(int tenantId, CancellationToken cancellationToken)
+        {
+            SilmeDenendi = true;
+            throw new IOException($"Kiracı {tenantId} dosya alanı silinemedi (test sahtesi).");
+        }
+
+        // Purge yalnız DeleteTenantSpaceAsync kullanır; kalanlar çağrılırsa
+        // testin varsayımı bozulmuş demektir, sessizce geçmek yerine patlasın.
+        public Task<StoredFile> SaveAsync(Stream content, string fileName, string category, CancellationToken cancellationToken)
+            => throw new NotSupportedException();
+
+        public Task<Stream> OpenReadAsync(string path, CancellationToken cancellationToken)
+            => throw new NotSupportedException();
+
+        public Task DeleteAsync(string path, CancellationToken cancellationToken)
+            => throw new NotSupportedException();
+    }
+
     [Fact]
     public async Task Purge_RemovesTargetTenantData_LeavesOthersIntact()
     {
@@ -166,25 +195,42 @@ public sealed class TenantPurgeTests(IKProApiFactory factory) : TenancyTestBase(
     {
         var t = await ProvisionAndActivateAsync("Bozuk Dosya A.Ş.", $"b-{Guid.NewGuid():N}@purge.local");
 
-        // Kiracı alanında AÇIK TUTULAN bir dosya: Directory.Delete başarısız olur.
         // Dosyalar silinemese bile veri temizliği yarıda kesilmemeli; hata loglanır
         // VE çağırana dönüş değeriyle (false) görünür kılınır — sessiz kalınmaz
         // (İnceleme bulgusu #3: aksi halde operatör 200 OK'i "her şey silindi"
         // sanır, oysa kiracının PII dosyaları diskte kalmış olabilir).
-        var kiraciKlasoru = Path.Combine(Factory.StorageRoot, LocalFileStorage.TenantFolder(t.TenantId));
-        Directory.CreateDirectory(kiraciKlasoru);
-        await using var kilit = new FileStream(
-            Path.Combine(kiraciKlasoru, "kilitli.bin"),
-            FileMode.Create, FileAccess.Write, FileShare.None);
+        //
+        // Başarısızlık DEPO KATMANINDAN üretilir, işletim sisteminden değil. Bu test
+        // eskiden dosyayı FileShare.None ile açık tutuyordu: Windows'ta bu
+        // Directory.Delete'i engelliyor, ama Linux'ta (CI) POSIX semantiği açık
+        // dosyanın silinmesine izin verdiği için silme BAŞARILI oluyor ve test
+        // düşüyordu. Testin niyeti "silme başarısız olursa ne olur" — başarısızlığın
+        // nasıl üretildiği değil. Sahte depo bunu her platformda aynı şekilde sınar.
+        var patlayanDepo = new SilemeyenDepo();
 
         bool dosyalarSilindi = true;
         var purge = async () =>
         {
             using var scope = Factory.Services.CreateScope();
-            dosyalarSilindi = await scope.ServiceProvider.GetRequiredService<ITenantPurger>()
-                .PurgeAsync(t.TenantId, CancellationToken.None);
+            var sp = scope.ServiceProvider;
+
+            // Purger elle kurulur: yalnız IFileStorage değiştirilir, kalan her
+            // bağımlılık gerçek DI'dan gelir — böylece sınanan şey gerçek purge
+            // davranışıdır, sahte bir kurgu değil.
+            var purger = new TenantPurger(
+                sp.GetRequiredService<AppDbContext>(),
+                sp.GetRequiredService<IPlatformDbContext>(),
+                sp.GetRequiredService<ITenantScopeFactory>(),
+                patlayanDepo,
+                sp.GetRequiredService<ITenantDirectory>(),
+                sp.GetRequiredService<ITenantRegistry>(),
+                sp.GetRequiredService<ILogger<TenantPurger>>());
+
+            dosyalarSilindi = await purger.PurgeAsync(t.TenantId, CancellationToken.None);
         };
         await purge.Should().NotThrowAsync("silinemeyen dosya alanı purge'ü yarıda kesmemeli");
+
+        patlayanDepo.SilmeDenendi.Should().BeTrue("purge dosya alanını silmeyi gerçekten denemeli");
 
         dosyalarSilindi.Should().BeFalse(
             "dosya alanı silinemediğinde PurgeAsync bunu çağırana bildirmeli, sessiz kalmamalı");
